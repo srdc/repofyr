@@ -57,7 +57,7 @@ class StructureDefinitionParser(fhirComplexTypes: Set[String], fhirPrimitiveType
       //Parse element definitions (without establishing child relationship)
       val elemDefs =
         elementDefs
-          .map(parseElementDef(_, rtype, if (isBaseStandard) None else Some(profileUrl), //Parse the element definitions
+          .map(parseElementDef(_, rtype, /*if (isBaseStandard) None else*/ profileUrl, //Parse the element definitions
             includeElementMetadata))
 
 
@@ -148,11 +148,13 @@ class StructureDefinitionParser(fhirComplexTypes: Set[String], fhirPrimitiveType
    * Parse FHIR Element definition to generate our internal model to keep restrictions on element
    *
    * @param elemDef         FHIR Element definition to parse
-   * @param profileUrl      URL of the profile that this element definition is defined (If not FHIR base)
+   * @param profileUrl      URL of the profile that this element definition is defined
    * @param includeMetadata Whether to include the #ElementMetadata to the parse results or not
    * @return Parsed Definition and if element is a summary element
    */
-  override def parseElementDef(elemDef: JObject, resourceType: String, profileUrl: Option[String], includeMetadata: Boolean): (ElementRestrictions, Boolean) = {
+  override def parseElementDef(elemDef: JObject, resourceType: String, profileUrl: String, includeMetadata: Boolean): (ElementRestrictions, Boolean) = {
+    val isBaseStandard = profileUrl.startsWith(FHIR_ROOT_URL_FOR_DEFINITIONS + "/StructureDefinition")
+
     val dataTypeAndProfile =
       FHIRUtil
         .extractValueOption[Seq[JObject]](elemDef, "type")
@@ -170,7 +172,7 @@ class StructureDefinitionParser(fhirComplexTypes: Set[String], fhirPrimitiveType
           ConstraintKeys.DATATYPE -> (if (dataTypeAndProfile.isEmpty) None else Some(TypeRestriction(dataTypeAndProfile.map(dt => dt._1 -> dt._2)))),
           ConstraintKeys.MIN -> FHIRUtil.extractValueOption[Int](elemDef, "min").flatMap(createMinRestriction),
           ConstraintKeys.MAX -> FHIRUtil.extractValueOption[String](elemDef, "max").flatMap(createMaxRestriction),
-          ConstraintKeys.ARRAY -> createArrayRestriction(profileUrl.isEmpty, FHIRUtil.extractValueOption[String](elemDef, "max")),
+          ConstraintKeys.ARRAY -> createArrayRestriction(isBaseStandard, FHIRUtil.extractValueOption[String](elemDef, "max")),
           ConstraintKeys.BINDING -> FHIRUtil.extractValueOption[JObject](elemDef, "binding").flatMap(createBindingRestriction),
           ConstraintKeys.MINVALUE ->
             findElementWithMultipleFhirTypes("minValue", elemDef)

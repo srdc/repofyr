@@ -62,7 +62,7 @@ case class ProfileRestrictions(url: String,
  * @param profileDefinedIn Profile url that this element restriction is defined (used for validation result building)
  */
 case class ElementRestrictions(path: String, restrictions: Map[Int, FhirRestriction], slicing: Option[FhirSlicing] = None,
-                               sliceName: Option[String], contentReference: Option[String], profileDefinedIn: Option[String] = None,
+                               sliceName: Option[String], contentReference: Option[String], profileDefinedIn: String,
                                metadata: Option[ElementMetadata] = None) {
   def addNewRestrictions(newRestrictions: Map[Int, FhirRestriction]): ElementRestrictions = {
     this.copy(restrictions = restrictions ++ newRestrictions)

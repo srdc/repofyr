@@ -36,7 +36,7 @@ abstract class AbstractStructureDefinitionParser(fhirComplexTypes: Set[String], 
    * @param includeMetadata Whether to include the ElementMetadata to the parse results or not
    * @return
    */
-  def parseElementDef(elemDef: JObject, resourceType: String, profileUrl: Option[String], includeMetadata: Boolean = false): (ElementRestrictions, Boolean)
+  def parseElementDef(elemDef: JObject, resourceType: String, profileUrl: String, includeMetadata: Boolean = false): (ElementRestrictions, Boolean)
 
   /**
    * Create a cardinality min restriction from int value
