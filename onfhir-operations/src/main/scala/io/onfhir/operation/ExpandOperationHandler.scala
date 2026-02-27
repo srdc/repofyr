@@ -32,6 +32,7 @@ class ExpandOperationHandler(fhirConfigurationManager:IFhirConfigurationManager)
   final val EXPAND_PARAM_FILTER: String = "filter"
   final val EXPAND_PARAM_LANGUAGE: String = "displayLanguage"
   final val EXPAND_PARAM_INCLUDE_DESIGNATIONS: String = "includeDesignations"
+  final val EXPAND_PARAM_DESIGNATION:String = "designation"
 
   /**
     * Execute the operation and prepare the output parameters for the operation
@@ -147,6 +148,7 @@ class ExpandOperationHandler(fhirConfigurationManager:IFhirConfigurationManager)
     val filterKeys: Seq[String] = operationRequest.extractParamValue[String](EXPAND_PARAM_FILTER).getOrElse("").split(",").toIndexedSeq
     val language: Option[String] = operationRequest.extractParamValue[String](EXPAND_PARAM_LANGUAGE)
     val includeDesignations: Boolean = operationRequest.extractParamValue[Boolean](EXPAND_PARAM_INCLUDE_DESIGNATIONS).getOrElse(false)
+    val designations:Set[String] = operationRequest.extractParamValues[String](EXPAND_PARAM_DESIGNATION).toSet
 
     // 1) First, filter all the matching concepts
     val matchingList:Seq[JObject] = compose \ "include" match {
@@ -161,7 +163,16 @@ class ExpandOperationHandler(fhirConfigurationManager:IFhirConfigurationManager)
               (filteredConcept.get \ "code").extractOpt[String].foreach(c => {matching = matching ~ ("code" -> c)})
               (filteredConcept.get \ "display").extractOpt[String].foreach(d => {matching = matching ~ ("display" -> d)})
               (filteredConcept.get \ "extension").extractOpt[JArray].foreach(arr => {matching = matching ~ ("extension" -> arr)})
-              if(includeDesignations) {(filteredConcept.get \ "designation").extractOpt[JArray].foreach(arr => {matching = matching ~ ("designation" -> arr)})}
+              if(includeDesignations) {
+                (filteredConcept.get \ "designation")
+                  .extractOpt[JArray]
+                  .map(arr =>
+                    if(designations.nonEmpty)
+                      JArray(arr.filter(v => (v \ "language").extractOpt[String].exists(l => designations.contains(l))))
+                    else
+                      arr
+                  )
+                  .foreach(arr => {matching = matching ~ ("designation" -> arr)})}
               Some(matching)
             } else None
           })
