@@ -25,8 +25,8 @@ package io.onfhir.authz
  * @param resourceType      List of FHIR resource types that this rule is about e.g. Condition, Observation
  * @param fhirAction        List of FHIR actions that this rule allows (search-type, create, update, etc or FHIR operation name e.g. $lastn)
  * @param precondition      Precondition for this rule to apply (A FHIR Path expression to be executed on current authorization context)
- * @param searchConstraint  FHIR search statements to be satisfied
- *                          e.g. subject={{%claims.patient.select('Patient/' & $this).mkString(',')}} for FHIR search
+ * @param searchConstraint  FHIR search statement (x-fhir-query) to be satisfied (further search parameters)
+ *                          e.g. performer={{%claims.fhirUser}} --> Only if the user (sending this request) is performer
  * @param contentConstraint FHIR Path statements to be satisfied for the supplied content for FHIR create, update,  or FHIR operation etc.
  *                          e.g. Observation.practitioner.reference = 'Practitioner/' & %claims.sub
  */
@@ -35,6 +35,6 @@ case class FhirAuthzConstraintRule(
                                     description: Option[String] = None,
                                     fhirAction: Seq[String],
                                     precondition: Option[String] = None,
-                                    searchConstraint: Option[Seq[String]] = None,
+                                    searchConstraint: Option[String] = None,
                                     contentConstraint: Option[Seq[String]] = None
                                   )

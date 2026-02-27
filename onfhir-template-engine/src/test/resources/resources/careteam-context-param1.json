@@ -1,0 +1,61 @@
+{
+  "resourceType": "CareTeam",
+  "id": "ct-0001",
+  "status": "active",
+  "category": [
+    {
+      "coding": [
+        {
+          "system": "http://loinc.org",
+          "code": "LA27976-2",
+          "display": "Encounter-focused care team"
+        }
+      ]
+    }
+  ],
+  "name": "Peter James Charlmers Care Plan for Inpatient Encounter",
+  "subject": {
+    "reference": "Patient/f001",
+    "display": "P. van de Heuvel"
+  },
+  "encounter": {
+    "reference": "Encounter/example"
+  },
+  "period": {
+    "end": "2013-01-01"
+  },
+  "participant": [
+    {
+      "role": [
+        {
+          "text": "responsiblePerson"
+        }
+      ],
+      "member": {
+        "reference": "Patient/example"
+      }
+    },
+    {
+      "role": [
+        {
+          "text": "adviser"
+        }
+      ],
+      "member": {
+        "reference": "Practitioner/pr1",
+        "display": "Dorothy Dietition"
+      },
+      "onBehalfOf": {
+        "reference": "Organization/f001"
+      },
+      "period": {
+        "end": "2013-01-01"
+      }
+    }
+  ],
+  "managingOrganization": [
+    {
+      "reference": "Organization/f001"
+    }
+  ]
+}

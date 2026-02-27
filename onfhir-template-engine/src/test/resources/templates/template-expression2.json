@@ -1,0 +1,28 @@
+{
+  "name": "result",
+  "language": "application/fhir-template+json",
+  "value": {
+    "resourceType": "Observation",
+    "id": "obs-00001",
+    "status": "final",
+    "code": {
+      "coding": "{{* %codings}}"
+    },
+    "subject": {
+      "reference": "{{%subjectRef}}"
+    },
+    "effectiveDateTime": "2013-04-02T09:30:10+01:00",
+    "issued": "{{? %issued}}",
+    "performer": [
+      {
+        "reference": "{{? %performer}}"
+      }
+    ],
+    "valueQuantity": {
+      "value": "{{%obsValue}}",
+      "unit": "mmol/l",
+      "system": "http://unitsofmeasure.org",
+      "code": "mmol/L"
+    }
+  }
+}

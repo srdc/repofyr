@@ -2,7 +2,7 @@ package io.onfhir.operation
 
 import java.util.UUID
 import akka.http.scaladsl.model.{DateTime, StatusCodes, Uri}
-import io.onfhir.api.Resource
+import io.onfhir.api.{FHIR_PARAMETER_CATEGORIES, FHIR_PARAMETER_TYPES, Resource}
 import io.onfhir.api.model._
 import io.onfhir.api.parsers.FHIRSearchParameterValueParser
 import io.onfhir.api.service.FHIROperationHandlerService
@@ -11,7 +11,7 @@ import io.onfhir.config.{FhirServerConfig, IFhirConfigurationManager}
 import io.onfhir.db.ResourceManager
 import io.onfhir.exception._
 import io.onfhir.util.JsonFormatter._
-import org.json4s.JsonAST.{JArray, JNothing, JObject, JValue}
+import org.json4s.JsonAST.{JArray, JNothing, JObject, JString, JValue}
 import org.json4s.JsonDSL._
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -70,47 +70,78 @@ class ExpandOperationHandler(fhirConfigurationManager:IFhirConfigurationManager)
     handleExpand(searchParams, operationRequest)
   }
 
+  /**
+   *
+   * @param queryParams
+   * @param operationRequest
+   * @return
+   */
   def handleExpand(queryParams: Map[String, List[String]], operationRequest: FHIROperationRequest): Future[FHIROperationResponse] = {
 
     val searchParams:List[Parameter] = fhirConfigurationManager.fhirSearchParameterValueParser.parseSearchParameters(RESOURCE_VALUESET, queryParams)
 
     fhirConfigurationManager.resourceManager
-      .queryResources(RESOURCE_VALUESET, searchParams, count = 1, excludeExtraFields = true).map {
-      case (0, _) =>
-        logger.debug("ValueSet not found, return 404 NotFound...")
-        throw new NotFoundException(Seq(
-          OutcomeIssue(
-            FHIRResponse.SEVERITY_CODES.INFORMATION,
-            FHIRResponse.OUTCOME_CODES.INFORMATIONAL,
-            None,
-            if (queryParams.contains(SEARCHPARAM_ID))
-              Some(s"${RESOURCE_VALUESET} with id '${queryParams.apply(SEARCHPARAM_ID).head}' not found...")
-            else
-              Some(s"${RESOURCE_VALUESET} with given search parameters not found...")
-            ,
-            Nil
-          )
-        ))
-      //If there is a match
-      // TODO: In case a ValueSet is queried with 'url', there can be multiple matching ValueSets (there shall not be!). But for the moment, we are just returning the first
-      case (total, Seq(foundResource)) =>
-        //Build expansion
-        val resultingResource = buildExpansion(foundResource, operationRequest)
-        val (rid, currentVersion, lastModified)  = FHIRUtil.extractBaseMetaFields(resultingResource)
-        // 2.2) return the ValueSet
-        logger.debug("resource found, returning...")
-        val fhirResponse = new FHIROperationResponse(
-          StatusCodes.OK, //HTTP Status code
-          Some(Uri(FHIRUtil.resourceLocationWithVersion(RESOURCE_VALUESET, rid, currentVersion))),
-          Some(lastModified), //HTTP Last-Modified header
-          Some(""+currentVersion)) //HTTP Etag header
+      .queryResources(RESOURCE_VALUESET, searchParams, count = 1, excludeExtraFields = true)
+      .flatMap {
+        case (0, _) =>
+          Future.apply {
+            logger.debug("ValueSet not found, return 404 NotFound...")
+            throw new NotFoundException(Seq(
+              OutcomeIssue(
+                FHIRResponse.SEVERITY_CODES.INFORMATION,
+                FHIRResponse.OUTCOME_CODES.INFORMATIONAL,
+                None,
+                if (queryParams.contains(SEARCHPARAM_ID))
+                  Some(s"${RESOURCE_VALUESET} with id '${queryParams.apply(SEARCHPARAM_ID).head}' not found...")
+                else
+                  Some(s"${RESOURCE_VALUESET} with given search parameters not found...")
+                ,
+                Nil
+              )
+            ))
+          }
+        //If there is a match
+        // TODO: In case a ValueSet is queried with 'url', there can be multiple matching ValueSets (there shall not be!). But for the moment, we are just returning the first
+        case (total, Seq(foundResource)) =>
+          //Build expansion
+          buildExpansion(foundResource, operationRequest)
+            .map { resultingResource =>
+              val (rid, currentVersion, lastModified) = FHIRUtil.extractBaseMetaFields(resultingResource)
+              // 2.2) return the ValueSet
+              logger.debug("resource found, returning...")
+              val fhirResponse = new FHIROperationResponse(
+                StatusCodes.OK, //HTTP Status code
+                Some(Uri(FHIRUtil.resourceLocationWithVersion(RESOURCE_VALUESET, rid, currentVersion))),
+                Some(lastModified), //HTTP Last-Modified header
+                Some("" + currentVersion)) //HTTP Etag header
 
-        fhirResponse.setResponse(resultingResource)
-        fhirResponse
-    }
+              fhirResponse.setResponse(resultingResource)
+              fhirResponse
+            }
+      }
   }
 
-  def buildExpansion(valueSet:Resource, operationRequest: FHIROperationRequest):Resource = {
+  /**
+   *
+   * @param valueSetUrls
+   * @param searchParams
+   * @return
+   */
+  private def findValueSetsWithUrls(valueSetUrls:Set[String]):Future[Seq[Resource]] = {
+    val searchParams = fhirConfigurationManager.fhirSearchParameterValueParser.parseSearchParameters(RESOURCE_VALUESET, Map("url" -> List(valueSetUrls.mkString(","))))
+    fhirConfigurationManager
+      .resourceManager
+      .queryResources(RESOURCE_VALUESET, searchParams, count = valueSetUrls.size, excludeExtraFields = true)
+      .map(_._2)
+  }
+
+  /**
+   *
+   * @param valueSet
+   * @param operationRequest
+   * @return
+   */
+  def findMatchingList(valueSet:Resource, operationRequest: FHIROperationRequest):Future[Seq[JObject]] = {
     val compose = (valueSet \ VALUESET_COMPOSE).extractOrElse(JObject())
 
     val filterKeys: Seq[String] = operationRequest.extractParamValue[String](EXPAND_PARAM_FILTER).getOrElse("").split(",").toIndexedSeq
@@ -123,16 +154,16 @@ class ExpandOperationHandler(fhirConfigurationManager:IFhirConfigurationManager)
         include \ "concept" match {
           case concepts:JArray => concepts.arr.flatMap(concept => {
             val filteredConcept = filterConcept(concept, filterKeys, language)
-             if(filteredConcept.nonEmpty){
-               var matching = JObject()
-               (include \ "system").extractOpt[String].foreach(s => {matching = matching ~ ("system" -> s)})
-               (include \ "version").extractOpt[String].foreach(v => {matching = matching ~ ("version" -> v)})
-               (filteredConcept.get \ "code").extractOpt[String].foreach(c => {matching = matching ~ ("code" -> c)})
-               (filteredConcept.get \ "display").extractOpt[String].foreach(d => {matching = matching ~ ("display" -> d)})
-               (filteredConcept.get \ "extension").extractOpt[JArray].foreach(arr => {matching = matching ~ ("extension" -> arr)})
-               if(includeDesignations) {(filteredConcept.get \ "designation").extractOpt[JArray].foreach(arr => {matching = matching ~ ("designation" -> arr)})}
-               Some(matching)
-             } else None
+            if(filteredConcept.nonEmpty){
+              var matching = JObject()
+              (include \ "system").extractOpt[String].foreach(s => {matching = matching ~ ("system" -> s)})
+              (include \ "version").extractOpt[String].foreach(v => {matching = matching ~ ("version" -> v)})
+              (filteredConcept.get \ "code").extractOpt[String].foreach(c => {matching = matching ~ ("code" -> c)})
+              (filteredConcept.get \ "display").extractOpt[String].foreach(d => {matching = matching ~ ("display" -> d)})
+              (filteredConcept.get \ "extension").extractOpt[JArray].foreach(arr => {matching = matching ~ ("extension" -> arr)})
+              if(includeDesignations) {(filteredConcept.get \ "designation").extractOpt[JArray].foreach(arr => {matching = matching ~ ("designation" -> arr)})}
+              Some(matching)
+            } else None
           })
           case _ => Nil
         }
@@ -140,26 +171,63 @@ class ExpandOperationHandler(fhirConfigurationManager:IFhirConfigurationManager)
       case _ => Nil
     }
 
-    var resultValueSet = valueSet
-    // 2) If there is any matching, then create an expansion
-    if(matchingList.nonEmpty) {
-      // 2.1) First, remove if any expansion exists in the full ValueSet
-      resultValueSet = resultValueSet.removeField(_._1 == VALUESET_EXPANSION).asInstanceOf[JObject]
+    // Included value sets in the ValueSet
+    val includedVsUrls:Set[String] =
+      (compose \ "include" \\ "valueSet") match {
+        case JArray(arraysOrVals) =>
+          arraysOrVals.flatMap {
+            case JArray(vs) => vs.collect { case JString(s) => s }
+            case JString(s) => Seq(s)
+            case _          => Nil
+          }.toSet
+        case _ => Set.empty
+      }
 
-      // 2.2) Then create the new expansion
-      val expansion =
-          ("identifier" -> UUID.randomUUID().toString) ~
-          ("timestamp" -> (DateTime.now.toIsoDateTimeString + "Z")) ~
-          ("total" -> matchingList.size) ~
-          ("contains" -> matchingList)
+    if(includedVsUrls.isEmpty) {
+      Future.apply(matchingList)
+    } else {
+      findValueSetsWithUrls(includedVsUrls)
+        .flatMap {
+          case Nil =>
+            logger.warn(s"Included ValueSets ${includedVsUrls.mkString(",")} cannot be resolved! Ignoring them in expand operation.")
+            Future.apply(matchingList)
+          case includedValueSets =>
+            if(includedValueSets.length < includedVsUrls.size)
+              logger.warn(s"Some of the Included ValueSets ${includedVsUrls.mkString(",")} cannot be resolved! Ignoring them in expand operation.")
 
-      resultValueSet = resultValueSet ~ (VALUESET_EXPANSION -> expansion)
+            Future
+              .sequence(includedValueSets.map(vs => findMatchingList(vs, operationRequest)))
+              .map(matchedConcepts =>
+                matchedConcepts.flatten ++ matchingList
+              )
+        }
     }
+  }
 
-    // In any case, remove the compose element completely
-    resultValueSet = resultValueSet.removeField(_._1 == VALUESET_COMPOSE).asInstanceOf[JObject]
-    //valueSet.remove(VALUESET_COMPOSE)
-    resultValueSet
+  def buildExpansion(valueSet:Resource, operationRequest: FHIROperationRequest):Future[Resource] = {
+    findMatchingList(valueSet, operationRequest)
+      .map { matchingList =>
+        var resultValueSet = valueSet
+        // 2) If there is any matching, then create an expansion
+        if (matchingList.nonEmpty) {
+          // 2.1) First, remove if any expansion exists in the full ValueSet
+          resultValueSet = resultValueSet.removeField(_._1 == VALUESET_EXPANSION).asInstanceOf[JObject]
+
+          // 2.2) Then create the new expansion
+          val expansion =
+            ("identifier" -> UUID.randomUUID().toString) ~
+              ("timestamp" -> (DateTime.now.toIsoDateTimeString + "Z")) ~
+              ("total" -> matchingList.size) ~
+              ("contains" -> matchingList)
+
+          resultValueSet = resultValueSet ~ (VALUESET_EXPANSION -> expansion)
+        }
+
+        // In any case, remove the compose element completely
+        resultValueSet = resultValueSet.removeField(_._1 == VALUESET_COMPOSE).asInstanceOf[JObject]
+        //valueSet.remove(VALUESET_COMPOSE)
+        resultValueSet
+      }
   }
 
   def filterConcept(input:JValue, keys:Seq[String], language: Option[String]): Option[JObject] = {

@@ -1,0 +1,58 @@
+{
+  "name": "result",
+  "language": "application/fhir-template+json",
+  "value": {
+    "resourceType": "Communication",
+    "instantiatesUri": "{{+ 'http://onfhir.io/PipelineDefinition/communication-created-pipeline'}}",
+    "status": "completed",
+    "extension": [
+      {
+        "url": "http://www.c3-cloud.eu/fhir/StructureDefinition/event-type",
+        "valueCode": "created"
+      },
+      {
+        "url": "http://www.c3-cloud.eu/fhir/StructureDefinition/title",
+        "valueString": "New Message!"
+      }
+    ],
+    "category": [
+      {
+        "coding": [
+          {
+            "system": "http://www.c3-cloud.eu/fhir/ValueSet/communication-category",
+            "code": "user-event"
+          }
+        ]
+      }
+    ],
+    "subject": {
+      "reference": "{{Communication.subject.reference}}",
+      "display": "{{? Communication.subject.display}}"
+    },
+    "basedOn": {
+      "reference": "Communication/asdf"
+    },
+    "sent": "{{now()}}",
+    "recipient": [
+      {
+        "reference": "Practitioner/3c670b96-8657-4fe7-bc48-b4352a2b5284",
+        "extension": [
+          {
+            "url": "http://www.c3-cloud.eu/fhir/StructureDefinition/recipientStatus",
+            "valueCode": "sent"
+          }
+        ]
+      }
+    ],
+    "payload": [
+      {
+        "contentString": "Date/Time: {{now()}}\nMessage: asdf\nFrom: asdf"
+      },
+      {
+        "contentReference": {
+          "reference": "Communication/asdf"
+        }
+      }
+    ]
+  }
+}

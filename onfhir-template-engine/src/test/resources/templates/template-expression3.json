@@ -1,0 +1,59 @@
+{
+  "name": "result",
+  "language": "application/fhir-template+json",
+  "value": {
+    "resourceType": "Communication",
+    "instantiatesUri": [
+      "http://onfhir.io/PipelineDefinition/sample-pipeline"
+    ],
+    "status": "completed",
+    "category": [
+      {
+        "coding": [
+          {
+            "system": "http://terminology.hl7.org/CodeSystem/communication-category",
+            "code": "notification"
+          }
+        ],
+        "text": "Notification"
+      }
+    ],
+    "medium": [
+      {
+        "coding": [
+          {
+            "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationMode",
+            "code": "ELECTRONIC"
+          }
+        ]
+      }
+    ],
+    "subject": {
+      "reference": "{{Observation.subject.reference}}"
+    },
+    "sent": "{{now()}}",
+    "recipient": {
+      "{{#member}}": "{{%careTeamOfPatient.participant.member}}",
+      "{{*}}": {
+        "reference": "{{%member.reference}}",
+        "display": "{{? %member.display}}",
+        "extension": [
+          {
+            "url": "http://www.c3-cloud.eu/fhir/StructureDefinition/recipientStatus",
+            "valueCode": "sent"
+          }
+        ]
+      }
+    },
+    "payload": [
+      {
+        "contentString": "Patient {{Observation.subject.display & ''}} has a very high serum potassium value ({{Observation.valueQuantity.value}} mmol/L on {{Observation.effectiveDateTime}})"
+      },
+      {
+        "contentReference": {
+          "reference": "Observation/{{Observation.id}}"
+        }
+      }
+    ]
+  }
+}

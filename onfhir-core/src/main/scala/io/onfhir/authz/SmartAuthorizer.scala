@@ -10,6 +10,8 @@ import io.onfhir.api.util.FHIRUtil
 import io.onfhir.authz.SmartAuthorizer._
 import io.onfhir.config.IFhirConfigurationManager
 import io.onfhir.exception.InitializationException
+import io.onfhir.expression.XFhirQueryParser
+import io.onfhir.path.FhirPathEvaluator
 import org.json4s.{JObject, JString, JValue}
 import org.slf4j.LoggerFactory
 
@@ -44,6 +46,11 @@ class SmartAuthorizer(smartAuthzConfig:Option[Config], fhirConfigurationManager:
    * FHIR search expression parser to parse Smart-on-Fhir complex scopes like patient/Observation?category=...
    */
   private val fhirSearchParameterValueParser = new FHIRSearchParameterValueParser(fhirConfigurationManager.fhirConfig)
+
+  /**
+   * For parsing x-fhir-query statements
+   */
+  private val xFhirQueryParser = new XFhirQueryParser(fhirConfigurationManager.fhirConfig, FhirPathEvaluator().withDefaultFunctionLibraries())
 
   /**
    * Default scopes assigned to any authenticated user
@@ -156,28 +163,6 @@ class SmartAuthorizer(smartAuthzConfig:Option[Config], fhirConfigurationManager:
     }
   }
 
-
-  /**
-   * Get further content constraints defined
-   * @param resourceType        Resource type that interaction is about e.g. Observation
-   * @param interaction         FHIR interaction e.g. read, create, update, etc
-   * @param resourceContent     The given resource content, or resolved
-   * @param context             Context parameters for request
-   * @return
-   */
-  private def getFurtherContentConstraints(resourceType:String,
-                                           interaction:String,
-                                           resourceContent:Option[Resource],
-                                           context:Map[String, JValue]
-                                          ):Seq[String] = {
-    if(interaction == FHIR_INTERACTIONS.SEARCH)
-      Nil
-    else {
-      val rules = getRelatedRules(resourceType, interaction, resourceContent, context)
-      rules.flatMap(_.contentConstraint.getOrElse(Nil))
-    }
-  }
-
   /**
    * Return authorization constraints if the given scopes causes partial authorization, None if complete authorization (no constraints)
    * @param scopes          All effective main scopes
@@ -198,14 +183,35 @@ class SmartAuthorizer(smartAuthzConfig:Option[Config], fhirConfigurationManager:
         case PERMISSION_TYPE_PATIENT => getConstraintsForPatientLevelScopes(scopes, authzContext)
       }
 
-    //Get content constraints
+    //Get further constraints related with the request
+    val furtherConstraints = getRelatedRules(rtype, interaction, resourceContent, fhirPathContext)
+    //Get constraints on the content for crud and similar
     //e.g. for create or update --> check if Observation.practitioner is same with user
-    val contentConstraints = getFurtherContentConstraints(rtype, interaction, resourceContent, fhirPathContext)
+    val contentConstraints =
+      interaction match {
+        //Ignore for search
+        case FHIR_INTERACTIONS.SEARCH => Nil
+        case _ => furtherConstraints.flatMap(_.contentConstraint.getOrElse(Nil))
+      }
+    //Get further search constraints
+    val furtherSearchConstraints =
+      furtherConstraints
+        .flatMap(_.searchConstraint)
+        .map(fqs => xFhirQueryParser.parseXFhirQuery(rtype, fqs, fhirPathContext))
 
-    if (filteringConstraints.isEmpty && contentConstraints.isEmpty)
+    //Merge the filtering constraints with the further constraints
+    val finalFilteringConstraints =
+      if(furtherSearchConstraints.isEmpty)
+        filteringConstraints
+      else if(filteringConstraints.isEmpty)
+        furtherSearchConstraints
+      else  //Merge them in every possible way
+        filteringConstraints.flatMap(fc => furtherSearchConstraints.map(fsc => fc ++ fsc))
+
+    if (finalFilteringConstraints.isEmpty && contentConstraints.isEmpty)
       None
     else
-      Some(AuthzConstraints(filteringConstraints, contentConstraints))
+      Some(AuthzConstraints(finalFilteringConstraints, contentConstraints))
   }
 
   /**

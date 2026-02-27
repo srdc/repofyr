@@ -23,9 +23,10 @@ class FHIRSearchParameterValueParser(fhirConfig: FhirServerConfig) {
     * @param nameExpr Name part of query
     * @param valueExpr Value part of query
     * @param rtype Resource type query is executed
+    * @param resolver    FHIR Path expression resolver
     * @return parsed parameter
     */
-  private def parseSimpleCategory(nameExpr:String, valueExpr:String, rtype:String):Parameter = {
+  private def parseSimpleCategory(nameExpr:String, valueExpr:String, rtype:String, resolver:Option[ISearchParamPlaceholderResolver] = None):Parameter = {
     //Extract param name
     val paramName = NameParser.parse(NameParser.parseName, nameExpr).get._1
     //Find param type
@@ -34,7 +35,7 @@ class FHIRSearchParameterValueParser(fhirConfig: FhirServerConfig) {
       throw new UnsupportedParameterException(s"Search parameter $paramName is not supported for resource type $rtype! Check conformance statement.")
     //Parse nameExpr and valueExpr
     val (_, suffix) = FHIRSearchParameterValueParser.parseSimpleName(nameExpr, searchParamConf.get.ptype)
-    val prefixAndValues = FHIRSearchParameterValueParser.parseSimpleValue(valueExpr, searchParamConf.get.ptype)
+    val prefixAndValues = FHIRSearchParameterValueParser.parseSimpleValue(valueExpr, searchParamConf.get.ptype, resolver)
     //Return the parameter
     Parameter(FHIR_PARAMETER_CATEGORIES.NORMAL, searchParamConf.get.ptype, paramName, prefixAndValues, suffix)
   }
@@ -46,7 +47,7 @@ class FHIRSearchParameterValueParser(fhirConfig: FhirServerConfig) {
     * @param rtype Resource type that search is on
     * @return
     */
-  private def parseSpecialCategory(name:String, valueExpr:String, rtype:String):Parameter = {
+  private def parseSpecialCategory(name:String, valueExpr:String, rtype:String, resolver:Option[ISearchParamPlaceholderResolver] = None):Parameter = {
     name match {
       //_list parameter in FHIR
       case FHIR_SEARCH_SPECIAL_PARAMETERS.LIST =>
@@ -54,11 +55,11 @@ class FHIRSearchParameterValueParser(fhirConfig: FhirServerConfig) {
         if(valueExpr.startsWith("$current-"))
           Parameter(FHIR_PARAMETER_CATEGORIES.SPECIAL, "", name, Nil, valueExpr)
         else //Otherwise it should be direct identifier
-          Parameter(FHIR_PARAMETER_CATEGORIES.SPECIAL, "", name, FHIRSearchParameterValueParser.parseSimpleValue(valueExpr, FHIR_PARAMETER_TYPES.TOKEN))
+          Parameter(FHIR_PARAMETER_CATEGORIES.SPECIAL, "", name, FHIRSearchParameterValueParser.parseSimpleValue(valueExpr, FHIR_PARAMETER_TYPES.TOKEN, resolver))
       // _query (named queries)
       case FHIR_SEARCH_SPECIAL_PARAMETERS.QUERY => Parameter(FHIR_PARAMETER_CATEGORIES.SPECIAL, "", name, Seq("" -> valueExpr))
       //ID param
-      case FHIR_SEARCH_SPECIAL_PARAMETERS.ID => Parameter(FHIR_PARAMETER_CATEGORIES.SPECIAL, FHIR_PARAMETER_TYPES.TOKEN, name, FHIRSearchParameterValueParser.parseSimpleValue(valueExpr, FHIR_PARAMETER_TYPES.TOKEN))
+      case FHIR_SEARCH_SPECIAL_PARAMETERS.ID => Parameter(FHIR_PARAMETER_CATEGORIES.SPECIAL, FHIR_PARAMETER_TYPES.TOKEN, name, FHIRSearchParameterValueParser.parseSimpleValue(valueExpr, FHIR_PARAMETER_TYPES.TOKEN, resolver))
       // _filter
       case FHIR_SEARCH_SPECIAL_PARAMETERS.FILTER =>
         throw new UnsupportedParameterException("Parameter _filter is not supported by onFhir.io yet!")
@@ -191,7 +192,7 @@ class FHIRSearchParameterValueParser(fhirConfig: FhirServerConfig) {
     * @param valueExpr Value part of expression e.g. MyUserId
     * @param rtype Resource type that search in on
     */
-  private def parseReversedChainedCategory(nameExpr:String, valueExpr:String, rtype:String):Parameter = {
+  private def parseReversedChainedCategory(nameExpr:String, valueExpr:String, rtype:String, resolver:Option[ISearchParamPlaceholderResolver] = None):Parameter = {
     val revChainParts =
       nameExpr
         .split("\\_has:")
@@ -221,7 +222,7 @@ class FHIRSearchParameterValueParser(fhirConfig: FhirServerConfig) {
     })
 
     //Parse for the actual query part
-    val parameter = parseSimpleCategory(queryPart, valueExpr, queryOn)
+    val parameter = parseSimpleCategory(queryPart, valueExpr, queryOn, resolver)
     //Set the chain part
     parameter.copy(chain = parsedChainQuery.toIndexedSeq, paramCategory = FHIR_PARAMETER_CATEGORIES.REVCHAINED)
   }
@@ -234,7 +235,7 @@ class FHIRSearchParameterValueParser(fhirConfig: FhirServerConfig) {
     * @param rtype Resource type that search in on e.g. Patient
     * @return
     */
-  private def parseChainedCategory(nameExpr:String, valueExpr:String, rtype:String):Parameter = {
+  private def parseChainedCategory(nameExpr:String, valueExpr:String, rtype:String, resolver:Option[ISearchParamPlaceholderResolver] = None):Parameter = {
     //Get chaining part
     val chainedParts = nameExpr.split('.')
 
@@ -270,7 +271,7 @@ class FHIRSearchParameterValueParser(fhirConfig: FhirServerConfig) {
       })
 
       //Parse for the actual query part
-      val parameter = parseSimpleCategory(queryPart, valueExpr, parsedChainQuery.last._1)
+      val parameter = parseSimpleCategory(queryPart, valueExpr, parsedChainQuery.last._1, resolver)
       //Set the chain part
       parameter.copy(chain = parsedChainQuery.toIndexedSeq, paramCategory = FHIR_PARAMETER_CATEGORIES.CHAINED)
   }
@@ -280,35 +281,38 @@ class FHIRSearchParameterValueParser(fhirConfig: FhirServerConfig) {
     * return list of parameter objects.
     * @param parameters parsed HTTP parameters from query or entity
     * @param _type ResourceType that search is on
+    * @param resolver    FHIR Path expression resolver
     * @return
     */
-  private def parseParameters(parameters: Map[String, List[String]], _type: String, preferHeader:Option[String]): List[Parameter] = {
+  private def parseParameters(parameters: Map[String, List[String]],
+                              _type: String, preferHeader:Option[String],
+                              resolver:Option[ISearchParamPlaceholderResolver] = None): List[Parameter] = {
     parameters.flatMap(eachParameter => {
       eachParameter._2.flatMap( valueExpr =>
         try {
           val parsedParam = eachParameter._1 match {
             //If it contains a ., then it is a chain search
             case chainedParamExpr if chainedParamExpr.contains('.') =>
-              parseChainedCategory(chainedParamExpr, valueExpr, _type)
+              parseChainedCategory(chainedParamExpr, valueExpr, _type, resolver)
             //If it starts with _, it is commonly defined param
             case commonParamExpr if commonParamExpr.startsWith("_") =>
               //If it is reverse chain search
               if(commonParamExpr.startsWith(FHIR_SEARCH_SPECIAL_PARAMETERS.HAS)){
-                parseReversedChainedCategory(commonParamExpr, valueExpr, _type)
+                parseReversedChainedCategory(commonParamExpr, valueExpr, _type, resolver)
               } else {
                 //Parse parameter name
                 NameParser.parse(NameParser.parseName, commonParamExpr).get._1 match {
                   case specialParam if fhirConfig.FHIR_SPECIAL_PARAMETERS.contains(specialParam) =>
-                    parseSpecialCategory(commonParamExpr, valueExpr, _type)
+                    parseSpecialCategory(commonParamExpr, valueExpr, _type, resolver)
                   case resultParam if fhirConfig.FHIR_RESULT_PARAMETERS.contains(resultParam) =>
                     parseResultCategory(commonParamExpr, valueExpr, _type)
                   case _ =>
-                    parseSimpleCategory(commonParamExpr, valueExpr, _type)
+                    parseSimpleCategory(commonParamExpr, valueExpr, _type, resolver)
                 }
               }
             //Othe normal defined parameters
             case normalParamExpr =>
-              parseSimpleCategory(normalParamExpr, valueExpr, _type)
+              parseSimpleCategory(normalParamExpr, valueExpr, _type, resolver)
           }
           Some(parsedParam)
         } catch {
@@ -339,6 +343,16 @@ class FHIRSearchParameterValueParser(fhirConfig: FhirServerConfig) {
   def parseSearchParameters(_type: String, parameters: Map[String, List[String]], preferHeader:Option[String] = None): List[Parameter] = {
     // Parse parameters
     parseParameters(parameters - FHIR_HTTP_OPTIONS.FORMAT, _type, preferHeader)
+  }
+
+  /**
+   * Prase the search parameters with a resolver for resolving placeholder FHIRPath expressions (x-fhir-query handling)
+   * @param _type       Resource type
+   * @param parameters  Spray parsed parameters
+   * @param resolver    FHIR Path expression resolver
+   */
+  def parseSearchParameterWithResolver(_type: String, parameters: Map[String, List[String]], resolver: ISearchParamPlaceholderResolver) = {
+    parseParameters(parameters - FHIR_HTTP_OPTIONS.FORMAT, _type, None, Some(resolver))
   }
 
   /**
@@ -638,9 +652,27 @@ object FHIRSearchParameterValueParser {
    *
    * @param valueExpr Value part of search expression
    * @param paramType Identified parameter type
+   * @param resolver    FHIR Path expression resolver
    * @return
    */
-  def parseSimpleValue(valueExpr: String, paramType: String): Seq[(String, String)] = {
+  def parseSimpleValue(valueExpr: String, paramType: String, resolver:Option[ISearchParamPlaceholderResolver] = None): Seq[(String, String)] = {
+    resolver match {
+      case Some(rsv) if valueExpr.contains("{{") && valueExpr.endsWith("}}") =>
+        val ind = valueExpr.indexOf("{{")
+        val prefix = valueExpr.substring(0, ind)
+        val expression = valueExpr.substring(ind).drop(2).dropRight(2)
+        val resolvedExpression = rsv.resolveExpression(expression, paramType)
+        parseSimpleValueExpr(prefix + resolvedExpression, paramType)
+      case _ => parseSimpleValueExpr(valueExpr, paramType)
+    }
+  }
+/**
+ * Parse the value part of the given search parameter expression and return prefix and expected value(s)
+ *
+ * @param valueExpr Value part of search expression
+ * @param paramType Identified parameter type
+ */
+  private def parseSimpleValueExpr(valueExpr: String, paramType: String):Seq[(String, String)] = {
     valueExpr
       .split(',')
       .map(eachValue =>
@@ -656,4 +688,5 @@ object FHIRSearchParameterValueParser {
         }
       ).toIndexedSeq
   }
+
 }

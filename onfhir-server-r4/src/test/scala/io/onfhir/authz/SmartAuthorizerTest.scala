@@ -1,5 +1,6 @@
 package io.onfhir.authz
 
+import akka.http.scaladsl.model.Uri
 import com.typesafe.config.ConfigFactory
 import io.onfhir.api.{FHIR_INTERACTIONS, FHIR_PARAMETER_CATEGORIES, FHIR_PARAMETER_TYPES}
 import io.onfhir.api.model.{FHIRRequest, Parameter}
@@ -244,7 +245,7 @@ class SmartAuthorizerTest extends Specification {
       smartAuthorizer2.authorize(authzContext, FHIRRequest(requestUri = "", interaction = FHIR_INTERACTIONS.SEARCH, resourceType = Some("CodeSystem"))).isAuthorized === false
     }
 
-    "authorize with further restrictions" in {
+    "authorize with further content restrictions" in {
       val authzContext =
         AuthzContext(isActive = true,
           scopes =
@@ -263,6 +264,26 @@ class SmartAuthorizerTest extends Specification {
             "performer.reference.exists($this = %claims.fhirUser)"
           )
         ))
+    }
+
+    "authorize with further search restrictions (x-fhir-query)" in {
+      val authzContext =
+        AuthzContext(isActive = true,
+          scopes =
+            Seq(
+              "patient/Appointment.rs?appointment-type=http://terminology.hl7.org/CodeSystem/v2-0276|ROUTINE"
+            ),
+          furtherParams = Map("patient" -> JString("123"), "fhirUser" -> JString("Practitioner/135131"))
+        )
+      smartAuthorizer2.authorize(authzContext, FHIRRequest(requestUri = "", interaction = FHIR_INTERACTIONS.SEARCH, resourceType = Some("Appointment"))) ===
+        AuthzResult.filtering(AuthzConstraints(
+          filters = Seq(List(
+            Parameter(paramCategory = FHIR_PARAMETER_CATEGORIES.COMPARTMENT, paramType = FHIR_PARAMETER_TYPES.REFERENCE, name = "", valuePrefixList = Seq("Patient" -> "123"), chain = Seq("" -> "actor")),
+            Parameter(paramCategory = FHIR_PARAMETER_CATEGORIES.NORMAL, paramType = FHIR_PARAMETER_TYPES.TOKEN, name = "appointment-type", valuePrefixList = Seq("" -> "http://terminology.hl7.org/CodeSystem/v2-0276|ROUTINE")),
+            Parameter(paramCategory = FHIR_PARAMETER_CATEGORIES.NORMAL, paramType = FHIR_PARAMETER_TYPES.REFERENCE, name = "actor", valuePrefixList = Seq("" -> "Practitioner/135131")),
+          ))
+        ))
+
     }
   }
 }

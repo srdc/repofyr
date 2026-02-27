@@ -86,6 +86,8 @@
         <module>onfhir-client</module>
         <module>onfhir-expression</module>
         <module>onfhir-r4</module>
+        <module>onfhir-template-engine</module>
+        <module>onfhir-query</module>
     </modules>
 
     <properties>
@@ -417,6 +419,16 @@
             <dependency>
                 <groupId>io.onfhir</groupId>
                 <artifactId>onfhir-client_${scala.binary.version}</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.onfhir</groupId>
+                <artifactId>onfhir-expression_${scala.binary.version}</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.onfhir</groupId>
+                <artifactId>onfhir-query_${scala.binary.version}</artifactId>
                 <version>${project.version}</version>
             </dependency>
 

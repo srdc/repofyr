@@ -87,6 +87,14 @@
             <groupId>io.onfhir</groupId>
             <artifactId>onfhir-client_${scala.binary.version}</artifactId>
         </dependency>
+        <dependency>
+            <groupId>io.onfhir</groupId>
+            <artifactId>onfhir-expression_${scala.binary.version}</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.onfhir</groupId>
+            <artifactId>onfhir-query_${scala.binary.version}</artifactId>
+        </dependency>
 
         <!--Configurations-->
         <dependency>

@@ -7,5 +7,12 @@
     "contentConstraint": [
       "performer.reference.exists($this = %claims.fhirUser)"
     ]
+  },
+  {
+    "description": "User should only see appointments with himself",
+    "resourceType": ["Appointment"],
+    "fhirAction": ["search-type"],
+    "precondition": "%claims.fhirUser.startsWith('Patient').not()",
+    "searchConstraint": "actor={{%claims.fhirUser}}"
   }
 ]

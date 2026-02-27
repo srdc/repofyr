@@ -1,0 +1,70 @@
+{
+  "resourceType": "Communication",
+  "status": "completed",
+  "sent": "2020-11-24T13:43:40.322Z",
+  "category": [
+    {
+      "coding": [
+        {
+          "system": "http://www.c3-cloud.eu/fhir/ValueSet/communication-category",
+          "code": "human-message"
+        }
+      ]
+    }
+  ],
+  "medium": [
+    {
+      "coding": [
+        {
+          "system": "http://hl7.org/fhir/v3/ParticipationMode",
+          "code": "ONLINEWRIT",
+          "display": "online written"
+        }
+      ]
+    }
+  ],
+  "sender": {
+    "reference": "Patient/4dd80117-5897-4763-a875-3e35b32b04d9",
+    "display": "Test Patient-2"
+  },
+  "recipient": [
+    {
+      "reference": "Practitioner/3c670b96-8657-4fe7-bc48-b4352a2b5284",
+      "display": "Anna Svensson",
+      "extension": [
+        {
+          "url": "http://www.c3-cloud.eu/fhir/StructureDefinition/recipientStatus",
+          "valueCode": "received"
+        }
+      ]
+    }
+  ],
+  "subject": {
+    "reference": "Patient/asdfas"
+  },
+  "payload": [
+    {
+      "contentString": "Test message 2 content!"
+    }
+  ],
+  "extension": [
+    {
+      "url": "http://www.c3-cloud.eu/fhir/StructureDefinition/title",
+      "valueString": "Message 2 Title"
+    },
+    {
+      "url": "http://www.c3-cloud.eu/fhir/StructureDefinition/senderStatus",
+      "valueCode": "sent"
+    },
+    {
+      "url": "http://www.c3-cloud.eu/fhir/StructureDefinition/isNoReply",
+      "valueBoolean": true
+    },
+    {
+      "url": "http://www.c3-cloud.eu/fhir/StructureDefinition/head",
+      "valueReference": {
+        "reference": "Communication/08843c3a-1e0a-4b94-c9fd-e6cb38499b0a"
+      }
+    }
+  ]
+}

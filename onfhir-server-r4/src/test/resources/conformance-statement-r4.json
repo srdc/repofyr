@@ -230,6 +230,161 @@
             }]
         },
         {
+          "type" : "Appointment",
+          "profile" : "http://hl7.org/fhir/StructureDefinition/Appointment",
+          "interaction" : [{
+            "code" : "read",
+            "documentation" : "Implemented per the specification (or Insert other doco here)"
+          },
+            {
+              "code" : "vread",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "update",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "delete",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "history-instance",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "history-type",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "create",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "search-type",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            }],
+          "conditionalCreate" : true,
+          "conditionalUpdate" : true,
+          "conditionalDelete" : "multiple",
+          "referencePolicy" : ["literal",
+            "logical"],
+          "searchInclude" : ["Appointment.practitioner",
+            "Appointment.slot",
+            "Appointment.actor",
+            "Appointment.based-on",
+            "Appointment.patient",
+            "Appointment.reason-reference",
+            "Appointment.supporting-info",
+            "Appointment.location"],
+          "searchRevInclude" : ["AppointmentResponse.appointment",
+            "CarePlan.activity-reference",
+            "Encounter.appointment",
+            "ImagingStudy.basedon"],
+          "searchParam" : [{
+            "name" : "date",
+            "definition" : "http://hl7.org/fhir/SearchParameter/Appointment-date",
+            "type" : "date",
+            "documentation" : "Appointment date/time."
+          },
+            {
+              "name" : "identifier",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Appointment-identifier",
+              "type" : "token",
+              "documentation" : "An Identifier of the Appointment"
+            },
+            {
+              "name" : "specialty",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Appointment-specialty",
+              "type" : "token",
+              "documentation" : "The specialty of a practitioner that would be required to perform the service requested in this appointment"
+            },
+            {
+              "name" : "service-category",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Appointment-service-category",
+              "type" : "token",
+              "documentation" : "A broad categorization of the service that is to be performed during this appointment"
+            },
+            {
+              "name" : "practitioner",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Appointment-practitioner",
+              "type" : "reference",
+              "documentation" : "One of the individuals of the appointment is this practitioner"
+            },
+            {
+              "name" : "part-status",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Appointment-part-status",
+              "type" : "token",
+              "documentation" : "The Participation status of the subject, or other participant on the appointment. Can be used to locate participants that have not responded to meeting requests."
+            },
+            {
+              "name" : "appointment-type",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Appointment-appointment-type",
+              "type" : "token",
+              "documentation" : "The style of appointment or patient that has been booked in the slot (not service type)"
+            },
+            {
+              "name" : "service-type",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Appointment-service-type",
+              "type" : "token",
+              "documentation" : "The specific service that is to be performed during this appointment"
+            },
+            {
+              "name" : "slot",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Appointment-slot",
+              "type" : "reference",
+              "documentation" : "The slots that this appointment is filling"
+            },
+            {
+              "name" : "reason-code",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Appointment-reason-code",
+              "type" : "token",
+              "documentation" : "Coded reason this appointment is scheduled"
+            },
+            {
+              "name" : "actor",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Appointment-actor",
+              "type" : "reference",
+              "documentation" : "Any one of the individuals participating in the appointment"
+            },
+            {
+              "name" : "based-on",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Appointment-based-on",
+              "type" : "reference",
+              "documentation" : "The service request this appointment is allocated to assess"
+            },
+            {
+              "name" : "patient",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Appointment-patient",
+              "type" : "reference",
+              "documentation" : "One of the individuals of the appointment is this patient"
+            },
+            {
+              "name" : "reason-reference",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Appointment-reason-reference",
+              "type" : "reference",
+              "documentation" : "Reason the appointment is to take place (resource)"
+            },
+            {
+              "name" : "supporting-info",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Appointment-supporting-info",
+              "type" : "reference",
+              "documentation" : "Additional information to support the appointment"
+            },
+            {
+              "name" : "location",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Appointment-location",
+              "type" : "reference",
+              "documentation" : "This location is listed in the participants of the appointment"
+            },
+            {
+              "name" : "status",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Appointment-status",
+              "type" : "token",
+              "documentation" : "The overall status of the appointment"
+            }]
+        },
+        {
           "type" : "Patient",
           "profile" : "http://hl7.org/fhir/StructureDefinition/Patient",
           "interaction" : [{
