@@ -8,7 +8,7 @@ import akka.stream.Materializer
 import com.typesafe.config.Config
 import io.onfhir.api.client._
 import io.onfhir.api.model.{FHIRRequest, FHIRResponse}
-import io.onfhir.client.intrcp.{BasicAuthenticationInterceptor, BearerTokenInterceptorFromTokenEndpoint, FixedBasicTokenInterceptor}
+import io.onfhir.client.intrcp.{BasicAuthenticationInterceptor, BearerTokenInterceptorFromTokenEndpoint, FixedBasicTokenInterceptor, FixedBearerTokenInterceptor}
 import io.onfhir.client.parsers.{FHIRRequestMarshaller, FHIRResponseUnmarshaller}
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -44,7 +44,7 @@ case class OnFhirNetworkClient(serverBaseUrl: String, interceptors: Seq[IHttpReq
    * @return
    */
   def withFixedBasicTokenAuthentication(token: String): OnFhirNetworkClient = {
-    this.copy(interceptors = interceptors :+ new FixedBasicTokenInterceptor(token))
+    this.copy(interceptors = interceptors :+ FixedBearerTokenInterceptor(token))
   }
 
   /**
