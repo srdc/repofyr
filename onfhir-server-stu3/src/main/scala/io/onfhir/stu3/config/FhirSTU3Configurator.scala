@@ -2,7 +2,7 @@ package io.onfhir.stu3.config
 
 import io.onfhir.api.parsers.IFhirFoundationResourceParser
 import io.onfhir.audit.IFhirAuditCreator
-import io.onfhir.config.BaseFhirServerConfigurator
+import io.onfhir.config.{AuditConfig, BaseFhirServerConfigurator}
 import io.onfhir.stu3.audit.STU3AuditCreator
 import io.onfhir.stu3.parsers.STU3Parser
 
@@ -15,7 +15,7 @@ class FhirSTU3Configurator extends BaseFhirServerConfigurator {
    *
    * @return
    */
-  override def getAuditCreator(): IFhirAuditCreator = new STU3AuditCreator
+  override def getAuditCreator(auditConfig: AuditConfig): IFhirAuditCreator = new STU3AuditCreator
 
   /**
    * Return the parser for foundation resources

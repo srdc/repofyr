@@ -61,7 +61,7 @@ class Onfhir(
 
   //Create audit manager actor, if auditing is enabled
   val auditManager =
-    if(customAuditHandler.isDefined || OnfhirConfig.fhirAuditingRepository != AuditManager.AUDITING_METHOD_NONE)
+    if(OnfhirConfig.fhirAuditingConfig.isDefined)
       Some(Onfhir.actorSystem.actorOf(AuditManager.props(FhirConfigurationManager, customAuditHandler), AuditManager.ACTOR_NAME))
     else
       None

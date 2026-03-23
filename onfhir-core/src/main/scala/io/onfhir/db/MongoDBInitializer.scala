@@ -10,6 +10,7 @@ import io.onfhir.api._
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.config.{OnfhirConfig, OnfhirIndex, ResourceIndexConfiguration, SearchParameterConf}
 import io.onfhir.exception.InitializationException
+import io.onfhir.util.JsonFormatter
 import org.mongodb.scala.model.{IndexModel, Indexes}
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -113,6 +114,17 @@ class MongoDBInitializer(resourceManager: ResourceManager) extends BaseDBInitial
     }
   }
 
+  private def extractResourceId(resource:Resource):String = {
+    FHIRUtil
+      .extractValueOption[String](resource, FHIR_COMMON_FIELDS.ID)
+      .orElse(
+        FHIRUtil
+          .extractValueOption[String](resource, FHIR_COMMON_FIELDS.URL)
+          .map(url => url.split('/').last)
+      )
+      .getOrElse(throw new InitializationException(s"One of the infrastructure resources does not have url!\n + ${JsonFormatter.convertToJson(resource).toPrettyJson}"))
+
+  }
 
   /**
     * Store the infrastructure resources (Conformance, StructureDefinition, SearchParameter, ValueSet, etc)
@@ -136,18 +148,16 @@ class MongoDBInitializer(resourceManager: ResourceManager) extends BaseDBInitial
           ))
         } else {
           resources.map(resource => {
-            FHIRUtil.extractValueOption[String](resource, FHIR_COMMON_FIELDS.URL) match {
-              case None => throw new InitializationException(s"One of the $resourceType infrastructure resources does not have url!")
-              case Some(url) =>
-                val rid = url.split('/').last
-                rid ->
-                  (
-                    Try(FHIRUtil
-                      .extractValueOptionByPath[String](resource, s"${FHIR_COMMON_FIELDS.META}.${FHIR_COMMON_FIELDS.VERSION_ID}")
-                      .map(_.toLong)).toOption.flatten.getOrElse(1L),
+            val rid = extractResourceId(resource)
+            rid ->
+              (
+                Try(
+                  FHIRUtil
+                    .extractValueOptionByPath[String](resource, s"${FHIR_COMMON_FIELDS.META}.${FHIR_COMMON_FIELDS.VERSION_ID}")
+                    .map(_.toLong)).toOption.flatten.getOrElse(1L),
                     FHIRUtil.setId(resource, rid)
-                  )
-            }
+              )
+
           }).toMap
         }
 

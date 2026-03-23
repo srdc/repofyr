@@ -6,7 +6,7 @@ import io.onfhir.api.parsers.{FHIRResultParameterResolver, FHIRSearchParameterVa
 import io.onfhir.api.service.TargetResourceResolver
 import io.onfhir.api.util.FHIRServerUtil
 import io.onfhir.api.validation.{FHIRResourceValidator, IFhirResourceValidator, IFhirTerminologyValidator}
-import io.onfhir.audit.IFhirAuditCreator
+import io.onfhir.audit.{AuditManager, IFhirAuditCreator}
 import io.onfhir.authz.AuthzManager
 import io.onfhir.client.{OnFhirNetworkClient, TerminologyServiceClient}
 import io.onfhir.db.{MongoDBInitializer, ResourceManager}
@@ -111,8 +111,11 @@ object FhirConfigurationManager extends IFhirConfigurationManager {
 
     fhirTerminologyValidator = new FhirTerminologyValidator(fhirConfig, integratedTerminologyServices)
     //Initialize FHIR Audit creator if necessary
-    if (OnfhirConfig.fhirAuditingRepository.equalsIgnoreCase("local") || OnfhirConfig.fhirAuditingRepository.equalsIgnoreCase("remote"))
-      fhirAuditCreator = fhirConfigurator.getAuditCreator()
+    OnfhirConfig
+      .fhirAuditingConfig
+      .foreach(auditConfig =>
+        fhirAuditCreator = fhirConfigurator.getAuditCreator(auditConfig)
+      )
 
     fhirSearchParameterValueParser = new FHIRSearchParameterValueParser(fhirConfig)
     fhirResultParameterResolver = new FHIRResultParameterResolver(fhirConfig)

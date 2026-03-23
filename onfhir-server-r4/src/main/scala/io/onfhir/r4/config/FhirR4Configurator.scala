@@ -17,7 +17,7 @@ class FhirR4Configurator extends BaseFhirServerConfigurator {
    *  @return
    */
 
-  def getAuditCreator():IFhirAuditCreator = new R4AuditCreator()
+  def getAuditCreator(auditConfig: AuditConfig):IFhirAuditCreator = new R4AuditCreator()
 
 
   /**

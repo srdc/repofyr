@@ -167,11 +167,8 @@ object OnfhirConfig {
   lazy val fhirPersistBaseDefinitions:Set[String] = Try(config.getStringList("fhir.persisted-base-definitions")).toOption.map(_.asScala.toSet).getOrElse(Set.empty[String])
 
   /** Auditing related configurations */
-  lazy val fhirAuditingRepository:String = Try(config.getString("fhir.auditing.repository")).toOption.getOrElse("local")
-  lazy val fhirAuditingRepositoryUrl:Option[String] = Try(config.getString("fhir.auditing.repository-url")).toOption
-  lazy val fhirAuditingRepositoryIsSecure:Boolean = Try(config.getBoolean("fhir.auditing.is-secure")).toOption.getOrElse(false)
-  lazy val fhirAuditingRemoteBatchInterval:Int = Try(config.getInt("fhir.auditing.batch-interval")).toOption.getOrElse(5)
-  lazy val fhirAuditingRemoteBatchSize:Int = Try(config.getInt("fhir.auditing.batch-size")).toOption.getOrElse(50)
+  lazy val fhirAuditingConfig:Option[AuditConfig] = Try(config.getConfig("fhir.auditing")).toOption.map(c => new AuditConfig(c))
+
 
   lazy val fhirRequestTimeout:Duration = Try(config.getDuration("akka.http.server.request-timeout")).toOption.getOrElse(Duration.ofSeconds(30))
 

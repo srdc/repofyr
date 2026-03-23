@@ -1,7 +1,8 @@
 package io.onfhir.audit
 
 import akka.http.scaladsl.model.StatusCode
-import io.onfhir.api.model.FHIRRequest
+import io.onfhir.api.model.{FHIRRequest, FHIRResponse}
+import io.onfhir.api.util.FHIRUtil
 import io.onfhir.api.{FHIR_INTERACTIONS, Resource}
 import io.onfhir.authz.{AuthContext, AuthzContext}
 import io.onfhir.config.OnfhirConfig
@@ -23,7 +24,12 @@ trait IFhirAuditCreator {
     * @param code code
     * @return
     */
-  protected def createCodingElement(system:String, code:String):JObject = ("system" -> system) ~ ("code" -> code)
+  protected def createCodingElement(system:String, code:String, display:Option[String] = None):JObject = {
+    var temp = ("system" -> system) ~ ("code" -> code)
+    if(display.isDefined)
+      temp = temp ~ ("display" -> display.get)
+    temp
+  }
 
   /**
     * Create FHIR Identifier element
@@ -33,6 +39,19 @@ trait IFhirAuditCreator {
     */
   protected def createIdentifierElement(system:String, value:String):JObject = ("system" -> system) ~ ("value" -> value)
 
+
+  protected def createLiteralReference(reference:String, display:Option[String]):JObject =
+    display
+      .map(d =>
+        ("reference" -> reference) ~ ("display" -> d)
+      ).getOrElse(
+        "reference" -> reference
+      )
+
+  protected def createLogicalReference(system:Option[String], value:String):JObject = {
+    val identifierEl:JObject = system.map(s => createIdentifierElement(s, value)).getOrElse(("value" -> value))
+    "identifier" -> identifierEl
+  }
 
   /**
     * Resolve Audit Event Action Code
@@ -46,6 +65,7 @@ trait IFhirAuditCreator {
       case FHIR_INTERACTIONS.DELETE => "D"
       case op if op.startsWith("$") => "E"
       case FHIR_INTERACTIONS.BATCH | FHIR_INTERACTIONS.TRANSACTION => "E"
+      case FHIR_INTERACTIONS.SEARCH | FHIR_INTERACTIONS.SEARCH_SYSTEM | FHIR_INTERACTIONS.HISTORY_SYSTEM | FHIR_INTERACTIONS.HISTORY_TYPE => "E"
       case _ => "R"
     }
   }
@@ -141,30 +161,56 @@ trait IFhirAuditCreator {
   }
 
   /**
-    * Extract referecences to related resources for FHIRRequest
+    * Extract referecence to related resources for FHIRRequest
     * @param fhirRequest FHIR Request
     * @return
     */
   protected def extractRelatedResources(fhirRequest: FHIRRequest):Seq[String] = {
     fhirRequest.interaction match {
-      case FHIR_INTERACTIONS.READ | FHIR_INTERACTIONS.HISTORY_INSTANCE => Seq(fhirRequest.resourceType.get + "/" + fhirRequest.resourceId.get)
+      case FHIR_INTERACTIONS.CREATE | FHIR_INTERACTIONS.READ | FHIR_INTERACTIONS.UPDATE | FHIR_INTERACTIONS.PATCH =>
+        fhirRequest
+          .response
+          .flatMap(getRelatedResourceRefFromLocation)
+          .orElse(
+            if(fhirRequest.resourceId.isDefined)
+              Some(fhirRequest.resourceType.get + "/" + fhirRequest.resourceId.get)
+            else
+              None
+          ).toSeq
+      case FHIR_INTERACTIONS.DELETE =>
+        getRelatedResourceRefFromResolvedTargetResource(fhirRequest)
+          .orElse(
+            if(fhirRequest.resourceId.isDefined)
+              Some(fhirRequest.resourceType.get + "/" + fhirRequest.resourceId.get)
+            else
+              None
+          )
+          .toSeq
+      case FHIR_INTERACTIONS.HISTORY_INSTANCE => Seq(fhirRequest.resourceType.get + "/" + fhirRequest.resourceId.get)
       case FHIR_INTERACTIONS.VREAD => Seq(fhirRequest.resourceType.get + "/" + fhirRequest.resourceId.get + "/_history/"+fhirRequest.versionId.get)
-      case FHIR_INTERACTIONS.CREATE => fhirRequest.response.flatMap(r => r.location.map(_.toString().replace(OnfhirConfig.fhirRootUrl+"/", ""))).toSeq
-      case FHIR_INTERACTIONS.UPDATE | FHIR_INTERACTIONS.DELETE | FHIR_INTERACTIONS.PATCH =>
-        if(fhirRequest.resourceId.isDefined)
-          Seq(fhirRequest.resourceType.get + "/" + fhirRequest.resourceId.get)
-        else
-          fhirRequest.response.flatMap(r => r.location.map(_.toString().replace(OnfhirConfig.fhirRootUrl+"/", ""))).toSeq
       case op if op.startsWith("$") =>
-        if(fhirRequest.resourceId.isDefined)
-          Seq(fhirRequest.resourceType.get + "/" + fhirRequest.resourceId.get)
-        else
-          Nil
-
-      case FHIR_INTERACTIONS.TRANSACTION | FHIR_INTERACTIONS.BATCH =>
-        Seq("Bundle/"+fhirRequest.id)
+        getRelatedResourceRefFromResolvedTargetResource(fhirRequest)
+          .orElse(
+            if(fhirRequest.resourceId.isDefined)
+              Some(fhirRequest.resourceType.get + "/" + fhirRequest.resourceId.get)
+            else
+              None
+          )
+          .toSeq
+      case FHIR_INTERACTIONS.TRANSACTION | FHIR_INTERACTIONS.BATCH => Nil
       case _ => Nil
     }
+  }
+
+  private def getRelatedResourceRefFromLocation(response: FHIRResponse):Option[String] = {
+    response.location.map(_.toString().replace(OnfhirConfig.fhirRootUrl+"/", ""))
+  }
+
+  private def getRelatedResourceRefFromResolvedTargetResource(fhirRequest: FHIRRequest): Option[String] = {
+    fhirRequest
+      .getResolvedTargetResource
+      .map(resource => FHIRUtil.extractVersionFromResource(resource))
+      .map(v => s"${fhirRequest.resourceType.get}/${fhirRequest.resourceId.get}/_history/$v")
   }
 
   /**
@@ -183,6 +229,7 @@ trait IFhirAuditCreator {
         if(fhirRequest.resourceType.isEmpty)
           Nil
         else {
+          //TODO get also this from configuration
           val patientIndicatedInAuthzContext:Option[String] = authzContext.flatMap(_.getSimpleParam[String]("patient"))
           patientIndicatedInAuthzContext match {
             case Some(pid) => Seq("Patient" + "/" +pid)
@@ -206,13 +253,16 @@ trait IFhirAuditCreator {
                                              statusCode: StatusCode):Seq[Resource] = {
     val batchTransactionAudit = createAuditResource(fhirRequest, authContext, authzContext, statusCode)
     //If it is failure only return this audit
-    if(statusCode.isFailure())
+    /*if(statusCode.isFailure())
       Seq(batchTransactionAudit)
-    else {
-      batchTransactionAudit +: fhirRequest.childRequests.filter(_.response.isDefined).map(crequest =>
-        createAuditResource(crequest, authContext, authzContext, crequest.response.get.httpStatus, Some(fhirRequest.id))
-      )
-    }
+    else {*/
+      batchTransactionAudit +:
+        fhirRequest.childRequests
+          .filter(_.response.isDefined) //only for the ones that response is set (so evaluated)
+          .map(crequest =>
+            createAuditResource(crequest, authContext, authzContext, crequest.response.get.httpStatus, Some(fhirRequest.id))
+          )
+    //}
   }
 
   /**

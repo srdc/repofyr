@@ -518,33 +518,42 @@ class FhirContentValidator(
           }).filter(c => c._2.size < totalNumUrls) //Get the ones that has some profile to validate
             .map(_._1)
 
-        //Otherwise
-        Future.sequence(
-            //Validate against the profiles
-            profileChainsToValidate
-              .map {
-                //If this element is a contained resource or an entry resource within a Bundle and we have resource validator defined, validate the resource recursively
-                case Seq(r) if resourceValidator.isDefined && r.url == s"$FHIR_ROOT_URL_FOR_DEFINITIONS/StructureDefinition/Resource" =>
-                  val innerResourceType = FHIRUtil.extractResourceType(value.asInstanceOf[JObject])
-                  //Find out the fullUrl of this entry if this is a bundle and provide it together with Bundle content
-                  val entryFullUrlAndBundle =
-                    bundle
-                      .filter(_ => path.endsWith(".resource"))  //If this is a entry[x].resource path within a Bundle
-                      .map(bundleContent => {
-                        //Extract fullUrl of entry
-                        FHIRUtil.extractValueOptionByPath[String](bundleContent, path.dropRight(9) + ".fullUrl") -> bundleContent
-                      })
 
-                  resourceValidator.get
-                    .validateResource(value.asInstanceOf[JObject], innerResourceType, Some(path), entryFullUrlAndBundle)
-                //Otherwise, go with normal path
-                case c =>
-                  validateComplexContentAgainstProfile(c, value.asInstanceOf[JObject], Some(path), elementRestrictionChain.map(_._2))
-              }
-          ).map(issuesForContent =>
-            FhirContentValidator.convertToOutcomeIssue(path, allWarningsOrErrorsForThis) ++ //Still we may have warnings
-            issuesForContent.flatten
-          )
+        profileChainsToValidate match {
+          //Undefined extensions
+          case Nil if dataType == FHIR_DATA_TYPES.EXTENSION =>
+            val extensionProfileChain = fhirConfig.findProfileChainByCanonical( s"${api.FHIR_ROOT_URL_FOR_DEFINITIONS}/StructureDefinition/${FHIR_DATA_TYPES.EXTENSION}")
+            validateComplexContentAgainstProfile(extensionProfileChain, value.asInstanceOf[JObject], Some(path), elementRestrictionChain.map(_._2))
+          // Otherwise validate for each profile
+          case oth =>
+            //Otherwise
+            Future.sequence(
+              //Validate against the profiles
+              oth
+                .map {
+                  //If this element is a contained resource or an entry resource within a Bundle and we have resource validator defined, validate the resource recursively
+                  case Seq(r) if resourceValidator.isDefined && r.url == s"$FHIR_ROOT_URL_FOR_DEFINITIONS/StructureDefinition/Resource" =>
+                    val innerResourceType = FHIRUtil.extractResourceType(value.asInstanceOf[JObject])
+                    //Find out the fullUrl of this entry if this is a bundle and provide it together with Bundle content
+                    val entryFullUrlAndBundle =
+                      bundle
+                        .filter(_ => path.endsWith(".resource"))  //If this is a entry[x].resource path within a Bundle
+                        .map(bundleContent => {
+                          //Extract fullUrl of entry
+                          FHIRUtil.extractValueOptionByPath[String](bundleContent, path.dropRight(9) + ".fullUrl") -> bundleContent
+                        })
+
+                    resourceValidator.get
+                      .validateResource(value.asInstanceOf[JObject], innerResourceType, Some(path), entryFullUrlAndBundle)
+                  //Otherwise, go with normal path
+                  case c =>
+                    validateComplexContentAgainstProfile(c, value.asInstanceOf[JObject], Some(path), elementRestrictionChain.map(_._2))
+                }
+            ).map(issuesForContent =>
+              FhirContentValidator.convertToOutcomeIssue(path, allWarningsOrErrorsForThis) ++ //Still we may have warnings
+                issuesForContent.flatten
+            )
+        }
       }
     } else {
       //Also validate the primitive extension if exist

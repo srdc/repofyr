@@ -19,6 +19,7 @@ import org.json4s.JValue
   * @param furtherParams    All other parameters related with user and client
   * @param username         Human-readable identifier for the user who is trying to access
   * @param reasonNotActive
+  * @param issuer           Issuer of this authorization context (e.g. iss claim in OpenID)
   */
 case class AuthzContext(
                          isActive:Boolean,
@@ -29,7 +30,9 @@ case class AuthzContext(
                          sub:Option[String]=None, //
                          furtherParams:Map[String, JValue] = Map.empty, //
                          username:Option[String] = None, //
-                         reasonNotActive:Option[String] = None) {
+                         reasonNotActive:Option[String] = None,
+                         issuer:Option[String] = None
+                       ) {
 
   /**
     * If authorization is expired

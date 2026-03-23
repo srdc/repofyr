@@ -101,8 +101,8 @@ trait IFhirServerConfigurator extends IFhirVersionConfigurator {
 
   /**
    * Return a class that implements the interface to create AuditEvents compliant to the given base specification
-   *
+   * @param auditConfig Auditing configuration
    * @return
    */
-  def getAuditCreator(): IFhirAuditCreator
+  def getAuditCreator(auditConfig: AuditConfig): IFhirAuditCreator
 }

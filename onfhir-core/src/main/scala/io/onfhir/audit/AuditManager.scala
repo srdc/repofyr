@@ -10,7 +10,7 @@ import io.onfhir.Onfhir
 import io.onfhir.api.{FHIR_INTERACTIONS, Resource}
 import io.onfhir.api.model.{FHIRRequest, FHIRResponse}
 import io.onfhir.api.util.FHIRUtil
-import io.onfhir.audit.AuditManager.{AuditEventLog, FlushAudits}
+import io.onfhir.audit.AuditManager.{AUDITING_METHOD_REMOTE, AuditEventLog, FlushAudits}
 import io.onfhir.authz._
 import io.onfhir.config.{IFhirConfigurationManager, OnfhirConfig}
 import io.onfhir.util.JsonFormatter._
@@ -24,7 +24,9 @@ import scala.util.{Failure, Success}
 /**
   * Created by tuncay on 5/6/2017.
   */
-class AuditManager(fhirConfigurationManager: IFhirConfigurationManager, customAuditHandler:Option[ICustomAuditHandler]) extends Actor {
+class AuditManager(fhirConfigurationManager: IFhirConfigurationManager,
+                   customAuditHandler:Option[ICustomAuditHandler]
+                  ) extends Actor {
   //Actor system
   implicit val actorSystem:ActorSystem = Onfhir.actorSystem
   implicit val executionContext: ExecutionContextExecutor = context.dispatcher // actorSystem.dispatchers.lookup("akka.actor.onfhir-blocking-dispatcher")
@@ -43,14 +45,17 @@ class AuditManager(fhirConfigurationManager: IFhirConfigurationManager, customAu
     */
   override def preStart():Unit = {
     //If it is remote auditing, schedule batch auditing with given interval
-    if(OnfhirConfig.fhirAuditingRepository == "remote" && OnfhirConfig.fhirAuditingRepositoryUrl.isDefined) {
-      logger.info(s"Scheduling remote batch auditing service with interval; '${OnfhirConfig.fhirAuditingRemoteBatchInterval}' minutes ... ")
-      scheduledRemoteAuditSender =
-        Some(
-          actorSystem.scheduler
-            .scheduleAtFixedRate(FiniteDuration.apply(OnfhirConfig.fhirAuditingRemoteBatchInterval, TimeUnit.MINUTES), FiniteDuration.apply(OnfhirConfig.fhirAuditingRemoteBatchInterval, TimeUnit.MINUTES), self, FlushAudits())
-        )
-    }
+    OnfhirConfig.fhirAuditingConfig
+      .filter(cnf => cnf.auditRepositoryType == AUDITING_METHOD_REMOTE && cnf.remoteAuditRepositoryUrl.isDefined)
+      .foreach(auditConfig => {
+        logger.info(s"Scheduling remote batch auditing service with interval; '${auditConfig.remoteAuditBatchInterval}' minutes ... ")
+        scheduledRemoteAuditSender =
+          Some(
+            actorSystem.scheduler
+              .scheduleAtFixedRate(FiniteDuration.apply(auditConfig.remoteAuditBatchInterval, TimeUnit.MINUTES), FiniteDuration.apply(auditConfig.remoteAuditBatchInterval, TimeUnit.MINUTES), self, FlushAudits())
+          )
+      })
+
   }
 
   /**
@@ -103,7 +108,7 @@ class AuditManager(fhirConfigurationManager: IFhirConfigurationManager, customAu
           ("request" -> ("method" -> "POST") ~ ("url" -> "AuditEvent"))
       ))
 
-      val response = Http().singleRequest(createAuditBatchCreationRequest(OnfhirConfig.fhirAuditingRepositoryUrl.get, auditBundle))
+      val response = Http().singleRequest(createAuditBatchCreationRequest(OnfhirConfig.fhirAuditingConfig.get.remoteAuditRepositoryUrl.get, auditBundle))
 
       response.onComplete {
         case Success(res) => logger.debug(s"$numOfAudits audits successfully delivered")
@@ -128,7 +133,7 @@ class AuditManager(fhirConfigurationManager: IFhirConfigurationManager, customAu
       entity =  HttpEntity(ContentTypes.`application/json`, bundle.toJson)//.serializeResourceToOriginalJson(bundle, true))
     )
 
-    if(OnfhirConfig.fhirAuditingRepositoryIsSecure) {
+    if(OnfhirConfig.fhirAuditingConfig.get.remoteAuditRepositoryIsSecure) {
       //Try to get the access token from Authorization Manager
       request = accessTokenManager.getToken match {
         case Some(token) => //request ~> addCredentials(new OAuth2BearerToken(token))
@@ -152,7 +157,7 @@ class AuditManager(fhirConfigurationManager: IFhirConfigurationManager, customAu
       entity =  HttpEntity(ContentTypes.`application/json`, auditRecord.toJson)
     )
 
-    if(OnfhirConfig.fhirAuditingRepositoryIsSecure) {
+    if(OnfhirConfig.fhirAuditingConfig.get.remoteAuditRepositoryIsSecure) {
       //Try to get the access token from Authorization Manager
       request = accessTokenManager.getToken match {
         case Some(token) => //request ~> addCredentials(new OAuth2BearerToken(token))
@@ -161,6 +166,17 @@ class AuditManager(fhirConfigurationManager: IFhirConfigurationManager, customAu
       }
     }
     request
+  }
+
+  private def getAuditRecordsForRequest(fhirRequest: FHIRRequest, authContext: AuthContext, authzContext: Option[AuthzContext], httpResponse: HttpResponse) = {
+    fhirRequest.interaction match {
+        case FHIR_INTERACTIONS.BATCH | FHIR_INTERACTIONS.TRANSACTION =>
+          fhirConfigurationManager.fhirAuditCreator.createAuditResourcesForBatchTransaction(fhirRequest, authContext, authzContext, httpResponse.status)
+        case _ if fhirRequest.interaction != FHIR_INTERACTIONS.CREATE || !fhirRequest.resourceType.contains("AuditEvent") =>
+          Seq(fhirConfigurationManager.fhirAuditCreator.createAuditResource(fhirRequest, authContext, authzContext, httpResponse.status))
+        case  _ =>
+          Nil
+    }
   }
 
   /**
@@ -175,41 +191,36 @@ class AuditManager(fhirConfigurationManager: IFhirConfigurationManager, customAu
     Future.apply {
       try {
         //logger.debug(s"Creating an audit record for request $fhirRequest ...")
+        val auditCreationJobs:Seq[Future[_]] =
+          customAuditHandler match {
+            case Some(cah) =>
+              Seq(cah.createAndSendAudit(fhirRequest, authContext, authzContext, httpResponse))
+            case None =>
+              OnfhirConfig.fhirAuditingConfig.map(_.auditRepositoryType).get match {
+                case AuditManager.AUDITING_METHOD_LOCAL =>
+                  val auditRecords = getAuditRecordsForRequest(fhirRequest, authContext, authzContext, httpResponse)
+                  //Saving the audits to local FHIR repo
 
-        val auditCreationJobs = customAuditHandler match {
-          case Some(cah) =>
-            Seq(cah.createAndSendAudit(fhirRequest, authContext, authzContext, httpResponse))
-          case None =>
-            OnfhirConfig.fhirAuditingRepository match {
-              case AuditManager.AUDITING_METHOD_LOCAL | AuditManager.AUDITING_METHOD_REMOTE =>
-                val auditRecords =
-                  fhirRequest.interaction match {
-                    case FHIR_INTERACTIONS.BATCH | FHIR_INTERACTIONS.TRANSACTION =>
-                      fhirConfigurationManager.fhirAuditCreator.createAuditResourcesForBatchTransaction(fhirRequest, authContext, authzContext, httpResponse.status)
-                    case _ if fhirRequest.interaction != FHIR_INTERACTIONS.CREATE || !fhirRequest.resourceType.contains("AuditEvent") =>
-                      Seq(fhirConfigurationManager.fhirAuditCreator.createAuditResource(fhirRequest, authContext, authzContext, httpResponse.status))
-                    case  _ =>
-                      Nil
-                  }
-                //Saving the audits to local FHIR repo
-                if(OnfhirConfig.fhirAuditingRepository == "local")
+                    auditRecords.map(auditRecord => {
+                      fhirConfigurationManager.resourceManager.createResource("AuditEvent", auditRecord)
+                      //new FHIRCreateService().performCreate(auditRecord, fhirConfig.FHIR_AUDIT_EVENT)
+                    })
+                case  AuditManager.AUDITING_METHOD_REMOTE =>
+                  val auditRecords = getAuditRecordsForRequest(fhirRequest, authContext, authzContext, httpResponse)
+                  //Sending the audits to a remote FHIR repo
                   auditRecords.map(auditRecord => {
-                    fhirConfigurationManager.resourceManager.createResource("AuditEvent", auditRecord)
-                    //new FHIRCreateService().performCreate(auditRecord, fhirConfig.FHIR_AUDIT_EVENT)
-                  })
-                else //Sending the audits to a remote FHIR repo
-                  auditRecords.map(auditRecord => {
-                    remoteAudits.add(auditRecord)
-                    //Send the audits if it exceeds the batch size
-                    if (remoteAudits.size() > OnfhirConfig.fhirAuditingRemoteBatchSize)
-                      sendBatchAudits()
-                    Future(())
-                  })
-              case any =>
-                logger.error(s"Unknown default audit mode '$any'")
-                Seq(Future(()))
-            }
-        }
+                      remoteAudits.add(auditRecord)
+                      //Send the audits if it exceeds the batch size
+                      if (remoteAudits.size() > OnfhirConfig.fhirAuditingConfig.get.remoteAuditBatchSize)
+                        sendBatchAudits()
+                      Future(())
+                    })
+
+                case any =>
+                  logger.error(s"Unknown default audit mode '$any'")
+                  Seq(Future(()))
+              }
+          }
 
         Future.sequence(auditCreationJobs).map(responses => {
           responses.foreach {
@@ -282,7 +293,7 @@ object AuditManager {
   def audit(fhirRequest: FHIRRequest, authContext: AuthContext, authzContext: Option[AuthzContext]): Directive0 =
     Directives.mapResponse { httpResponse =>
       //Create and Store audit
-      if(!OnfhirConfig.fhirAuditingRepository.equalsIgnoreCase(AUDITING_METHOD_NONE))
+      if(OnfhirConfig.fhirAuditingConfig.isDefined)
         Onfhir.actorSystem.actorSelection(s"/user/$ACTOR_NAME") ! AuditEventLog(fhirRequest, authContext, authzContext, httpResponse)
       //Return HttpResponse as it is
       httpResponse

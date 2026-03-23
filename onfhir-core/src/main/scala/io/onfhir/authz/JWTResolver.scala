@@ -59,7 +59,9 @@ class JWTResolver(authzConfig: AuthzConfig) extends ITokenResolver {
         ) {
           AuthzContext(
             isActive = true,
-            clientId = aud.find(!_.equals(authzConfig.protectedResourceInformation.getID.getValue)),
+            clientId =
+              Option(claimSet.getStringClaim("azp"))  //Azp=authorized party indicates the party which the token is issued (clientId of that party). It is mandatory in ID Tokens but not always for access tokens
+                .orElse(aud.find(!_.equals(authzConfig.protectedResourceInformation.getID.getValue))),
             scopes = Try(Option(claimSet.getStringClaim("scope"))).toOption.flatten.map(_.split(" ").toSeq).getOrElse(Seq.empty), //scopes
             expirationTime = Option(claimSet.getExpirationTime),
             aud = aud.toSeq,

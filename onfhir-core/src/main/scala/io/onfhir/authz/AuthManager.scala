@@ -85,7 +85,8 @@ object AuthManager {
             val accessToken = getToken(authorizationHeader)
             logger.debug("Authenticating the request ...")
             //Resolve Authorization Context from access token
-            val authzContext = accessToken.map(ac => resolveToken(ac, AuthzConfigurationManager.authorizationHandler.furtherParamsInAuthzContext))
+            val furtherClaimsExpected = (OnfhirConfig.fhirAuditingConfig.map(_.getFurtherClaims).getOrElse(Set.empty) ++ AuthzConfigurationManager.authorizationHandler.furtherParamsInAuthzContext).toList
+            val authzContext = accessToken.map(ac => resolveToken(ac, furtherClaimsExpected))
             BasicDirectives.provide[(AuthContext, Option[AuthzContext])](AuthContext(accessToken, networkAddress), authzContext)
         }
       })

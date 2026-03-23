@@ -3,8 +3,9 @@ package io.onfhir.r5.config
 import io.onfhir.api.FOUNDATION_RESOURCES_FILE_SUFFIX
 import io.onfhir.api.parsers.IFhirFoundationResourceParser
 import io.onfhir.audit.IFhirAuditCreator
-import io.onfhir.config.BaseFhirServerConfigurator
+import io.onfhir.config.{AuditConfig, BaseFhirServerConfigurator}
 import io.onfhir.r4.parsers.R4Parser
+import io.onfhir.r5.audit.R5AuditCreator
 
 class FhirR5Configurator extends BaseFhirServerConfigurator {
   override val fhirVersion: String = "R5"
@@ -16,7 +17,7 @@ class FhirR5Configurator extends BaseFhirServerConfigurator {
    *
    * @return
    */
-  override def getAuditCreator(): IFhirAuditCreator = ???
+  override def getAuditCreator(auditConfig: AuditConfig): IFhirAuditCreator = new R5AuditCreator(auditConfig)
 
   /**
    * Return the parser for foundation resources
