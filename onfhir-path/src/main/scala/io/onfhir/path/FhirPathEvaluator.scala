@@ -8,7 +8,7 @@ import java.time.{LocalTime, ZoneId}
 import java.time.temporal.Temporal
 import io.onfhir.api.validation.{IFhirTerminologyValidator, IReferenceResolver}
 import io.onfhir.path.grammar.{FhirPathExprLexer, FhirPathExprParser}
-import org.antlr.v4.runtime.{CharStreams, CommonTokenStream}
+import org.antlr.v4.runtime.{BaseErrorListener, CharStreams, CommonTokenStream, RecognitionException, Recognizer, Token}
 import org.json4s.JsonAST.{JArray, JBool, JValue}
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -453,6 +453,50 @@ object FhirPathEvaluator {
     val parser = new FhirPathExprParser(new CommonTokenStream(lexer))
     parser.expression()
   }
+
+  /**
+   * String parsing of a FHIR Path expression (th
+   * @param input FHIRPath expression
+   * @throws FhirPathException If FHIRPath expression is syntactically invalid
+   * @return
+   */
+  def parseStrict(input: String): FhirPathExprParser.ExpressionContext = {
+    val stream = new ByteArrayInputStream(normalizeInput(input).getBytes(StandardCharsets.UTF_8))
+    val lexer = new FhirPathExprLexer(CharStreams.fromStream(stream, StandardCharsets.UTF_8))
+    val tokens = new CommonTokenStream(lexer)
+    val parser = new FhirPathExprParser(tokens)
+
+    val listener = new BaseErrorListener {
+      override def syntaxError(
+                                recognizer: Recognizer[_, _],
+                                offendingSymbol: Any,
+                                line: Int,
+                                charPositionInLine: Int,
+                                msg: String,
+                                e: RecognitionException
+                              ): Unit =
+        throw new FhirPathException(
+          s"Invalid FHIRPath expression at $line:$charPositionInLine: $msg"
+        )
+    }
+
+    lexer.removeErrorListeners()
+    parser.removeErrorListeners()
+    lexer.addErrorListener(listener)
+    parser.addErrorListener(listener)
+
+    val expr = parser.expression()
+
+    if (tokens.LA(1) != Token.EOF) {
+      val token = tokens.LT(1)
+      throw new IllegalArgumentException(
+        s"Invalid FHIRPath expression near '${token.getText}' at ${token.getLine}:${token.getCharPositionInLine}"
+      )
+    }
+
+    expr
+  }
+
 
   private def normalizeInput(input:String):String = {
     //As function 'contains' and literal 'contains' clash in the grammar, we have

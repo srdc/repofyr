@@ -244,7 +244,6 @@ class AuditManager(fhirConfigurationManager: IFhirConfigurationManager,
   * Companion manager for audits
   */
 object AuditManager {
-  final val AUDITING_METHOD_NONE = "none"     //No auditing
   final val AUDITING_METHOD_LOCAL = "local"   //Audits (FHIR AuditEvent) are stored to local repository
   final val AUDITING_METHOD_REMOTE = "remote" //Audits (FHIR AuditEvent) are sent to a remote FHIR repository
   //Name for the actor

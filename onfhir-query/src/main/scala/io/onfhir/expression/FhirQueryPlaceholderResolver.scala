@@ -21,7 +21,7 @@ class FhirQueryPlaceholderResolver(fhirPathEvaluator:FhirPathEvaluator,
    * @param searchParamType FHIR search parameter type given as hint for expression resolution
    * @return
    */
-  override def resolveExpression(spValueExpr: String, searchParamType: String): String = {
+  override def resolveExpression(spValueExpr: String, searchParamType: String, modifier:String, prefix:String): String = {
     searchParamType match {
       case FHIR_PARAMETER_TYPES.REFERENCE => normalizeForReference(spValueExpr)
       case FHIR_PARAMETER_TYPES.NUMBER => normalizeForNumber(spValueExpr)

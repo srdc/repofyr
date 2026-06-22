@@ -35,7 +35,7 @@ class FHIRSearchParameterValueParser(fhirConfig: FhirServerConfig) {
       throw new UnsupportedParameterException(s"Search parameter $paramName is not supported for resource type $rtype! Check conformance statement.")
     //Parse nameExpr and valueExpr
     val (_, suffix) = FHIRSearchParameterValueParser.parseSimpleName(nameExpr, searchParamConf.get.ptype)
-    val prefixAndValues = FHIRSearchParameterValueParser.parseSimpleValue(valueExpr, searchParamConf.get.ptype, resolver)
+    val prefixAndValues = FHIRSearchParameterValueParser.parseSimpleValue(valueExpr, searchParamConf.get.ptype, suffix, resolver)
     //Return the parameter
     Parameter(FHIR_PARAMETER_CATEGORIES.NORMAL, searchParamConf.get.ptype, paramName, prefixAndValues, suffix)
   }
@@ -55,11 +55,11 @@ class FHIRSearchParameterValueParser(fhirConfig: FhirServerConfig) {
         if(valueExpr.startsWith("$current-"))
           Parameter(FHIR_PARAMETER_CATEGORIES.SPECIAL, "", name, Nil, valueExpr)
         else //Otherwise it should be direct identifier
-          Parameter(FHIR_PARAMETER_CATEGORIES.SPECIAL, "", name, FHIRSearchParameterValueParser.parseSimpleValue(valueExpr, FHIR_PARAMETER_TYPES.TOKEN, resolver))
+          Parameter(FHIR_PARAMETER_CATEGORIES.SPECIAL, "", name, FHIRSearchParameterValueParser.parseSimpleValue(valueExpr, FHIR_PARAMETER_TYPES.TOKEN, "", resolver))
       // _query (named queries)
       case FHIR_SEARCH_SPECIAL_PARAMETERS.QUERY => Parameter(FHIR_PARAMETER_CATEGORIES.SPECIAL, "", name, Seq("" -> valueExpr))
       //ID param
-      case FHIR_SEARCH_SPECIAL_PARAMETERS.ID => Parameter(FHIR_PARAMETER_CATEGORIES.SPECIAL, FHIR_PARAMETER_TYPES.TOKEN, name, FHIRSearchParameterValueParser.parseSimpleValue(valueExpr, FHIR_PARAMETER_TYPES.TOKEN, resolver))
+      case FHIR_SEARCH_SPECIAL_PARAMETERS.ID => Parameter(FHIR_PARAMETER_CATEGORIES.SPECIAL, FHIR_PARAMETER_TYPES.TOKEN, name, FHIRSearchParameterValueParser.parseSimpleValue(valueExpr, FHIR_PARAMETER_TYPES.TOKEN, "", resolver))
       // _filter
       case FHIR_SEARCH_SPECIAL_PARAMETERS.FILTER =>
         throw new UnsupportedParameterException("Parameter _filter is not supported by onFhir.io yet!")
@@ -655,13 +655,13 @@ object FHIRSearchParameterValueParser {
    * @param resolver    FHIR Path expression resolver
    * @return
    */
-  def parseSimpleValue(valueExpr: String, paramType: String, resolver:Option[ISearchParamPlaceholderResolver] = None): Seq[(String, String)] = {
+  def parseSimpleValue(valueExpr: String, paramType: String, modifier:String = "", resolver:Option[ISearchParamPlaceholderResolver] = None): Seq[(String, String)] = {
     resolver match {
       case Some(rsv) if valueExpr.contains("{{") && valueExpr.endsWith("}}") =>
         val ind = valueExpr.indexOf("{{")
         val prefix = valueExpr.substring(0, ind)
         val expression = valueExpr.substring(ind).drop(2).dropRight(2)
-        val resolvedExpression = rsv.resolveExpression(expression, paramType)
+        val resolvedExpression = rsv.resolveExpression(expression, paramType, modifier, prefix)
         parseSimpleValueExpr(prefix + resolvedExpression, paramType)
       case _ => parseSimpleValueExpr(valueExpr, paramType)
     }

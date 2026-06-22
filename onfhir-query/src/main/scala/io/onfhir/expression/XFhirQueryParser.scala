@@ -1,5 +1,6 @@
 package io.onfhir.expression
 
+import io.onfhir.api.{FHIR_PARAMETER_CATEGORIES, FHIR_SEARCH_RESULT_PARAMETERS}
 import io.onfhir.api.model.Parameter
 import io.onfhir.api.parsers.FHIRSearchParameterValueParser
 import io.onfhir.config.FhirServerConfig
@@ -41,6 +42,22 @@ class XFhirQueryParser(fhirServerConfig: FhirServerConfig,
         throw FhirExpressionException(s"Invalid x-fhir-query!", expression = Some(s"$rtype?$queryStmt"), t = Some(ex))
     }
   }
+
+  /**
+   * Parses and validates query shape, preserves placeholders unresolved
+   * @param rtype       Resource type that query will be executed on
+   * @param queryStmt   The x-fhir-query statement's query part (after ?)
+   * @return
+   */
+  def parseXFhirQueryShape(rtype:String, queryStmt:String):List[Parameter] = {
+    val queryParams = XFhirQueryUtil.parseRawQueryPreserveSpecials(queryStmt)
+    try {
+      fhirQueryParser.parseSearchParameterWithResolver(rtype, queryParams, new PreservePlaceholderResolver)
+    } catch {
+      case ex:InvalidParameterException =>
+        throw FhirExpressionException(s"Invalid x-fhir-query!", expression = Some(s"$rtype?$queryStmt"), t = Some(ex))
+    }
+  }
 }
 
 object XFhirQueryUtil {
@@ -53,6 +70,30 @@ object XFhirQueryUtil {
 
   private val TopLevelEqualsSplit =
     "=(?=(?:[^{}]*\\{\\{[^{}]*\\}\\})?[^{}]*$)"
+
+  /**
+   * Split an x-fhir-query statement to FHIR resource type and optional query part
+   * e.g. Observation?code={{...}}&date=ge2015 -> Observation, Some(code={{...}}...)
+   * @param query The x-fhir-query statement
+   * @return
+   */
+  def splitResourceTypeAndQuery(query: String): (String, Option[String]) = {
+    val trimmed = query.trim
+    if (trimmed.isEmpty)
+      throw FhirExpressionException("Invalid x-fhir-query: query is empty.")
+
+    val parts = trimmed.split("\\?", 2)
+    val rtype = parts(0).trim
+
+    if (rtype.isEmpty)
+      throw FhirExpressionException(s"Invalid x-fhir-query: missing resource type in '$query'.")
+
+    val queryPart =
+      if (parts.length == 2 && parts(1).nonEmpty) Some(parts(1))
+      else None
+
+    rtype -> queryPart
+  }
 
 
   /**
@@ -73,4 +114,32 @@ object XFhirQueryUtil {
       .groupMap(_._1)(_._2)
   }
 
+  /**
+   * Encode the parameter while preserving the FHIRPath placeholders
+   * @param parameter Parsed parameter
+   * @return
+   */
+  def encodeParameterPreservingPlaceholders(parameter: Parameter): String = {
+    if (!parameter.valuePrefixList.exists(_._2.contains("{{"))) parameter.encode
+    else {
+      val namePart = parameter.paramCategory match {
+        case FHIR_PARAMETER_CATEGORIES.CHAINED =>
+          parameter.chain.map(c => c._2 + ":" + c._1).mkString(".") + "." + parameter.name
+        case FHIR_PARAMETER_CATEGORIES.REVCHAINED =>
+          parameter.chain.map(c => "_has" + c._1 + ":" + c._2).mkString(":") + ":" + parameter.name
+        case _ =>
+          parameter.name + parameter.suffix
+      }
+
+      val valuePart =
+        if (parameter.paramCategory == FHIR_PARAMETER_CATEGORIES.RESULT &&
+          (parameter.name == FHIR_SEARCH_RESULT_PARAMETERS.INCLUDE || parameter.name ==
+            FHIR_SEARCH_RESULT_PARAMETERS.REVINCLUDE))
+          parameter.valuePrefixList.map { case (typ, prName) => s"$typ:$prName" }.head
+        else
+          parameter.valuePrefixList.map { case (prefix, value) => prefix + value }.mkString(",")
+
+      s"$namePart=$valuePart"
+    }
+  }
 }

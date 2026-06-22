@@ -43,6 +43,16 @@ class FhirPathEvaluatorTest extends Specification {
 
   "FHIR Path Evaluator" should {
 
+    "parse valid FHIR Path expression" in {
+      FhirPathEvaluator.parseStrict("subject.reference + 'ali'")  must not(throwA[Throwable])
+      FhirPathEvaluator.parseStrict("5 + 'ali'")  must not(throwA[Throwable])
+    }
+
+    "reject invalid FHIR Path expression" in {
+      FhirPathEvaluator.parseStrict("subject.reference + ") must throwA[Throwable]
+      FhirPathEvaluator.parseStrict("(1 + 2))") must throwA[Throwable]
+    }
+
     "evaluate simple path expression not starting with resource type" in {
       var result = FhirPathEvaluator().evaluate("subject", observation)
       result.length mustEqual 1
@@ -381,16 +391,16 @@ class FhirPathEvaluatorTest extends Specification {
       FhirPathEvaluator().satisfies("((3 > 2) | (4 > 2) | (5 > 2) ).anyFalse()", observation) mustEqual false
       FhirPathEvaluator().satisfies("((3 > 2) | (4 > 2) | (5 < 2) ).anyFalse()", observation) mustEqual true
       //subsetof
-      FhirPathEvaluator().satisfies("Observation.code.coding.subsetOf(%context.code.coding))", observation) mustEqual true
-      FhirPathEvaluator().satisfies("Observation.code.coding[0].subsetOf(%context.code.coding))", observation) mustEqual true
-      FhirPathEvaluator().satisfies("Observation.code.coding.subsetOf(%context.code.coding[0]))", observation) mustEqual false
-      FhirPathEvaluator().satisfies("Observation.method.subsetOf(%context.code.coding))", observation) mustEqual true
+      FhirPathEvaluator().satisfies("Observation.code.coding.subsetOf(%context.code.coding)", observation) mustEqual true
+      FhirPathEvaluator().satisfies("Observation.code.coding[0].subsetOf(%context.code.coding)", observation) mustEqual true
+      FhirPathEvaluator().satisfies("Observation.code.coding.subsetOf(%context.code.coding[0])", observation) mustEqual false
+      FhirPathEvaluator().satisfies("Observation.method.subsetOf(%context.code.coding)", observation) mustEqual true
       FhirPathEvaluator().satisfies("Observation.code.coding.subsetOf({})", observation) mustEqual false
       //supersetof
-      FhirPathEvaluator().satisfies("Observation.code.coding.supersetOf(%context.code.coding))", observation) mustEqual true
-      FhirPathEvaluator().satisfies("Observation.code.coding.supersetOf(%context.code.coding[0]))", observation) mustEqual true
-      FhirPathEvaluator().satisfies("Observation.code.coding[0].supersetOf(%context.code.coding))", observation) mustEqual false
-      FhirPathEvaluator().satisfies("Observation.method.supersetOf(%context.code.coding))", observation) mustEqual false
+      FhirPathEvaluator().satisfies("Observation.code.coding.supersetOf(%context.code.coding)", observation) mustEqual true
+      FhirPathEvaluator().satisfies("Observation.code.coding.supersetOf(%context.code.coding[0])", observation) mustEqual true
+      FhirPathEvaluator().satisfies("Observation.code.coding[0].supersetOf(%context.code.coding)", observation) mustEqual false
+      FhirPathEvaluator().satisfies("Observation.method.supersetOf(%context.code.coding)", observation) mustEqual false
       FhirPathEvaluator().satisfies("Observation.code.coding.supersetOf({})", observation) mustEqual true
       //isDistinct
       FhirPathEvaluator().satisfies("Observation.code.coding.isDistinct()", observation) mustEqual true

@@ -10,6 +10,7 @@ import io.onfhir.r4.config.FhirR4Configurator
 import org.specs2.mutable.Specification
 import io.onfhir.authz.AuthzResult
 import org.json4s.JsonAST.JString
+import org.json4s.JsonDSL.jobject2assoc
 
 import scala.language.postfixOps
 
@@ -230,6 +231,43 @@ class SmartAuthorizerTest extends Specification {
             ))
           )
         )
+    }
+
+    "authorize or reject for patient level scopes for patient resource compartment=resourcetype" in {
+      val authzContext =
+        AuthzContext(isActive = true,
+          scopes =
+            Seq(
+              "patient/Patient.crud"
+            ),
+          furtherParams = Map("patient" -> JString("123"))
+        )
+
+      val authzResult = smartAuthorizer.authorize(authzContext, FHIRRequest(requestUri = "", interaction = FHIR_INTERACTIONS.READ, resourceType = Some("Patient"), resourceId = Some("123")))
+      authzResult ===
+        AuthzResult.filtering(
+          AuthzConstraints.apply(
+            filters = Seq(List(
+              Parameter(paramCategory = FHIR_PARAMETER_CATEGORIES.COMPARTMENT, paramType = FHIR_PARAMETER_TYPES.REFERENCE, name = "", valuePrefixList = Seq("Patient" -> "123"), chain = Seq("" -> "link", ""-> "_id"))
+            ))
+          )
+        )
+
+      val resourceChecker = new io.onfhir.api.util.ResourceChecker(serverConfig)
+
+      val ownRecord = org.json4s.JObject(
+        "resourceType" -> JString("Patient"),
+        "id"           -> JString("123")
+      )
+
+      val constraint = authzResult.resourceRestrictions.get.filters.head
+
+      // patient reading their own record -> authorized
+      resourceChecker.checkIfResourceSatisfies("Patient", constraint, ownRecord) === true
+
+      // a different patient's record -> rejected
+      resourceChecker.checkIfResourceSatisfies("Patient", constraint,
+        ownRecord ~ ("id" -> JString("999"))) === false
     }
 
     "authorize for default scopes" in {
