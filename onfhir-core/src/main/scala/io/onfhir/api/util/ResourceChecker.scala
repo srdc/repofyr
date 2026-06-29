@@ -77,7 +77,12 @@ class ResourceChecker(fhirConfig:FhirServerConfig) {
           val compartmentParameters = parameter.chain.map(_._2)
           //compartmentParameters.map(cpName => Parameter(FHIR_PARAMETER_CATEGORIES.NORMAL, FHIR_PARAMETER_TYPES.))
           val compartmentParamConfs = compartmentParameters
-            .flatMap(cp => fhirConfig.findSupportedSearchParameter(rtype, cp)).toList
+            .flatMap {
+              case "_id" =>
+                Option(SearchParameterConf("http://hl7.org/fhir/SearchParameter/Resource-id","_id",FHIR_PARAMETER_TYPES.TOKEN,List(),List(),Set(),List(),List(),true,true,Set()))
+              case cp =>
+                fhirConfig.findSupportedSearchParameter(rtype, cp)
+            }.toList
 
           handleCompartment(parameter.valuePrefixList.head._1, parameter.valuePrefixList.head._2, compartmentParamConfs, resource)
         case FHIR_PARAMETER_CATEGORIES.NORMAL =>
