@@ -107,13 +107,7 @@ object ErrorHandler {
       case ex:AuthorizationFailedException =>
         FHIRResponse.errorResponse(
           StatusCodes.Unauthorized,
-          Seq(OutcomeIssue(
-            FHIRResponse.SEVERITY_CODES.ERROR,
-            FHIRResponse.OUTCOME_CODES.SECURITY,
-            None,
-            Some(s"Error: ${ex.authzResult.errorCode.get}; ${ex.authzResult.errorDesc.get}"),
-            Seq("Header: Authorization")
-          )))
+          Seq(AuthorizationErrorResponseBuilder.outcomeIssue(ex.authzResult)))
       case ex: ConflictException => FHIRResponse.errorResponse(StatusCodes.Conflict, Seq(ex.outcomeIssue))
       case ex: NotModifiedException => FHIRResponse(StatusCodes.NotModified)
       case ex: NotImplementedException => FHIRResponse.errorResponse(StatusCodes.NotImplemented, ex.outcomeIssues)

@@ -7,13 +7,16 @@ import io.onfhir.api.model.{FHIRRequest, Parameter}
 import io.onfhir.api.parsers.FHIRSearchParameterValueParser
 import io.onfhir.config.{FSConfigReader, FhirConfigurationManager}
 import io.onfhir.r4.config.FhirR4Configurator
+import org.junit.runner.RunWith
 import org.specs2.mutable.Specification
 import io.onfhir.authz.AuthzResult
 import org.json4s.JsonAST.JString
 import org.json4s.JsonDSL.jobject2assoc
+import org.specs2.runner.JUnitRunner
 
 import scala.language.postfixOps
 
+@RunWith(classOf[JUnitRunner])
 class SmartAuthorizerTest extends Specification {
   sequential
   val fsConfigReader = new FSConfigReader(fhirVersion = "R4")
@@ -231,6 +234,16 @@ class SmartAuthorizerTest extends Specification {
             ))
           )
         )
+    }
+
+    "reject patient level scopes with missing patient claim without throwing" in {
+      val authzContext =
+        AuthzContext(isActive = true,
+          scopes = Seq("patient/Observation.rs")
+        )
+
+      smartAuthorizer.authorize(authzContext, FHIRRequest(requestUri = "", interaction = FHIR_INTERACTIONS.SEARCH, resourceType = Some("Observation"))) ===
+        AuthzResult.failureInsufficientScope("Invalid Smart-on-Fhir token: Information (e.g. patient parameter) is missing in token related with the given scopes!")
     }
 
     "authorize or reject for patient level scopes for patient resource compartment=resourcetype" in {

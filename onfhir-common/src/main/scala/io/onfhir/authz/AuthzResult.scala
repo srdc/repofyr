@@ -27,6 +27,12 @@ case class AuthzResult(
   //If the authorization is ongoing still we should continue
   def isAuthorized: Boolean = result.equals(AuthzResult.AUTHORIZED) || result.equals(AuthzResult.FILTERING)
 
+  def errorCodeOrDefault: String = errorCode.getOrElse(AuthzResult.FAILURE_INVALID_REQUEST)
+
+  def errorDescOrDefault: String = errorDesc.getOrElse(AuthzResult.DEFAULT_FAILURE_DESCRIPTION)
+
+  def errorMessage: String = s"Error: $errorCodeOrDefault; $errorDescOrDefault"
+
   /**
     * Convert the result to Outcome Issues
     * @return
@@ -37,7 +43,7 @@ case class AuthzResult(
         FHIRResponse.SEVERITY_CODES.ERROR,
         FHIRResponse.OUTCOME_CODES.SECURITY,
         None,
-        Some(s"Error: ${errorCode.get}; ${errorDesc.get}"),
+        Some(errorMessage),
         Seq("Header: Authorization")
       ))
     else None
@@ -74,6 +80,7 @@ object AuthzResult{
   final val FAILURE_INVALID_REQUEST = "invalid_request"
   final val FAILURE_INVALID_TOKEN = "invalid_token"
   final val FAILURE_INSUFFICIENT_SCOPE = "insufficient_scope"
+  final val DEFAULT_FAILURE_DESCRIPTION = "Authorization failed"
 
   /**
     * Create an authoriation result indicating success
@@ -86,7 +93,7 @@ object AuthzResult{
     * @param msg Related msg
     * @return
     */
-  def undecided(msg:String):AuthzResult = new AuthzResult(UNDECIDED, errorDesc = Some(msg))
+  def undecided(msg:String):AuthzResult = new AuthzResult(UNDECIDED, errorCode = Some(FAILURE_INVALID_REQUEST), errorDesc = Some(msg))
 
   /**
     * Create a conditional authorization result which means authorize if the given restrictions are satisfied

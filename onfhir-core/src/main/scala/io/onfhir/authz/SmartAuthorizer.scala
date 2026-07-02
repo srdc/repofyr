@@ -93,22 +93,22 @@ class SmartAuthorizer(smartAuthzConfig:Option[Config], fhirConfigurationManager:
     //Validate the context according to requirements of Smart on FHIR
     if (!isAuthzContextValid(authzContext, scopes))
       AuthzResult.failureInsufficientScope("Invalid Smart-on-Fhir token: Information (e.g. patient parameter) is missing in token related with the given scopes!")
-
-    fhirRequest.resourceType match {
-      //If this is a system level FHIR interaction
-      case None =>
-        AuthzResult.undecided("Smart Authorization only authorizes FHIR type and instance interactions!")
-      //Binary resources are handled specially
-      case Some("Binary") if fhirRequest.getResolvedSecurityContext.isDefined =>
-        val rtype = FHIRUtil.extractResourceType(fhirRequest.getResolvedSecurityContext.get)
-        val fhirPathContext = AuthzManager.getFhirPathContext(fhirRequest, authzContext) - "request"
-        //Authorize for that resource type e.g. DocumentReference
-        authorizeForResourceType(rtype, fhirRequest.interaction, fhirRequest.resource, fhirPathContext, authzContext, scopes)
-      //Type level interaction
-      case Some(rtype) =>
-        val fhirPathContext = AuthzManager.getFhirPathContext(fhirRequest, authzContext)
-        authorizeForResourceType(rtype, fhirRequest.interaction, fhirRequest.resource, fhirPathContext, authzContext, scopes)
-    }
+    else
+      fhirRequest.resourceType match {
+        //If this is a system level FHIR interaction
+        case None =>
+          AuthzResult.undecided("Smart Authorization only authorizes FHIR type and instance interactions!")
+        //Binary resources are handled specially
+        case Some("Binary") if fhirRequest.getResolvedSecurityContext.isDefined =>
+          val rtype = FHIRUtil.extractResourceType(fhirRequest.getResolvedSecurityContext.get)
+          val fhirPathContext = AuthzManager.getFhirPathContext(fhirRequest, authzContext) - "request"
+          //Authorize for that resource type e.g. DocumentReference
+          authorizeForResourceType(rtype, fhirRequest.interaction, fhirRequest.resource, fhirPathContext, authzContext, scopes)
+        //Type level interaction
+        case Some(rtype) =>
+          val fhirPathContext = AuthzManager.getFhirPathContext(fhirRequest, authzContext)
+          authorizeForResourceType(rtype, fhirRequest.interaction, fhirRequest.resource, fhirPathContext, authzContext, scopes)
+      }
   }
 
   /**

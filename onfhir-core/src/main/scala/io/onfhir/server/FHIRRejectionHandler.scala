@@ -1,7 +1,6 @@
 package io.onfhir.server
 
 import akka.http.scaladsl.model.StatusCodes
-import akka.http.scaladsl.model.headers.{HttpChallenge, `WWW-Authenticate`}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server._
 import com.fasterxml.jackson.core.JsonParseException
@@ -53,16 +52,7 @@ object FHIRRejectionHandler {
         )
       // Authorization Failed Rejection
       case AuthorizationFailedRejection(authzResponse) =>
-          FHIRResponse.authorizationErrorResponse(
-            Seq(OutcomeIssue(
-              FHIRResponse.SEVERITY_CODES.ERROR,
-              FHIRResponse.OUTCOME_CODES.SECURITY,
-              None,
-              Some(s"Error: ${authzResponse.errorCode.get}; ${authzResponse.errorDesc.get}"),
-              Seq("Header: Authorization")
-            )),
-            Some(`WWW-Authenticate`.apply(HttpChallenge.apply("Bearer", "fhir", Map("error" -> authzResponse.errorCode.get, "error_description" -> authzResponse.errorDesc.get))))
-          )
+          AuthorizationErrorResponseBuilder.response(authzResponse)
       case TransientRejection(msg, t) =>
         FHIRResponse.errorResponse(
           StatusCodes.InternalServerError,
