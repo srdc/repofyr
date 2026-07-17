@@ -1546,6 +1546,46 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
   }
 
   /**
+   * Return the date component of the single Date or DateTime value in the current collection, up to the precision present in the input value.
+   * If the input collection is empty, or the value is not a Date or DateTime, the result is empty.
+   * If the input collection contains multiple items, the evaluation of the expression will end and signal an error to the calling environment.
+   *
+   * @example @2012-01-01T12:30:00.000-07:00.utl:dateOf() // @2012-01-01
+   * @return
+   */
+  @FhirPathFunction(
+    documentation = FhirPathFunctionDocumentation(
+      detail = "If the input collection contains a single Date or DateTime, this function will return the date component (up to the precision present in the input value). If the input collection is empty, or the value is not a Date or DateTime, the result is empty. If the input collection contains multiple items, the evaluation of the expression will end and signal an error to the calling environment.",
+      usageWarnings = None,
+      parameters = None,
+      returnValue = FhirPathFunctionReturn(detail = None, examples = Seq("@2012-01-01")),
+      examples = Seq("@2012-01-01T12:30:00.000-07:00.utl:dateOf() // @2012-01-01")
+    ),
+    insertText = "utl:dateOf()",
+    detail = "utl",
+    label = "utl:dateOf",
+    kind = "Method",
+    returnType = Seq(FHIR_DATA_TYPES.DATE),
+    inputType = Seq(FHIR_DATA_TYPES.DATE,FHIR_DATA_TYPES.DATETIME)
+  )
+  def dateOf(): Seq[FhirPathResult] = {
+    current match {
+      case Nil => Nil
+      case Seq(FhirPathDateTime(dt)) =>
+        dt match {
+          case y: Year => Seq(FhirPathDateTime(y))
+          case ym: YearMonth => Seq(FhirPathDateTime(ym))
+          case d: LocalDate => Seq(FhirPathDateTime(d))
+          case ldt: LocalDateTime => Seq(FhirPathDateTime(ldt.toLocalDate))
+          case zdt: ZonedDateTime => Seq(FhirPathDateTime(zdt.toLocalDate))
+          case _ => Nil
+        }
+      case Seq(_) => Nil
+      case _ => throw new FhirPathException(s"Invalid function call 'dateOf' on multiple values!")
+    }
+  }
+
+  /**
    * For FHIR coding elements, filter the ones that match the given coding list as FHIR code query
    *
    * @param codingList Expression that evaluates to Seq[FhirPathString] in FHIR token query format [system]|[code]
