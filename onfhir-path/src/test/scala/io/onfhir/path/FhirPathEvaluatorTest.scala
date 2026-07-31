@@ -820,6 +820,17 @@ class FhirPathEvaluatorTest extends Specification {
 
       val fhirDate = evaluator.evaluateDateTime("'20120113'.utl:toFhirDateTime('yyyyMMdd' | 'yyyyMMdd.HH:mm:ss')", JNull)
       fhirDate.head mustEqual LocalDate.of(2012, 1, 13)
+
+      val dateOfDateTime = evaluator.evaluateDateTime("@2012-01-01T12:30:00.000-07:00.utl:dateOf()", JNull)
+      dateOfDateTime.head mustEqual LocalDate.of(2012, 1, 1)
+
+      val dateOfDate = evaluator.evaluateDateTime("@2012-05-17.utl:dateOf()", JNull)
+      dateOfDate.head mustEqual LocalDate.of(2012, 5, 17)
+
+      val dateOfYearMonth = evaluator.evaluateDateTime("'2015-03'.utl:toFhirDateTime('yyyy-MM').utl:dateOf()", JNull)
+      dateOfYearMonth.head mustEqual YearMonth.of(2015, 3)
+
+      evaluator.evaluate("{}.utl:dateOf()", JNull) mustEqual Nil
     }
 
     "evaluate fixed bugs" in {

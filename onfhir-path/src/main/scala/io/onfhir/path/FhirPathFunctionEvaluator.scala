@@ -791,7 +791,7 @@ class FhirPathFunctionEvaluator(context: FhirPathEnvironment, current: Seq[FhirP
       case Nil => Nil
       case Seq(n: FhirPathNumber) if n.isInteger() => Seq(n)
       case Seq(n: FhirPathNumber) if !n.isInteger() => throw new FhirPathException(s"Invalid function call 'toInteger' on value $n !!!")
-      case Seq(FhirPathString(s)) => Try(s.toInt).toOption match {
+      case Seq(FhirPathString(s)) => Try(s.toLong).toOption match {
         case Some(i) => Seq(FhirPathNumber(i))
         case None => throw new FhirPathException(s"Invalid function call 'toInteger' on value $s of string type cannot be converted to integer!!")
       }

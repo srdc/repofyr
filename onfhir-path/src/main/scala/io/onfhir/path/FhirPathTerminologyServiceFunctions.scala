@@ -17,8 +17,9 @@ import scala.util.Try
  * See https://build.fhir.org/fhirpath.html#txapi
  * TODO Other terminology service functions
  * @param context Context variables
+ * @param current Current evaluated FhirPath result (the function will execute on this results)
  */
-class FhirPathTerminologyServiceFunctions(context:FhirPathEnvironment) extends AbstractFhirPathFunctionLibrary {
+class FhirPathTerminologyServiceFunctions(context:FhirPathEnvironment, current:Seq[FhirPathResult]) extends AbstractFhirPathFunctionLibrary {
   //Codes indicating that codes are equivalant (can be used for mappings)
   val translationEquivalenceCodes = Set("relatedto", "equivalent", "equal", "wider", "subsumes")
   /**
@@ -73,7 +74,7 @@ class FhirPathTerminologyServiceFunctions(context:FhirPathEnvironment) extends A
   def translate(conceptMapExpr:ExpressionContext, codeExpr:ExpressionContext, paramsExpr:ExpressionContext):Seq[FhirPathResult] = {
     val terminologyService = checkTerminologyService()
     //Evaluate concept map url
-    val conceptMapResult = new FhirPathExpressionEvaluator(context, context._this).visit(conceptMapExpr)
+    val conceptMapResult = new FhirPathExpressionEvaluator(context, current).visit(conceptMapExpr)
     if(conceptMapResult.length > 1 || !conceptMapResult.forall(_.isInstanceOf[FhirPathString]))
       throw FhirPathException("Invalid function call 'translate'. The conceptMap expression (the function parameter) should evaluate to a single string value which should be concept map url.")
     val conceptMapUrl = conceptMapResult.head.asInstanceOf[FhirPathString].s
@@ -653,7 +654,7 @@ class FhirPathTerminologyServiceFunctions(context:FhirPathEnvironment) extends A
    */
   private def evaluateCodeExpr(codeExpr:ExpressionContext):Option[FhirPathResult] = {
     // Evaluate code
-    val codeResult = new FhirPathExpressionEvaluator(context, context._this).visit(codeExpr)
+    val codeResult = new FhirPathExpressionEvaluator(context, current).visit(codeExpr)
     if(codeResult.length > 1)
       throw FhirPathException("Invalid terminology service function call. The code expression (the function parameter) should evaluate to a single value (either string, Coding, CodeableConcept) providing the code value.")
     codeResult.headOption
@@ -661,7 +662,7 @@ class FhirPathTerminologyServiceFunctions(context:FhirPathEnvironment) extends A
 
   private def evaluateToSingleString(expr:ExpressionContext):Option[String] = {
     // Evaluate code
-    val exprResult = new FhirPathExpressionEvaluator(context, context._this).visit(expr)
+    val exprResult = new FhirPathExpressionEvaluator(context, current).visit(expr)
     if (exprResult.length > 1 || !exprResult.forall(_.isInstanceOf[FhirPathString]))
       throw FhirPathException(s"Invalid function call. The expression '${expr.getText}' (the function parameter) should evaluate to a single string value providing the code value.")
     exprResult.headOption.map(_.asInstanceOf[FhirPathString].s)
@@ -674,7 +675,7 @@ class FhirPathTerminologyServiceFunctions(context:FhirPathEnvironment) extends A
    */
   private def evaluateParamsExpr(paramsExpr:ExpressionContext):Option[Map[String, List[String]]] = {
     //Evaluate params
-    val paramsResult = new FhirPathExpressionEvaluator(context, context._this).visit(paramsExpr)
+    val paramsResult = new FhirPathExpressionEvaluator(context, current).visit(paramsExpr)
     if(paramsResult.length > 1 || !paramsResult.forall(_.isInstanceOf[FhirPathString]))
       throw FhirPathException("Invalid terminology service function call. The params expression (the function parameter) should evaluate to optional string value which should be the RL encoded string with other parameters for the validate-code operation.")
 
@@ -704,5 +705,5 @@ object FhirPathTerminologyServiceFunctionsFactory extends IFhirPathFunctionLibra
    * @param current
    * @return
    */
-  override def getLibrary(context: FhirPathEnvironment, current: Seq[FhirPathResult]): AbstractFhirPathFunctionLibrary = new FhirPathTerminologyServiceFunctions(context)
+  override def getLibrary(context: FhirPathEnvironment, current: Seq[FhirPathResult]): AbstractFhirPathFunctionLibrary = new FhirPathTerminologyServiceFunctions(context, current)
 }
