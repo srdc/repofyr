@@ -1,0 +1,335 @@
+Targets
+    Occurrences of 'import io.onfhir.' in Project Files
+Found occurrences in Project Files  (222 usages found)
+    Unclassified  (216 usages found)
+        spark-on-fhir-common_2.13  (19 usages found)
+            io.onfhir.spark  (17 usages found)
+                FhirSource.scala  (1 usage found)
+                    3 import io.onfhir.client.model.{BasicAuthenticationSettings, BearerTokenAuthorizationSettings, FixedTokenAuthenticationSettings, IFhirRepositorySecuritySettings}
+                SparkFhirConfig.scala  (1 usage found)
+                    3 import io.onfhir.config.{FSConfigReader, FhirServerConfig}
+                SparkFhirConfigurator.scala  (8 usages found)
+                    3 import io.onfhir.api.FHIR_FOUNDATION_RESOURCES._
+                    4 import io.onfhir.api.{FHIR_INTERACTIONS, FHIR_ROOT_URL_FOR_DEFINITIONS, FHIR_URL_FOR_EXTERNAL_FHIR_CODE_SYSTEMS, FOUNDATION_RESOURCES_FILE_SUFFIX}
+                    5 import io.onfhir.api.parsers.IFhirFoundationResourceParser
+                    6 import io.onfhir.api.util.FHIRUtil
+                    7 import io.onfhir.api.validation.ProfileRestrictions
+                    8 import io.onfhir.audit.IFhirAuditCreator
+                    9 import io.onfhir.config.{AuditConfig, BaseFhirServerConfigurator, FHIRCapabilityStatement, FHIRSearchParameter, FhirServerConfig, IFhirConfigReader, SearchParameterConfigurator}
+                    10 import io.onfhir.r4.parsers.R4Parser
+                SparkSchemaUtil.scala  (7 usages found)
+                    3 import io.onfhir.api
+                    4 import io.onfhir.api.model.Parameter
+                    5 import io.onfhir.api.parsers.{FHIRResultParameterResolver, FhirQueryParser}
+                    6 import io.onfhir.api.{FHIR_DATA_TYPES, FHIR_PARAMETER_CATEGORIES, FHIR_SEARCH_RESULT_PARAMETERS}
+                    7 import io.onfhir.api.validation.{ConstraintKeys, ElementRestrictions, FhirRestriction, ProfileRestrictions}
+                    8 import io.onfhir.config.FhirServerConfig
+                    9 import io.onfhir.validation.{ArrayRestriction, CardinalityMaxRestriction, CardinalityMinRestriction, TypeRestriction}
+            io.onfhir.spark.connector.reader  (2 usages found)
+                IFhirPartitioning.scala  (1 usage found)
+                    3 import io.onfhir.util.DateTimeUtil
+                IFhirReader.scala  (1 usage found)
+                    3 import io.onfhir.api.model.Parameter
+        spark-on-fhir-connector-api_2.13  (79 usages found)
+            io.onfhir.spark.connector  (11 usages found)
+                FhirApiTableProvider.scala  (1 usage found)
+                    5 import io.onfhir.spark.connector.reader._
+                FhirTable.scala  (6 usages found)
+                    3 import io.onfhir.api.util.FHIRUtil
+                    4 import io.onfhir.client.model.{BasicAuthenticationSettings, BearerTokenAuthorizationSettings, FixedTokenAuthenticationSettings, IFhirRepositorySecuritySettings}
+                    5 import io.onfhir.path.FhirPathLiteralEvaluator
+                    6 import io.onfhir.spark.{FhirPagination, FhirPaginationMethods}
+                    7 import io.onfhir.spark.connector.reader.{BindingsBasedPartitionDetails, EntityBasedPartitionDetails, FhirApiReader, F
+                    8 import io.onfhir.spark.connector.writer.{FhirApiWriteBuilder, FhirApiWriter, FhirApiWriterOptions}
+                SparkFhirApiConnector.scala  (4 usages found)
+                    3 import io.onfhir.spark.connector.reader.FhirApiReader.FhirApiReaderWrapper
+                    4 import io.onfhir.spark.connector.reader.FhirApiStreamReader.FhirApiStreamReaderWrapper
+                    5 import io.onfhir.spark.connector.writer.FhirApiStreamWriter.FhirApiStreamWriterWrapper
+                    6 import io.onfhir.spark.connector.writer.FhirApiWriter.FhirApiWriterWrapper
+            io.onfhir.spark.connector.reader  (49 usages found)
+                BasePartitionReader.scala  (7 usages found)
+                    5 import io.onfhir.api.Resource
+                    6 import io.onfhir.api.client.{FHIRSearchSetBundle, FHIRSearchSetReturningRequestBuilder, FhirClientException, FhirSearchRequestBuilder, IOnFhirClient}
+                    7 import io.onfhir.client.OnFhirNetworkClient
+                    8 import io.onfhir.client.util.FhirClientUtil
+                    9 import io.onfhir.spark.connector.FhirApiTableProvider
+                    10 import io.onfhir.spark.{FhirPagination, FhirPaginationMethods}
+                    11 import io.onfhir.util.{DateTimeUtil, JsonFormatter}
+                FhirApiBatch.scala  (1 usage found)
+                    3 import io.onfhir.util.DateTimeUtil
+                FhirApiBindingsPartitionReader.scala  (1 usage found)
+                    3 import io.onfhir.api.client.FhirSearchRequestBuilder
+                FhirApiBindingsStreamPartitionReader.scala  (4 usages found)
+                    3 import io.onfhir.api.Resource
+                    4 import io.onfhir.api.client.{FHIRSearchSetBundle, FHIRSearchSetReturningRequestBuilder, FhirSearchRequestBuilder}
+                    5 import io.onfhir.spark.{FhirPagination, FhirPaginationMethods}
+                    6 import io.onfhir.util.DateTimeUtil
+                FhirApiEntityBasedPartitionReader.scala  (1 usage found)
+                    3 import io.onfhir.api.client.FhirSearchRequestBuilder
+                FhirApiMicroBatchPartitionedStream.scala  (3 usages found)
+                    4 import io.onfhir.api.client.{FHIRSearchSetBundle, FHIRSearchSetReturningRequestBuilder, FhirSearchRequestBuilder}
+                    5 import io.onfhir.spark.{FhirPagination, FhirPaginationMethods}
+                    6 import io.onfhir.util.{DateTimeUtil, JsonFormatter}
+                FhirApiMicroBatchSingleStream.scala  (4 usages found)
+                    3 import io.onfhir.api.Resource
+                    4 import io.onfhir.api.client.{FHIRSearchSetBundle, FHIRSearchSetReturningRequestBuilder, FhirSearchRequestBuilder}
+                    5 import io.onfhir.spark.{FhirPagination, FhirPaginationMethods}
+                    7 import io.onfhir.util.{DateTimeUtil, JsonFormatter}
+                FhirApiPageFetcher.scala  (3 usages found)
+                    3 import io.onfhir.api.Resource
+                    4 import io.onfhir.api.client.FHIRSearchSetBundle
+                    5 import io.onfhir.spark.FhirApiSource
+                FhirApiPageFetcherTest.scala  (4 usages found)
+                    5 import io.onfhir.client.OnFhirNetworkClient
+                    6 import io.onfhir.client.model.BasicAuthenticationSettings
+                    7 import io.onfhir.spark.{FhirApiSource, FhirPagination, FhirPaginationMethods}
+                    8 import io.onfhir.util.JsonFormatter
+                FhirApiReader.scala  (3 usages found)
+                    7 import io.onfhir.client.model.{BasicAuthenticationSettings, BearerTokenAuthorizationSettings, FixedTokenAuthenticationSettings, IFhirRepositorySecuritySettings}
+                    8 import io.onfhir.util.DateTimeUtil
+                    14 import io.onfhir.spark.{FhirApiSource, FhirPaginationMethods}
+                FhirApiReaderOptions.scala  (2 usages found)
+                    3 import io.onfhir.client.model.IFhirRepositorySecuritySettings
+                    4 import io.onfhir.spark.FhirPagination
+                FhirApiReaderTest.scala  (4 usages found)
+                    5 import io.onfhir.client.OnFhirNetworkClient
+                    6 import io.onfhir.spark.connector.SparkFhirApiConnector._
+                    7 import io.onfhir.spark.connector.reader.BindingExecutionMode.InMemory
+                    8 import io.onfhir.spark.{FhirPaginationMethods, SparkFhirConfig, SparkSchemaUtil}
+                FhirApiStreamPartitionReader.scala  (1 usage found)
+                    3 import io.onfhir.api.client.FHIRSearchSetBundle
+                FhirApiStreamReader.scala  (2 usages found)
+                    3 import io.onfhir.spark.{FhirApiSource, FhirPaginationMethods}
+                    9 import io.onfhir.client.model.{BasicAuthenticationSettings, BearerTokenAuthorizationSettings, FixedTokenAuthenticationSettings, IFhirRepositorySecuritySettings}
+                FhirApiStreamReaderTest.scala  (5 usages found)
+                    FhirApiStreamReaderTest  (1 usage found)
+                        getFhirApiReader  (1 usage found)
+                            465 import io.onfhir.spark.connector.reader.FhirApiReader._
+                    4 import io.onfhir.client.OnFhirNetworkClient
+                    6 import io.onfhir.spark.{FhirPaginationMethods, SparkFhirConfig, SparkSchemaUtil}
+                    7 import io.onfhir.spark.connector.reader.FhirApiReader.OPTIONS
+                    11 import io.onfhir.spark.connector.SparkFhirApiConnector._
+                FhirBindingSupport.scala  (1 usage found)
+                    3 import io.onfhir.util.JsonFormatter
+                IFhirApiPartition.scala  (3 usages found)
+                    5 import io.onfhir.api.client.FhirSearchRequestBuilder
+                    6 import io.onfhir.spark.FhirPaginationMethods
+                    7 import io.onfhir.util.DateTimeUtil
+            io.onfhir.spark.connector.util  (1 usage found)
+                SparkUtil.scala  (1 usage found)
+                    3 import io.onfhir.api.Resource
+            io.onfhir.spark.connector.writer  (16 usages found)
+                FhirApiDataWriter.scala  (6 usages found)
+                    4 import io.onfhir.api.client.{FhirBatchTransactionRequestBuilder, FhirClientException}
+                    5 import io.onfhir.api.util.FHIRUtil
+                    6 import io.onfhir.client.OnFhirNetworkClient
+                    7 import io.onfhir.client.util.FhirClientUtil
+                    8 import io.onfhir.spark.connector.FhirApiTableProvider
+                    9 import io.onfhir.spark.connector.util.SparkUtil
+                FhirApiStreamWriter.scala  (3 usages found)
+                    3 import io.onfhir.client.model.{BasicAuthenticationSettings, BearerTokenAuthorizationSettings, FixedTokenAuthenticationSettings, IFhirRepositorySecuritySettings}
+                    4 import io.onfhir.spark.FhirApiSource
+                    5 import io.onfhir.spark.connector.reader.FhirApiReader
+                FhirApiWriter.scala  (4 usages found)
+                    4 import io.onfhir.client.model.{BasicAuthenticationSettings, BearerTokenAuthorizationSettings, FixedTokenAuthenticationSettings, IFhirRepositorySecuritySettings}
+                    5 import io.onfhir.spark.FhirApiSource
+                    6 import io.onfhir.spark.connector.reader.{FhirApiReader, FhirApiStreamReader}
+                    7 import io.onfhir.spark.connector.writer.FhirApiWriter.OPTIONS_SET
+                FhirApiWriterOptions.scala  (1 usage found)
+                    3 import io.onfhir.client.model.IFhirRepositorySecuritySettings
+                FhirApiWriterTest.scala  (2 usages found)
+                    4 import io.onfhir.spark.{FhirPaginationMethods, SparkFhirConfig, SparkSchemaUtil}
+                    8 import io.onfhir.spark.connector.SparkFhirApiConnector._
+            io.onfhir.spark.util  (2 usages found)
+                SparkUtilTest.scala  (2 usages found)
+                    3 import io.onfhir.spark.connector.util.SparkUtil
+                    6 import io.onfhir.util.JsonFormatter._
+        spark-on-fhir-extraction_2.13  (9 usages found)
+            io.onfhir.spark.extraction  (9 usages found)
+                SparkExtractionViewBuilder.scala  (3 usages found)
+                    3 import io.onfhir.path.FhirPathEvaluator
+                    4 import io.onfhir.spark.fhirpatch.{SparkFhirPathResolver, SparkResolvedPath}
+                    5 import io.onfhir.spark.path.{FhirPathExpressionEvaluator, FhirPathSparkUtil, SparkFhirPathContext, SparkFhirPathEvaluator, SparkFhirPathExpression}
+                SparkFhirExtractionHandler.scala  (3 usages found)
+                    4 import io.onfhir.path.FhirPathEvaluator
+                    5 import io.onfhir.spark.path.{FhirPathSparkUtil, SparkFhirPathContext, SparkFhirPathEvaluator, SparkFhirPathExpression}
+                    6 import io.onfhir.spark.util.SparkOnFhirUtil
+                SparkFhirExtractorTest.scala  (3 usages found)
+                    3 import io.onfhir.spark.path.{SparkFhirPathDataTypeConstructorsFactory, SparkFhirPathEvaluator, SparkFhirPathUtilFunctionLibraryFactory}
+                    4 import io.onfhir.spark.{SparkFhirConfig, SparkSchemaUtil}
+                    8 import io.onfhir.spark.extraction.SparkFhirExtractor._
+        spark-on-fhir-fhirpatch_2.13  (28 usages found)
+            io.onfhir.spark.fhirpatch  (28 usages found)
+                SparkFhirPathPatchAddHandler.scala  (2 usages found)
+                    3 import io.onfhir.path.FhirPathException
+                    4 import io.onfhir.spark.util.SparkOnFhirUtil
+                SparkFhirPathPatchDeleteHandler.scala  (1 usage found)
+                    3 import io.onfhir.path.FhirPathException
+                SparkFhirPathPatchEvaluator.scala  (4 usages found)
+                    3 import io.onfhir.path.{FhirPathEvaluator, FhirPathException}
+                    4 import io.onfhir.spark.fhirpatch.SparkFhirPathPatchEvaluator.{FhirPathPatchAdd, FhirPathPatchDelete, FhirPathPatchOperation}
+                    5 import io.onfhir.spark.path.{SparkFhirPathContext, SparkFhirPathEvaluator, SparkFhirPathExpression}
+                    6 import io.onfhir.spark.util.SparkOnFhirUtil
+                SparkFhirPathPatchEvaluatorAdditionTest.scala  (3 usages found)
+                    3 import io.onfhir.spark.fhirpatch.SparkFhirPathPatchEvaluator.FhirPathPatchAdd
+                    4 import io.onfhir.spark.{SparkFhirConfig, SparkSchemaUtil}
+                    5 import io.onfhir.spark.path.{SparkFhirPathDataTypeConstructorsFactory, SparkFhirPathEvaluator, SparkFhirPathUtilFunctionLibraryFactory}
+                SparkFhirPathPatchEvaluatorDeletionTest.scala  (3 usages found)
+                    3 import io.onfhir.spark.fhirpatch.SparkFhirPathPatchEvaluator.FhirPathPatchAdd
+                    4 import io.onfhir.spark.path.{SparkFhirPathDataTypeConstructorsFactory, SparkFhirPathEvaluator, SparkFhirPathUtilFunctionLibraryFactory}
+                    5 import io.onfhir.spark.{SparkFhirConfig, SparkSchemaUtil}
+                SparkFhirPathPatchEvaluatorInsertionTest.scala  (3 usages found)
+                    3 import io.onfhir.spark.fhirpatch.SparkFhirPathPatchEvaluator.FhirPathPatchAdd
+                    4 import io.onfhir.spark.path.{SparkFhirPathDataTypeConstructorsFactory, SparkFhirPathEvaluator, SparkFhirPathUtilFunctionLibraryFactory}
+                    5 import io.onfhir.spark.{SparkFhirConfig, SparkSchemaUtil}
+                SparkFhirPathPatchEvaluatorMoveTest.scala  (3 usages found)
+                    3 import io.onfhir.spark.fhirpatch.SparkFhirPathPatchEvaluator.FhirPathPatchAdd
+                    4 import io.onfhir.spark.{SparkFhirConfig, SparkSchemaUtil}
+                    5 import io.onfhir.spark.path.{SparkFhirPathDataTypeConstructorsFactory, SparkFhirPathEvaluator, SparkFhirPathUtilFunctionLibraryFactory}
+                SparkFhirPathPatchEvaluatorReplaceTest.scala  (2 usages found)
+                    3 import io.onfhir.spark.{SparkFhirConfig, SparkSchemaUtil}
+                    4 import io.onfhir.spark.path.{SparkFhirPathDataTypeConstructorsFactory, SparkFhirPathEvaluator, SparkFhirPathUtilFunctionLibraryFactory}
+                SparkFhirPathPatchInsertHandler.scala  (1 usage found)
+                    3 import io.onfhir.spark.fhirpatch.SparkFhirPathPatchAddHandler.{getColumnAtPath, transformAndProceedToNext}
+                SparkFhirPathResolver.scala  (6 usages found)
+                    4 import io.onfhir.path.{FhirPathComplex, FhirPathException, FhirPathLiteralEvaluator, FhirPathNumber, FhirPathResult}
+                    5 import io.onfhir.path.grammar.FhirPathExprParser.{FunctionInvocationContext, IndexInvocationContext, InvocationContex
+                    6 import io.onfhir.path.grammar.{FhirPathExprBaseVisitor, FhirPathExprParser}
+                    7 import io.onfhir.path.util.FhirPathUtil
+                    8 import io.onfhir.spark.path.{FhirPathExpressionEvaluator, FhirPathSparkUtil, SparkFhirPathContext, SparkFhirPathExpression}
+                    9 import io.onfhir.spark.util.SparkOnFhirUtil
+        spark-on-fhir-fhirpath_2.13  (26 usages found)
+            io.onfhir.spark.path  (26 usages found)
+                AbstractSparkFhirPathFunctionLibrary.scala  (2 usages found)
+                    3 import io.onfhir.path.AbstractFhirPathFunctionLibrary
+                    4 import io.onfhir.path.grammar.FhirPathExprParser.ExpressionContext
+                FhirPathDataTypeConstructors.scala  (3 usages found)
+                    3 import io.onfhir.path.grammar.FhirPathExprParser.{ExpressionContext, LiteralTermContext, TermExpressionContext}
+                    4 import io.onfhir.spark.SparkSchemaUtil
+                    5 import io.onfhir.spark.util.SparkOnFhirUtil
+                FhirPathDateTimeUtil.scala  (1 usage found)
+                    3 import io.onfhir.spark.path.FhirPathDateUtil.ofColumn
+                FhirPathExpressionEvaluator.scala  (5 usages found)
+                    3 import io.onfhir.api.FHIR_COMMON_FIELDS
+                    4 import io.onfhir.path.{FhirPathBoolean, FhirPathDateTime, FhirPathEnvironment, FhirPathLiteralEvaluator, FhirPathNumber, FhirPathQuantity, FhirPathString, FhirPathTime}
+                    5 import io.onfhir.path.grammar.FhirPathExprParser.{ExternalConstantTermContext, FunctionInvocationContext, IndexInvoca
+                    6 import io.onfhir.path.grammar.{FhirPathExprBaseVisitor, FhirPathExprParser}
+                    7 import io.onfhir.path.util.FhirPathUtil
+                FhirPathFunctionEvaluator.scala  (1 usage found)
+                    3 import io.onfhir.path.grammar.FhirPathExprParser.{ExpressionContext, InvocationTermContext, LiteralTermContext, TermExpressionContext}
+                FhirPathNumericUtil.scala  (1 usage found)
+                    3 import io.onfhir.spark.path.FhirPathSparkUtil.getBaseType
+                FhirPathSparkUtil.scala  (1 usage found)
+                    3 import io.onfhir.api.FHIR_DATA_TYPES
+                SparkFhirPathContext.scala  (1 usage found)
+                    3 import io.onfhir.path.{FhirPathResult, FhirPathString, FhirPathValueTransformer}
+                SparkFhirPathDataTypeConstructorsTest.scala  (5 usages found)
+                    3 import io.onfhir.api.util.FHIRUtil
+                    4 import io.onfhir.path.FhirPathEvaluator
+                    5 import io.onfhir.spark.{SparkFhirConfig, SparkSchemaUtil}
+                    6 import io.onfhir.validation.FhirContentValidator
+                    10 import io.onfhir.util.JsonFormatter._
+                SparkFhirPathEvaluator.scala  (2 usages found)
+                    3 import io.onfhir.path.{FhirPathEnvironment, FhirPathEvaluator, FhirPathResult}
+                    4 import io.onfhir.path.grammar.FhirPathExprParser
+                SparkFhirPathEvaluatorTest.scala  (1 usage found)
+                    3 import io.onfhir.path.FhirPathEvaluator
+                SparkFhirPathUtilFunctions.scala  (2 usages found)
+                    3 import io.onfhir.path.FhirPathResult
+                    4 import io.onfhir.path.grammar.FhirPathExprParser.{ExpressionContext, LiteralTermContext, TermExpressionContext}
+                SparkFhirPathValueTransformer.scala  (1 usage found)
+                    3 import io.onfhir.util.JsonFormatter.formats
+        spark-on-fhir-query_2.13  (27 usages found)
+            io.onfhir.spark.query  (27 usages found)
+                SparkCompositeQueryTest.scala  (1 usage found)
+                    3 import io.onfhir.spark.SparkSchemaUtil
+                SparkDateQueryHandler.scala  (3 usages found)
+                    3 import io.onfhir.api.{FHIR_COMMON_FIELDS, FHIR_DATA_TYPES, FHIR_PREFIXES_MODIFIERS}
+                    4 import io.onfhir.path.FhirPathLiteralEvaluator
+                    5 import io.onfhir.util.DateTimeUtil
+                SparkFhirQueryEvaluator.scala  (5 usages found)
+                    4 import io.onfhir.api.FHIR_PARAMETER_TYPES
+                    5 import io.onfhir.api.model.Parameter
+                    6 import io.onfhir.api.parsers.{FHIRSearchParameterValueParser, FhirQueryParser}
+                    7 import io.onfhir.config.{FSConfigReader, FhirServerConfig, SearchParameterConf}
+                    8 import io.onfhir.spark.{SparkFhirConfig, SparkFhirConfigurator, SparkSchemaUtil}
+                SparkFhirQueryHandler.scala  (6 usages found)
+                    3 import io.onfhir.api.{FHIR_COMMON_FIELDS, FHIR_PARAMETER_CATEGORIES, FHIR_PARAMETER_TYPES, FHIR_PREFIXES_MODIFIERS, FHIR_SEARCH_SPECIAL_PARAMETERS}
+                    4 import io.onfhir.api.model.Parameter
+                    5 import io.onfhir.api.parsers.FHIRSearchParameterValueParser
+                    6 import io.onfhir.api.util.FHIRUtil
+                    7 import io.onfhir.config.{FhirServerConfig, SearchParameterConf}
+                    8 import io.onfhir.exception.InvalidParameterException
+                SparkFhirQueryUtil.scala  (1 usage found)
+                    4 import io.onfhir.api.util.FHIRUtil
+                SparkNumberQueryHandler.scala  (2 usages found)
+                    3 import io.onfhir.api.{FHIR_COMMON_FIELDS, FHIR_DATA_TYPES, FHIR_PREFIXES_MODIFIERS}
+                    4 import io.onfhir.api.util.FHIRUtil
+                SparkQuantityQueryHandler.scala  (2 usages found)
+                    3 import io.onfhir.api.{FHIR_COMMON_FIELDS, FHIR_DATA_TYPES}
+                    4 import io.onfhir.api.util.FHIRUtil
+                SparkReferenceQueryHandler.scala  (2 usages found)
+                    3 import io.onfhir.api.{FHIR_COMMON_FIELDS, FHIR_DATA_TYPES, FHIR_PREFIXES_MODIFIERS}
+                    4 import io.onfhir.api.util.FHIRUtil
+                SparkStringQueryHandler.scala  (1 usage found)
+                    2 import io.onfhir.api.{FHIR_DATA_TYPES, FHIR_PREFIXES_MODIFIERS, STRING_TYPE_SEARCH_SUBPATHS}
+                SparkTokenQueryHandler.scala  (2 usages found)
+                    3 import io.onfhir.api.{COMMON_SYNTACTICALLY_HIERARCHICAL_CODE_SYSTEMS, FHIR_COMMON_FIELDS, FHIR_DATA_TYPES, FHIR_PREFIXES_MODIFIERS}
+                    4 import io.onfhir.api.util.FHIRUtil
+                SparkUriQueryHandler.scala  (2 usages found)
+                    3 import io.onfhir.api.util.FHIRUtil
+                    4 import io.onfhir.api.{FHIR_DATA_TYPES, FHIR_PREFIXES_MODIFIERS}
+        spark-on-fhir-sdk_2.13  (26 usages found)
+            io.onfhir.spark  (19 usages found)
+                SparkOnFhir.scala  (11 usages found)
+                    3 import io.onfhir.api.{FHIR_INTERACTIONS, FHIR_PARAMETER_CATEGORIES, FHIR_PARAMETER_TYPES, FHIR_SEARCH_RESULT_PARAMETERS}
+                    4 import io.onfhir.api.model.Parameter
+                    5 import io.onfhir.api.parsers.FHIRResultParameterResolver
+                    6 import io.onfhir.client.util.FhirClientUtil
+                    7 import io.onfhir.config.{FSConfigReader, FhirApiConfigReader, FhirServerConfig}
+                    8 import io.onfhir.spark.connector.FhirApiTableProvider
+                    9 import io.onfhir.spark.path.{SparkFhirPathDataTypeConstructorsFactory, SparkFhirPathEvaluator, SparkFhirPathUtilFunctionLibraryFactory}
+                    10 import io.onfhir.spark.query.SparkFhirQueryEvaluator
+                    12 import io.onfhir.spark.connector.reader.{ApiFhirReader, FsFhirReader, IFhirPartitioning, IFhirReader, SearchParameterBasedPartitioning}
+                    13 import io.onfhir.spark.extraction.SparkFhirExtractionHandler
+                    14 import io.onfhir.spark.fhirpatch.SparkFhirPathPatchEvaluator
+                SparkOnFhirConversions.scala  (6 usages found)
+                    3 import io.onfhir.spark.connector.writer.FhirApiStreamWriter.FhirApiStreamWriterWrapper
+                    4 import io.onfhir.spark.connector.writer.FhirApiWriter
+                    5 import io.onfhir.spark.connector.writer.FhirApiWriter.FhirApiWriterWrapper
+                    6 import io.onfhir.spark.extraction.SparkFhirExtractor
+                    7 import io.onfhir.spark.fhirpatch.{InvalidPatchException, NonNavigationalPathException, PathResolutionException, SparkFhirPatchException}
+                    8 import io.onfhir.spark.util.SparkOnFhirUtil
+                SparkOnFhirTest.scala  (2 usages found)
+                    3 import io.onfhir.spark.connector.reader.FhirPartitioning
+                    4 import io.onfhir.util.DateTimeUtil
+            io.onfhir.spark.connector.reader  (7 usages found)
+                ApiFhirReader.scala  (4 usages found)
+                    3 import io.onfhir.api.model.Parameter
+                    4 import io.onfhir.spark.{FhirApiSource, FhirPaginationMethods, FhirSource}
+                    7 import io.onfhir.spark.connector.SparkFhirApiConnector._
+                    8 import io.onfhir.util.DateTimeUtil
+                FsFhirReader.scala  (3 usages found)
+                    3 import io.onfhir.api.model.Parameter
+                    4 import io.onfhir.spark.FhirFsSource
+                    5 import io.onfhir.spark.query.SparkFhirQueryEvaluator
+        spark-on-fhir_2.13  (2 usages found)
+              (1 usage found)
+                codex-binding-support.patch  (1 usage found)
+                    5 +import io.onfhir.util.JsonFormatter
+            notebooks  (1 usage found)
+                example1.ipynb  (1 usage found)
+                    33 import io.onfhir.spark._
+    Usage in string constants  (6 usages found)
+        spark-on-fhir-fhirpatch_2.13  (4 usages found)
+            spark-on-fhir-fhirpatch  (4 usages found)
+                spark-on-fhir-fhirpatch\README.md  (4 usages found)
+                    28 import io.onfhir.spark.SparkFhirConfig
+                    29 import io.onfhir.spark.SparkSchemaUtil
+                    30 import io.onfhir.spark.fhirpatch.SparkFhirPathPatchEvaluator
+                    31 import io.onfhir.spark.path.{SparkFhirPathDataTypeConstructorsFactory, SparkFhirPathEvaluator, SparkFhirPathUtilFunctionLibraryFactory}
+        spark-on-fhir_2.13  (2 usages found)
+              (2 usages found)
+                README.md  (2 usages found)
+                    39 import io.onfhir.spark.SparkOnFhir
+                    71 import io.onfhir.spark.SparkOnFhir
