@@ -2,7 +2,7 @@ package io.onfhir.expression
 
 import io.onfhir.api.FHIR_PARAMETER_TYPES
 import io.onfhir.api.model.Parameter
-import io.onfhir.config.{FSConfigReader, FhirServerConfig}
+import io.onfhir.config.{FSConfigReader, FhirSearchHandling, FhirServerConfig}
 import io.onfhir.path.FhirPathEvaluator
 import io.onfhir.r5.config.FhirR5Configurator
 import org.json4s.JsonAST._
@@ -13,7 +13,7 @@ class XFhirQueryParserTest extends Specification {
   val fileSystemConfigReader = new FSConfigReader(fhirVersion = "R5")
   val fhirServerConfig: FhirServerConfig = fhirConfigurator.initializeServerPlatform(fileSystemConfigReader, Set.empty[String])
   val fhirPathEvaluator: FhirPathEvaluator = FhirPathEvaluator()
-  val xFhirQueryParser = new XFhirQueryParser(fhirServerConfig, fhirPathEvaluator)
+  val xFhirQueryParser = new XFhirQueryParser(fhirServerConfig, FhirSearchHandling.Strict, fhirPathEvaluator)
 
   sequential
 

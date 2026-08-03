@@ -1,12 +1,13 @@
 package io.onfhir.api.model
 
-import akka.http.javadsl.model.headers.WWWAuthenticate
-import akka.http.scaladsl.model._
 import io.onfhir.api.Resource
 import io.onfhir.api._
 import io.onfhir.util.JsonFormatter
 import io.onfhir.util.JsonFormatter._
 import org.json4s.Extraction
+
+import java.net.URI
+import java.time.Instant
 
 /**
   * Object representing a HttpResponse for FHIR protocol
@@ -19,13 +20,13 @@ import org.json4s.Extraction
   * @param authenticateHeader WWW Authenticate Header
   */
 case class FHIRResponse(
-                         httpStatus:StatusCode,
+                         httpStatus:HttpStatus,
                          var responseBody:Option[Resource] = None,
-                         location:Option[Uri] = None,
-                         lastModified:Option[DateTime] = None,
+                         location:Option[URI] = None,
+                         lastModified:Option[Instant] = None,
                          newVersion:Option[String]=None,
                          outcomeIssues:Seq[OutcomeIssue] = Seq.empty,
-                         authenticateHeader:Option[WWWAuthenticate] = None,
+                         authenticateHeader:Option[AuthenticateChallenge] = None,
                          var xCorrelationId:Option[String] = None,
                          xIntermediary:Option[String] = None
                        ) {
@@ -82,7 +83,7 @@ object FHIRResponse {
     * @param newVersion new version of resource
     * @return
     */
-  def errorResponse(code:StatusCode, issues:Seq[OutcomeIssue], newVersion:Option[Long]=None):FHIRResponse = {
+  def errorResponse(code:HttpStatus, issues:Seq[OutcomeIssue], newVersion:Option[Long]=None):FHIRResponse = {
     FHIRResponse(httpStatus = code, newVersion= newVersion.map(""+_), outcomeIssues = issues)
   }
 
@@ -92,8 +93,8 @@ object FHIRResponse {
     * @param authenticateHeader authentication header to return
     * @return
     */
-  def authorizationErrorResponse(issues:Seq[OutcomeIssue], authenticateHeader:Option[WWWAuthenticate] = None):FHIRResponse = {
-    FHIRResponse(httpStatus = StatusCodes.Unauthorized, outcomeIssues = issues, authenticateHeader = authenticateHeader)
+  def authorizationErrorResponse(issues:Seq[OutcomeIssue], authenticateHeader:Option[AuthenticateChallenge] = None):FHIRResponse = {
+    FHIRResponse(httpStatus = HttpStatus.Unauthorized, outcomeIssues = issues, authenticateHeader = authenticateHeader)
   }
 
   /**

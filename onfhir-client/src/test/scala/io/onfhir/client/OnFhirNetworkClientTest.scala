@@ -1,10 +1,8 @@
 package io.onfhir.client
 
-import akka.actor.ActorSystem
-import akka.http.javadsl.model.StatusCodes
 import io.onfhir.api.Resource
 import io.onfhir.api.client.{FHIRHistoryBundle, FHIRSearchSetBundle, FHIRTransactionBatchBundle, FhirClientException}
-import io.onfhir.api.model.FHIRResponse
+import io.onfhir.api.model.{FHIRResponse, HttpStatus}
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.path.FhirPathEvaluator
 
@@ -22,7 +20,6 @@ object OnFhirNetworkClientTest extends Specification {
   val baseUrl = "http://127.0.0.1:8080/fhir"
   val patientWithoutId: Resource =  Source.fromInputStream(getClass.getResourceAsStream("/patient-without-id.json")).mkString.parseJson
   val obsGlucose: Resource = Source.fromInputStream(getClass.getResourceAsStream("/observation-glucose.json")).mkString.parseJson
-  implicit val actorSystem: ActorSystem = ActorSystem("OnFhirClientTest")
   implicit val ec:ExecutionContext = ExecutionContext.global
   val onFhirClient: OnFhirNetworkClient = OnFhirNetworkClient.apply(baseUrl)
   implicit val ee: ExecutionEnv = ExecutionEnv.fromGlobalExecutionContext
@@ -53,7 +50,7 @@ object OnFhirNetworkClientTest extends Specification {
           .where("identifier", "urn:oid:1.2.36.146.595.217.0.1|12345")
           .execute()
 
-      response.map(_.httpStatus) must be_==(StatusCodes.OK).await
+      response.map(_.httpStatus) must be_==(HttpStatus.OK).await
     }
 
     "should help updating a resource"  in {
@@ -71,7 +68,7 @@ object OnFhirNetworkClientTest extends Specification {
         onFhirClient
           .update(createdResource.mapField(f => f._1 -> (if(f._1 == "versionId") JString("1") else f._2)).asInstanceOf[JObject])
           .execute()
-      response.map(_.httpStatus) must be_==(StatusCodes.PRECONDITION_FAILED).await
+      response.map(_.httpStatus) must be_==(HttpStatus.PreconditionFailed).await
     }
 
     "should help reading a resource" in {
@@ -89,14 +86,14 @@ object OnFhirNetworkClientTest extends Specification {
           .read("Patient", FHIRUtil.extractIdFromResource(createdResource))
           .ifModifiedSince(lastUpdated)
 
-      response.map(_.httpStatus) must be_==(StatusCodes.NOT_MODIFIED).await
+      response.map(_.httpStatus) must be_==(HttpStatus.NotModified).await
 
       response =
         onFhirClient
           .read("Patient",FHIRUtil.extractIdFromResource(createdResource))
           .ifNoneMatch(2)
 
-      response.map(_.httpStatus) must be_==(StatusCodes.NOT_MODIFIED).await
+      response.map(_.httpStatus) must be_==(HttpStatus.NotModified).await
     }
 
     "should help reading a resource with element preferences" in {
@@ -133,9 +130,9 @@ object OnFhirNetworkClientTest extends Specification {
     }
 
     "should help searching resources - retrieving next pages" in {
-      onFhirClient.create(patientWithoutId).execute().map(_.httpStatus) must be_==(StatusCodes.CREATED).await
-      onFhirClient.create(patientWithoutId).execute().map(_.httpStatus) must be_==(StatusCodes.CREATED).await
-      onFhirClient.create(patientWithoutId).execute().map(_.httpStatus) must be_==(StatusCodes.CREATED).await
+      onFhirClient.create(patientWithoutId).execute().map(_.httpStatus) must be_==(HttpStatus.Created).await
+      onFhirClient.create(patientWithoutId).execute().map(_.httpStatus) must be_==(HttpStatus.Created).await
+      onFhirClient.create(patientWithoutId).execute().map(_.httpStatus) must be_==(HttpStatus.Created).await
 
       var bundle:FHIRSearchSetBundle = Await.result(
         onFhirClient
@@ -282,7 +279,7 @@ object OnFhirNetworkClientTest extends Specification {
         5 seconds
       )
 
-      opResponse.httpStatus mustEqual(StatusCodes.OK)
+      opResponse.httpStatus mustEqual(HttpStatus.OK)
       opResponse.getOutputParam("return") must not beEmpty
     }
   }

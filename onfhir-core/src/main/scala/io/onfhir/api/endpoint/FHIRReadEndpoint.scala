@@ -1,5 +1,7 @@
 package io.onfhir.api.endpoint
 
+import io.onfhir.api.model.AkkaHttpModelAdapter._
+
 import akka.http.scaladsl.model.headers.{`If-Modified-Since`, `If-None-Match`}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
@@ -40,7 +42,13 @@ trait FHIRReadEndpoint {
                 optionalHeaderValueByType(`If-None-Match`) { ifNoneMatch =>
                   optionalHeaderValueByType(`If-Modified-Since`) { ifModifiedSince =>
                     //Create the FHIR request object
-                    fhirRequest.initializeReadRequest(_type, _id, ifModifiedSince, ifNoneMatch, summary, elements)
+                    fhirRequest.initializeReadRequest(
+                      _type,
+                      _id,
+                      ifModifiedSince.map(header => toNeutralInstant(header.date)),
+                      ifNoneMatch.map(toNeutralEntityTagCondition),
+                      summary,
+                      elements)
                     //Try to resolve target FHIR resource
                     targetResourceResolver.resolveTargetResource(fhirRequest) {
                       //Enforce authorization

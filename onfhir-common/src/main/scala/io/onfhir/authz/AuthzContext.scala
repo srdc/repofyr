@@ -3,7 +3,6 @@ package io.onfhir.authz
 import io.onfhir.util.JsonFormatter.formats
 
 import java.util.Date
-import net.minidev.json.JSONArray
 import org.json4s.JValue
 
 /**

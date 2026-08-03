@@ -2,8 +2,7 @@ package io.onfhir.util
 
 import java.time.{Instant, LocalDate, LocalDateTime, Year, YearMonth, ZoneId, ZoneOffset, ZonedDateTime}
 import java.time.format.{DateTimeFormatter, DateTimeFormatterBuilder, SignStyle}
-import java.util.Date
-import akka.http.scaladsl.model.DateTime
+import java.util.{Date, Locale}
 import io.onfhir.api.MONTH_DAY_MAP
 import org.apache.commons.lang3.time.FastDateFormat
 import org.slf4j.LoggerFactory
@@ -13,11 +12,18 @@ import java.time.temporal.Temporal
 import scala.util.Try
 
 object DateTimeUtil {
-  private val httpDateFormat = FastDateFormat.getInstance("EEE, dd MMM yyyy HH:mm:ss zzz")
+  private val httpDateFormat =
+    DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss 'GMT'", Locale.ENGLISH).withZone(ZoneOffset.UTC)
+  private val obsoleteRfc850DateFormat =
+    DateTimeFormatter.ofPattern("EEEE, dd-MMM-yy HH:mm:ss zzz", Locale.ENGLISH)
+  private val obsoleteAsctimeDateFormat =
+    DateTimeFormatter.ofPattern("EEE MMM d HH:mm:ss yyyy", Locale.ENGLISH).withZone(ZoneOffset.UTC)
   //FHIR instant
   private val fhirDateTimeWMiliFormat = FastDateFormat.getInstance("yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
   //FHIR dateTime or instant with second precision
   private val fhirDateTimeWSecFormat = FastDateFormat.getInstance("yyyy-MM-dd'T'HH:mm:ssXXX")
+  private val fhirInstantOutputFormat =
+    DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSXXX", Locale.ENGLISH).withZone(ZoneOffset.UTC)
 
   //Regex for dateTime search parameter value
   private val dateTimeRegex = """^([1-2]{1}[0|1|8|9][0-9]{2})(-(0[1-9]|1[0-2])(-(0[0-9]|[1-2][0-9]|3[0-1])(T([01][0-9]|2[0-3]):([0-5][0-9])(:[0-5][0-9])?(\.[0-9]+)?(Z|(\+|-|\s)((0[0-9]|1[0-3]):[0-5][0-9]|14:00))?)?)?)?$""".r
@@ -188,25 +194,29 @@ object DateTimeUtil {
     }
   }
 
-  /**
-    * Parses Http date format (e.g. Wed, 09 Apr 2008 23:55:38 GMT) to
-    * spray.DateTime object
-    * @param value DateTime string
-    * @return
-    */
-  def parseHttpDateToDateTime(value:String):DateTime = {
-    DateTime(httpDateFormat.parse(value).getTime)
+  /** Parse a compatible HTTP-date value into an Instant. */
+  def parseHttpDate(value: String): Instant = {
+    val parsers = Seq(
+      () => ZonedDateTime.parse(value, httpDateFormat).toInstant,
+      () => ZonedDateTime.parse(value, obsoleteRfc850DateFormat).toInstant,
+      () => ZonedDateTime.parse(value, obsoleteAsctimeDateFormat).toInstant
+    )
+    parsers.iterator.map(parser => Try(parser())).collectFirst { case scala.util.Success(instant) => instant }
+      .getOrElse(throw new IllegalArgumentException(s"Invalid HTTP date: $value"))
   }
+
+  /** Serialize an HTTP date as IMF-fixdate in GMT at second precision. */
+  def formatHttpDate(value: Instant): String = httpDateFormat.format(value)
+
+  /** Historical name retained with a transport-neutral return type. */
+  def parseHttpDateToDateTime(value: String): Instant = parseHttpDate(value)
 
   /**
     * Parse FHIR instant (xs:dateTime)
     * @param value FHIR instant string
     * @return
     */
-  def parseInstant(value: String):Option[DateTime] = {
-    Try(instantToDateTime(parseFhirDateTimeOrInstant(value))).toOption
-    //DateTime.fromIsoDateTimeString(value)
-  }
+  def parseInstant(value: String):Option[Instant] = Try(parseFhirDateTimeOrInstant(value)).toOption
 
   /**
     * Serialize instant
@@ -214,7 +224,7 @@ object DateTimeUtil {
     * @return
     */
   def serializeInstant(instant:Instant):String = {
-    fhirDateTimeWMiliFormat.format(Date.from(instant))
+    fhirInstantOutputFormat.format(instant)
     //DateTimeFormatter.ISO_INSTANT.format(instant)
   }
 
@@ -243,25 +253,10 @@ object DateTimeUtil {
     }
   }
 
-  def instantToDateTime(i:Instant):DateTime = {
-    DateTime.apply(i.toEpochMilli)
-    /*
-    var instStr = serializeInstant(i)
-    logger.debug("INSTANT: "+ instStr)
-    //Akka DateTime has a bug that it cannot parse when nanosecond is 0 and ISO instant is serialized as ...T10:05:58Z
-    if(i.getNano == 0)
-      instStr = instStr.dropRight(1) + ".000Z"
-    val dt = DateTime.fromIsoDateTimeString(instStr)
-    dt.get*/
-  }
-
-  def dateTimeToInstant(dateTime: DateTime):Instant = {
-    Instant.ofEpochMilli(dateTime.clicks)
-  }
-
-  def serializeDateTime(dateTime: DateTime):String = {
-    serializeInstant(dateTimeToInstant(dateTime))
-  }
+  /** Historical helpers retained as identity/serialization aliases for source migration. */
+  def instantToDateTime(i: Instant): Instant = i
+  def dateTimeToInstant(dateTime: Instant): Instant = dateTime
+  def serializeDateTime(dateTime: Instant): String = serializeInstant(dateTime)
 
   /**
    * Parse FHIR Date time

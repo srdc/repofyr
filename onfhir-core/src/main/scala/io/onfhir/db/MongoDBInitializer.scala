@@ -1,5 +1,7 @@
 package io.onfhir.db
 
+import io.onfhir.api.model.AkkaHttpModelAdapter._
+
 import akka.http.scaladsl.model.StatusCodes
 import org.mongodb.scala.bson.conversions.Bson
 import org.mongodb.scala.model.IndexOptions

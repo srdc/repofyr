@@ -1,7 +1,7 @@
 package io.onfhir.config
 
 import scala.collection.immutable.HashMap
-import akka.http.scaladsl.model._
+import io.onfhir.api.model.{FhirContentType, FhirMediaType}
 import io.onfhir.api.{FHIR_ROOT_URL_FOR_DEFINITIONS, FHIR_VERSIONING_OPTIONS}
 
 /**
@@ -49,36 +49,34 @@ class FhirServerConfig(version:String) extends BaseFhirConfig(version) {
 
   /** MediaType configurations for this FHIR version */
   // List of Supported FHIR JSON Media Types
-  var FHIR_JSON_MEDIA_TYPES:Seq[MediaType] = _
+  var FHIR_JSON_MEDIA_TYPES:Seq[FhirMediaType] = _
   // List of Supported FHIR XML Media Types
-  var FHIR_XML_MEDIA_TYPES:Seq[MediaType] = _
+  var FHIR_XML_MEDIA_TYPES:Seq[FhirMediaType] = _
   // Json patch media type supported
-  var FHIR_PATCH_MEDIA_TYPES:Seq[MediaType] = _
+  var FHIR_PATCH_MEDIA_TYPES:Seq[FhirMediaType] = _
   //Map from _format param value to actual MediaType
-  var FHIR_FORMAT_MIME_TYPE_MAP:Map[String, MediaType] = _
+  var FHIR_FORMAT_MIME_TYPE_MAP:Map[String, FhirMediaType] = _
   //Default media type used when no match
-  var FHIR_DEFAULT_MEDIA_TYPE:MediaType = _
+  var FHIR_DEFAULT_MEDIA_TYPE:FhirMediaType = _
   //Allowed media types for FHIR Binary resources if supported
-  var FHIR_ALLOWED_BINARY_TYPES:Seq[MediaType.Binary] = _
+  var FHIR_ALLOWED_BINARY_TYPES:Seq[FhirMediaType] = _
 
   //Code system to indicate a search result is summarized
   var FHIR_SUMMARIZATION_INDICATOR_CODE_SYSTEM = "http://terminology.hl7.org/CodeSystem/v3-ObservationValue" //"http://hl7.org/fhir/v3/ObservationValue"
 
   //List of all media types supported for requests
   def FHIR_SUPPORTED_REQUEST_MEDIA_TYPES =
-    FHIR_JSON_MEDIA_TYPES ++ FHIR_XML_MEDIA_TYPES ++ FHIR_PATCH_MEDIA_TYPES.toSeq ++ Seq(MediaTypes.`text/plain`)
+    FHIR_JSON_MEDIA_TYPES ++ FHIR_XML_MEDIA_TYPES ++ FHIR_PATCH_MEDIA_TYPES.toSeq ++ Seq(FhirMediaType.text("plain"))
   // List of Media Types for Returned Results (that our FHIR repository can return)
   def FHIR_SUPPORTED_RESULT_MEDIA_TYPES =
-    FHIR_JSON_MEDIA_TYPES ++ FHIR_XML_MEDIA_TYPES ++ Seq(MediaTypes.`text/html`)
+    FHIR_JSON_MEDIA_TYPES ++ FHIR_XML_MEDIA_TYPES ++ Seq(FhirMediaType.text("html"))
   //Test plain is supported for our tests to work
   def FHIR_SUPPORTED_CONTENT_TYPE_RANGES =
     FHIR_SUPPORTED_REQUEST_MEDIA_TYPES
-      .map(mediaType => ContentTypeRange.apply(MediaRange.apply(mediaType), HttpCharsetRange.apply(HttpCharsets.`UTF-8`)))
+      .map(mediaType => FhirContentType(mediaType, Some("UTF-8")))
   //Calculate supported result content types
   def FHIR_SUPPORTED_RESULT_CONTENT_TYPES = FHIR_SUPPORTED_RESULT_MEDIA_TYPES.flatMap {
-    case MediaTypes.`application/json` => Some(ContentTypes.`application/json`)
-    case MediaTypes.`text/html` => Some(ContentTypes.`text/html(UTF-8)`)
-    case oth => Some(ContentType.apply(oth, () => HttpCharsets.`UTF-8`))
+    case mediaType => Some(FhirContentType(mediaType, Some("UTF-8")))
   }
 
   /**

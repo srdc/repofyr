@@ -6,7 +6,6 @@ import io.onfhir.api.model.FHIRResponse
 import io.onfhir.api.model.FHIRResponse.OUTCOME_CODES
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.api.validation.{AbstractFhirContentValidator, ConstraintFailure, FhirRestriction}
-import io.onfhir.config.OnfhirConfig
 import org.json4s.JsonAST.{JObject, JString, JValue}
 import io.onfhir.util.JsonFormatter.formats
 

@@ -1,6 +1,6 @@
 package io.onfhir.client
 
-import akka.http.scaladsl.model.HttpRequest
+import io.onfhir.client.model.ClientHttpRequest
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -10,5 +10,5 @@ trait IHttpRequestInterceptor {
    * @param httpRequest
    * @return
    */
-  def processRequest(httpRequest: HttpRequest)(implicit ex:ExecutionContext):Future[HttpRequest]
+  def processRequest(httpRequest: ClientHttpRequest)(implicit ex:ExecutionContext):Future[ClientHttpRequest]
 }

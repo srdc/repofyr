@@ -2,9 +2,8 @@ package io.onfhir.stu3.audit
 
 import java.time.Instant
 
-import akka.http.scaladsl.model.StatusCode
 import io.onfhir.api.Resource
-import io.onfhir.api.model.FHIRRequest
+import io.onfhir.api.model.{FHIRRequest, HttpStatus}
 import io.onfhir.audit.{AgentsInfo, IFhirAuditCreator}
 import io.onfhir.authz.{AuthContext, AuthzContext}
 import io.onfhir.config.OnfhirConfig
@@ -27,7 +26,7 @@ class STU3AuditCreator extends IFhirAuditCreator {
   def createAuditResource(fhirRequest: FHIRRequest,
                           authContext: AuthContext,
                           authzContext: Option[AuthzContext],
-                          statusCode: StatusCode,
+                          statusCode: HttpStatus,
                           batchTransactionId:Option[String] = None):Resource = {
 
     //Resolve agents

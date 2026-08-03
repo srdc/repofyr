@@ -1,5 +1,7 @@
 package io.onfhir.operation
 
+import io.onfhir.api.model.AkkaHttpModelAdapter._
+
 import java.time.Instant
 import akka.http.scaladsl.model.{DateTime, StatusCodes}
 import io.onfhir.api._

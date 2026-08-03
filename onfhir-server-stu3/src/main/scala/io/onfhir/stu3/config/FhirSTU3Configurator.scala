@@ -1,8 +1,9 @@
 package io.onfhir.stu3.config
 
 import io.onfhir.api.parsers.IFhirFoundationResourceParser
+import io.onfhir.api.util.{SubscriptionUtil, UnsupportedSubscriptionUtil}
 import io.onfhir.audit.IFhirAuditCreator
-import io.onfhir.config.{AuditConfig, BaseFhirServerConfigurator}
+import io.onfhir.config.{AuditConfig, BaseFhirServerConfigurator, FhirCapabilityDefaults, FhirSearchHandling, FhirServerConfig, FhirSubscriptionSettings}
 import io.onfhir.stu3.audit.STU3AuditCreator
 import io.onfhir.stu3.parsers.STU3Parser
 
@@ -17,6 +18,12 @@ class FhirSTU3Configurator extends BaseFhirServerConfigurator {
    */
   override def getAuditCreator(auditConfig: AuditConfig): IFhirAuditCreator = new STU3AuditCreator
 
+  override def getSubscriptionUtil(
+      fhirConfig: FhirServerConfig,
+      subscriptionSettings: FhirSubscriptionSettings,
+      defaultSearchHandling: FhirSearchHandling
+  ): SubscriptionUtil = new UnsupportedSubscriptionUtil(fhirVersion)
+
   /**
    * Return the parser for foundation resources
    *
@@ -24,6 +31,6 @@ class FhirSTU3Configurator extends BaseFhirServerConfigurator {
    * @param primitiveTypes List of FHIR primitive types defined in the standard
    * @return
    */
-  override def getFoundationResourceParser(complexTypes: Set[String], primitiveTypes: Set[String]): IFhirFoundationResourceParser =
-    new STU3Parser(complexTypes, primitiveTypes)
+  override def getFoundationResourceParser(complexTypes: Set[String], primitiveTypes: Set[String], capabilityDefaults: FhirCapabilityDefaults): IFhirFoundationResourceParser =
+    new STU3Parser(complexTypes, primitiveTypes, capabilityDefaults)
 }

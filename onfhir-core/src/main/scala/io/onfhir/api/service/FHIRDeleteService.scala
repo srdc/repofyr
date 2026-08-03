@@ -1,5 +1,7 @@
 package io.onfhir.api.service
 
+import io.onfhir.api.model.AkkaHttpModelAdapter._
+
 import akka.http.scaladsl.model.{StatusCode, StatusCodes, Uri}
 import io.onfhir.api._
 import io.onfhir.api.model.{FHIRRequest, FHIRResponse, OutcomeIssue, Parameter}
@@ -7,6 +9,7 @@ import io.onfhir.api.util.FHIRUtil
 import io.onfhir.api.validation.FHIRApiValidator
 import io.onfhir.authz.AuthzContext
 import io.onfhir.db.{ResourceManager, TransactionSession}
+import io.onfhir.config.OnfhirConfig
 import io.onfhir.exception.PreconditionFailedException
 
 import scala.concurrent.Future
@@ -142,7 +145,7 @@ class FHIRDeleteService(transactionSession: Option[TransactionSession] = None) e
           Future(FHIRResponse(
             StatusCodes.NoContent,
             None,
-            Some(Uri(FHIRUtil.resourceLocationWithVersion(_type, _id, currentVersion))), //HTTP Location header
+            Some(Uri(FHIRUtil.resourceLocationWithVersion(OnfhirConfig.fhirEndpointSettings, _type, _id, currentVersion))), //HTTP Location header
             Some(lastModified), //HTTP Last-Modified header
             Some(""+currentVersion) // HTTP ETag header)
           ))

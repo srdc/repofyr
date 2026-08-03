@@ -1,6 +1,6 @@
 # Library / Server Split Implementation Plan - Version 2
 
-> Status: accepted 2026-07-31; Phase 0 complete; Phase 1A in progress
+> Status: accepted 2026-07-31; Phase 4 complete; contributor/IP approval recorded; ready for Phase 5A
 >
 > Supersedes for future implementation:
 > `docs/plans/library-server-split-plan.md`
@@ -44,8 +44,8 @@ reactor and `onfhir-server-r4` endpoint suite as a regression net.
 
 ### Server family - remains in Repofyr
 
-- `onfhir-event` - transitional server-only cycle-breaking module introduced
-  in Phase 1D; its permanent status is decided before the physical split
+- `onfhir-event` - deliberately small server-only event SPI retained by the
+  Phase 4 decision; the core/Kafka inversion is deferred post-split
 - `onfhir-core`
 - `onfhir-operations`
 - `onfhir-kafka`
@@ -256,6 +256,21 @@ package `io.onfhir.api.client` unchanged.
 **Exit criteria:** all 22 relocations are recorded; no class remains in the old
 directory; package names and public behavior are unchanged.
 
+#### Phase 1A implementation record - completed 2026-08-03
+
+- Moved exactly 22 Scala files from `onfhir-common` to `onfhir-client` with
+  their `io.onfhir.api.client.*` packages and file contents unchanged.
+- Added the direct `onfhir-config -> onfhir-client` Maven dependency required
+  by `FhirApiConfigReader`'s `IOnFhirClient` constructor contract.
+- Confirmed the expected forbidden-import redistribution: common 31 -> 24,
+  client 22 -> 29, library total unchanged at 55.
+- A clean-from-source reactor compile followed by
+  `mvn -DskipTests compile`: all 16 reactor modules passed.
+- `mvn -pl onfhir-client -am test`: passed; 41 upstream tests passed and the
+  client module currently contains no runnable unit tests.
+- `mvn -pl onfhir-server-r4 -am test`: passed; 143 tests passed, including 28
+  `OnFhirLocalClientTest` cases.
+
 ### Phase 1B - Decouple Kafka Construction From OnfhirConfig
 
 This phase handles only the Kafka construction contract. It is a server-side
@@ -283,6 +298,27 @@ rg -n "OnfhirConfig" onfhir-kafka
 **Exit criteria:** the command has no matches; Kafka behavior is unchanged;
 the reactor remains acyclic and server-r4 is green.
 
+#### Phase 1B implementation record - completed 2026-08-03
+
+- Moved ownership of `new KafkaConfig(OnfhirConfig.config)` into the server
+  composition code in `Onfhir`; the Kafka module no longer loads the server
+  singleton.
+- Changed `KafkaEventProducer` and its `props` factory to receive
+  `KafkaConfig`, `FhirServerConfig`, and the FHIR-subscription-active flag
+  explicitly.
+- Added a Kafka actor characterization suite before changing the production
+  constructor, then extended it to cover active and inactive Subscription
+  routing plus ordinary resource routing. All 3 final tests pass.
+- `rg -n "OnfhirConfig" onfhir-kafka` returns no matches.
+- `mvn -DskipTests compile`: all 16 reactor modules passed.
+- `mvn -pl onfhir-core -am test`: passed; the core module reports 68 tests
+  and the Kafka characterization suite ran in the upstream reactor slice.
+- `mvn -pl onfhir-server-r4 -am test`: passed; 255 reactor tests passed,
+  including all 143 `onfhir-server-r4` tests and 28
+  `OnFhirLocalClientTest` cases.
+- The forbidden-import progress counter remains unchanged at 55, as expected
+  for this server-only construction change.
+
 ### Phase 1C - Characterize And Decouple Library OnfhirConfig Consumers
 
 The server singleton cannot move until every library reference is gone. The
@@ -301,13 +337,27 @@ These tests must be committed or otherwise verified before injecting
 this already-established parsing baseline.
 
 Introduce small immutable library-side settings grouped by concern, rather
-than a copy of the server singleton. Proposed models:
+than a copy of the server singleton. Approved models:
 
-- `FhirEndpointSettings(rootUrl: String)`
-- `FhirRequestDefaults(searchHandling: String, returnPreference: String)`
-- `FhirResultDefaults(pageCount: Int, paginationMode: String, totalHandling: String)`
-- `FhirSubscriptionSettings(active: Boolean, allowedResources: Option[Set[String]])`
-- `FhirCapabilityDefaults(...)` for the seven R4 capability defaults
+- `FhirEndpointSettings(rootUrl: String)`; preserve the supplied string in
+  Phase 1C and reject empty values. URI normalization belongs to Phase 2.
+- `FhirRequestDefaults(searchHandling: FhirSearchHandling,
+  returnPreference: FhirReturnPreference)`
+- `FhirResultDefaults(defaultPageSize: Int,
+  paginationMode: FhirPaginationMode,
+  totalHandling: FhirSearchTotalHandling)`; page size must be non-negative.
+- `FhirSubscriptionSettings(active: Boolean,
+  allowedResources: Option[Set[String]])`
+- `FhirCapabilityDefaults(versioning: FhirVersioningPolicy, readHistory,
+  updateCreate, conditionalCreate, conditionalRead:
+  FhirConditionalReadSupport, conditionalUpdate, conditionalDelete:
+  FhirConditionalDeleteSupport)`
+
+The closed settings are Scala 2 sealed-trait ADTs. Their legacy wire values
+remain unchanged (`handling=strict`, `return=representation`, `page`,
+`accurate`, `versioned`, `full-support`, `not-supported`, and alternatives).
+Unknown configured values fail fast with `InitializationException` instead of
+silently selecting a branch.
 
 Prefer explicit constructor or method parameters where only one value is
 needed. The server constructs these values from `OnfhirConfig`; library code
@@ -353,6 +403,36 @@ not Akka imports.
 **Exit criteria:** only the explicit three-file server allow-list reads
 `OnfhirConfig`; library behavior, especially search parsing, is pinned with
 tests; compile and server-r4 gates pass.
+
+#### Phase 1C implementation record - completed 2026-08-03
+
+- Added and ran 10 `FHIRSearchParameterValueParser` characterization tests
+  before changing production code. They pin strict/lenient fallback,
+  modifiers, prefixes, composites, forward/reverse chains, malformed values,
+  and repeated-value ordering.
+- Implemented the approved immutable models and sealed ADTs in
+  `FhirRuntimeSettings.scala`; added 5 model-contract tests for legacy-code
+  round trips, fail-fast validation, endpoint preservation, page-size
+  validation, and historical capability defaults.
+- Replaced library singleton reads with explicit settings across search and
+  result parsing, subscription handling, bundle URL parsing, resource
+  locations/return preferences, in-memory reference matching, validation
+  context, and R4/STU3 capability parsing.
+- The server composition layer maps legacy `OnfhirConfig` values into the
+  typed models. Kafka receives subscription/search settings explicitly and
+  still has no `OnfhirConfig` reference.
+- Full 16-module reactor compile passed. Focused common tests passed 15/15;
+  Kafka construction/routing tests passed 3/3; isolated
+  `OnFhirLocalClientTest` passed 28/28. The server-r5 reactor test compilation
+  also passed after its `XFhirQueryParser` fixture was migrated.
+- The first full server-r4 run passed 141/143 and hit the pre-existing
+  one-second timeout in two local-client cases; both passed in the immediate
+  isolated rerun. The final complete rerun passed all 143 server-r4 tests,
+  including all 28 local-client cases.
+- The forbidden-import counter remains the expected 55. The hard singleton
+  scan now returns only `OnfhirConfig.scala`, `IFhirAuditCreator.scala`, and
+  `BaseFhirServerConfigurator.scala`, the exact Phase 1D server-file
+  allow-list.
 
 ### Phase 1D - Move Server Runtime Out Of Library Modules
 
@@ -453,12 +533,41 @@ server configuration singleton, or server authorization machinery remains in
 `onfhir-common`; the Maven reactor graph is acyclic; compile and server-r4
 gates pass.
 
+#### Phase 1D implementation record - completed 2026-08-03
+
+- Added the transitional server-family `onfhir-event_2.13` module to the root
+  reactor and dependency management. Core and Kafka both declare it directly;
+  the module owns the three `io.onfhir.event` sources and
+  `InternalJsonMarshallers` with packages unchanged.
+- Moved 18 server-runtime sources from the library family to
+  `onfhir-core_2.13`: audit and DB lifecycle code, the singleton/configuration
+  cluster, six authorization-runtime types, `IResourceSpecificValidator`, and
+  `BaseFhirServerConfigurator`. The unused nested `AuditManager.AgentsInfo`
+  duplicate was removed after confirming all consumers use
+  `io.onfhir.audit.AgentsInfo`.
+- Moved `FhirQueryParser` and `FHIRResultParameterResolver` to
+  `onfhir-query_2.13`; packages remain unchanged and the parser source now
+  matches its class name.
+- Kept pure search parsing in Common and moved the URI/form Akka directives to
+  `FHIRSearchParameterValueParserDirectives` in Core. Two adapter tests pin
+  URI/form extraction, Prefer propagation, and the legacy reverse ordering of
+  repeated form values.
+- Removed Common's unused Akka routing/actor/stream, Typesafe Config, and
+  Nimbus dependencies. Client now declares its existing ActorSystem and
+  Materializer dependencies directly until Phase 3 removes them.
+- The library `OnfhirConfig` scan returns no matches. The forbidden-import scan
+  has the expected 44 findings: Common 13, Client 29, Path 1, Query 1, and zero
+  in the other five library modules.
+- Full reactor compile passed for all 17 modules. The touched-module reactor
+  passed, including 70 Core tests and both new adapter tests. The server-r4
+  reactor passed with 143 server-r4 tests, including all 28 local-client tests.
+
 ### Phase 2A - Freeze The Transport-Neutral HTTP Model
 
 No public type substitution begins until an ADR or an accepted section of this
 plan fixes the exact types and their wire semantics.
 
-Proposed mapping:
+Approved mapping:
 
 | Akka-era type | Proposed neutral type | Required semantics |
 |---|---|---|
@@ -480,6 +589,18 @@ where duplicate headers or query parameters are legal.
 Add contract tests for status classification, HTTP-date round trips, ETags,
 authentication challenges, content types, forwarded headers, and URI/query
 encoding before changing implementations.
+
+#### Phase 2A decision record - completed 2026-08-03
+
+- The maintainers explicitly approved ADR 0001 as the complete
+  transport-neutral HTTP contract for Phase 2.
+- The approved model includes the exact URI/query, HTTP-date, status, method,
+  media/content type, conditional header, authentication challenge, forwarded
+  value, and repeated-header semantics listed above and in ADR 0001.
+- HTTP-date second precision remains limited to HTTP header serialization; it
+  does not reduce FHIR timestamp or search precision.
+- No production types or signatures changed in Phase 2A. Phase 2B must add the
+  required contract tests before substituting each corresponding Akka type.
 
 ### Phase 2B - Remove Akka HTTP Models From Common, Path, And Query
 
@@ -514,7 +635,76 @@ signatures.
 source- and dependency-graph clean; all changed signatures are in the Migration
 Table; full reactor and server-r4 tests pass.
 
+#### Phase 2B implementation record - completed 2026-08-03
+
+- Added the approved transport-neutral HTTP models in `onfhir-common` for
+  status, method, media/content types, entity-tag conditions, authentication
+  challenges, forwarded values, repeated headers, and ordered query pairs.
+- Replaced Akka HTTP model types in Common, Path, and Query with the neutral
+  models, `java.net.URI`, and `java.time.Instant`. HTTP date serialization is
+  second-precision; FHIR instant/dateTime serialization retains its original
+  precision.
+- Added explicit Akka boundary adapters in `onfhir-core` and the transitional
+  Akka client implementation. Akka types no longer cross Common/Path/Query
+  signatures.
+- Removed the direct Akka HTTP dependency from `onfhir-common`. Resolved
+  dependency trees for Common, Path, and Query contain no Akka or Pekko
+  artifacts; their source and resources contain no Akka/Pekko references.
+- Added 15 neutral-model contract tests, five server-adapter tests, two query
+  encoding tests, and a Bundle request-target regression test covering literal
+  FHIR token separators plus absent and empty query values.
+- The forbidden-import scan now reports 26 imports, all in `onfhir-client` and
+  reserved for Phase 3 (down from the Phase 1D total of 44).
+- `mvn -DskipTests compile`: all 17 reactor modules passed.
+- `mvn -pl onfhir-common,onfhir-query,onfhir-core -am test`: passed; Common
+  subsequently passed 34 tests after adding the Bundle regression, Query passed
+  two tests, and Core passed 75 tests.
+- `mvn -pl onfhir-server-r4 -am test`: passed; `onfhir-server-r4` passed all
+  143 tests, including 28 `OnFhirLocalClientTest` cases.
+
 ### Phase 3 - Rewrite onfhir-client On java.net.http
+
+#### Phase 3 decision record - approved 2026-08-03
+
+- Replace the implicit Akka `ActorSystem` with a caller-supplied implicit
+  Scala `ExecutionContext`; the client does not silently use the global
+  execution context.
+- Use one reusable JDK `HttpClient` per configured client. Authentication
+  variants share that transport. `OnFhirNetworkClient` becomes a normal final
+  class; case-class `copy` and `unapply` are not retained.
+- Interceptors receive an immutable `ClientHttpRequest` containing the neutral
+  method, URI, ordered repeated headers, and optional immutable byte body.
+  Interceptors remain asynchronous, run sequentially in registration order,
+  and short-circuit on failure. Response interception is out of scope.
+- Use HTTP/1.1, never follow redirects by default, retain a ten-second connect
+  timeout, and make the total request timeout optional with no default. The
+  old 60-second Akka idle timeout is not misrepresented as a total timeout.
+- Retry at most five times after the initial attempt, only for replayable
+  GET, HEAD, OPTIONS, PUT, DELETE, and TRACE requests that fail at the
+  transport layer before a response. POST, PATCH, HTTP status responses, and
+  interceptor failures are never retried.
+- Reuse JDK-managed pooling and explicitly retire the Akka-specific
+  `max-connections` and `max-open-requests` settings; JDK 11 exposes no direct
+  per-client equivalents.
+- Use JVM trust and hostname verification by default and allow an injected
+  `SSLContext` for custom trust. Insecure trust-all and hostname-verification
+  bypasses are not provided.
+- Preserve `client_secret_basic`, `client_secret_post`, and
+  `client_secret_jwt`. Token requests use the JDK transport but bypass FHIR
+  request interceptors; cached-token refresh is thread-safe and single-flight.
+- Preserve the Scala `Future` API. Underlying transport cancellation and
+  failures propagate with their causes, but no new caller-cancellation API is
+  introduced.
+- Preserve current content behavior: JSON and empty responses are supported;
+  XML requests and responses fail explicitly. Full XML support is a separate
+  feature.
+- Replace the remaining public Akka `DateTime` client APIs with
+  `java.time.Instant`, and fix `withFixedBasicTokenAuthentication` so it emits
+  `Authorization: Basic`, rather than the current erroneous Bearer header.
+
+The verified Phase 3 baseline is 26 forbidden production imports, all in
+`onfhir-client`; the earlier estimate of 29 was superseded by Phase 2B's
+implemented type substitutions.
 
 Rewrite the client transport using JDK 11 `java.net.http.HttpClient`.
 
@@ -552,9 +742,205 @@ Behavioral parity tests must cover:
 Remove Akka dependencies from `onfhir-client/pom.xml` and remove the Akka HTTP
 configuration block from client resources.
 
-**Exit criteria:** all 29 expected client forbidden imports are gone; the whole
+**Exit criteria:** all 26 verified client forbidden imports are gone; the whole
 library family passes Gates A-C with zero findings; parity tests, reactor tests,
 and server-r4 tests pass.
+
+#### Phase 3 implementation record - completed 2026-08-03
+
+- Replaced the Akka HTTP client, marshalling, unmarshalling, actor, stream, and
+  materializer code with a reusable JDK 11 `java.net.http.HttpClient`
+  transport. The client uses HTTP/1.1, never follows redirects, accepts
+  optional request and custom-`SSLContext` settings, and retries only approved
+  replayable methods after transport failures.
+- Added the immutable `ClientHttpRequest` interceptor contract using Phase 2's
+  neutral methods and ordered repeated headers plus an optional immutable byte
+  entity. Interceptors run asynchronously and sequentially, and failures stop
+  the chain before transport execution.
+- Replaced the implicit `ActorSystem` construction contract with an implicit
+  caller-owned `ExecutionContext`. `OnFhirNetworkClient` is now a final class
+  whose authentication variants share the configured JDK transport.
+- Migrated the remaining client `DateTime` APIs to `Instant`; URI, query,
+  status, response-header, and operation-path behavior now use the neutral
+  models. The fixed-Basic-token helper now correctly sends `Basic`, not
+  `Bearer`.
+- Reworked OAuth client-credentials retrieval onto the same JDK transport,
+  retained basic/post/JWT client authentication, and made cached-token refresh
+  thread-safe and single-flight.
+- Removed all four Akka dependencies from `onfhir-client/pom.xml`, deleted the
+  transitional Akka model adapter, and replaced the `akka.http` resource block
+  with `onfhir.client.http` settings.
+- Added 14 local JDK-server transport tests covering JSON and empty bodies,
+  response metadata, duplicate/encoded queries, literal FHIR operation paths,
+  Basic/fixed/OAuth authentication, interceptor ordering and failures,
+  redirects, request timeout, safe retry, custom SSL context, and explicit XML
+  rejection. `mvn -pl onfhir-client -am test` passed: Common 34, Path 38, and
+  Client 14 tests.
+- `scripts/check-forbidden-imports.ps1` passes with zero findings across all
+  nine library modules. The current-reactor client dependency tree has no
+  `com.typesafe.akka` or `org.apache.pekko` artifacts.
+- `mvn -DskipTests compile` passed for all 17 reactor modules. The server-r4
+  Surefire reports contain all 143 tests with zero failures or errors,
+  including all 28 `OnFhirLocalClientTest` cases.
+
+### Phase 3.5 - Harden Library/Server Exception And Subscription Boundaries
+
+Complete this semantic-boundary cleanup before release hygiene or an
+independent-build rehearsal. Module ownership is determined by responsibility,
+not merely by current downstream usage. Exceptions that encode HTTP response
+outcomes belong to the server family; reusable library code reports neutral
+domain, parsing, configuration, or client failures.
+
+#### Phase 3.5 decision record - approved 2026-08-03
+
+- Preserve `io.onfhir.exception` package names while moving all ten HTTP
+  response exception definitions from Common to Core.
+- Introduce neutral `BundleRequestParsingException` in Common. Core maps it to
+  HTTP 400; client bundle construction wraps it in `FhirClientException`.
+  Client resource/id precondition failures also use `FhirClientException`.
+- Replace Common's impossible-state `InternalServerException` uses with
+  `IllegalStateException`; keep the HTTP 500 exception only in Core.
+- Core owns `SubscriptionUtil` as the release-specific parsing and validation
+  contract. `IFhirServerConfigurator` constructs the active implementation,
+  and `FhirConfigurationManager` exposes it to server services.
+- `onfhir-server-r4` supplies `R4SubscriptionUtil`, including the existing R4
+  criteria, channel, status, payload, and update validation rules. R5 and STU3
+  use an explicit unsupported implementation until their own mechanisms are
+  implemented; they never fall back to R4 behavior.
+- Kafka receives only `Resource => FhirSubscription` plus the active flag.
+  Core injects the selected parser, avoiding both a Kafka-to-Core cycle and a
+  Kafka dependency on a release module.
+
+#### Exception ownership
+
+Move the following server response exceptions from `onfhir-common` to
+`onfhir-core`, preserving their `io.onfhir.exception` package names:
+
+- `AuthorizationFailedException`
+- `ConflictException`
+- `MethodNotAllowedException`
+- `NotImplementedException`
+- `NotModifiedException`
+- `PreconditionFailedException`
+- `UnprocessableEntityException`
+
+Refactor the remaining library callers before moving these HTTP-specific
+exceptions to `onfhir-core`:
+
+- `BadRequestException`: client-side request construction must use a
+  client-specific failure, while reusable bundle parsing must expose a neutral
+  parsing/validation failure. Server code maps that failure to HTTP 400.
+- `NotFoundException`: reusable bundle parsing must not select HTTP 404;
+  server code makes that mapping at the API boundary.
+- `InternalServerException`: impossible states in common search utilities use
+  `IllegalStateException` or an approved neutral library exception. HTTP 500
+  remains a server mapping.
+
+Keep `InitializationException`, `InvalidParameterException`,
+`UnsupportedParameterException`, and `InvalidParamRequest` in the library
+family because they represent reusable configuration, parsing, or model
+failures rather than HTTP response outcomes.
+
+Add characterization tests for the current exception-to-`FHIRResponse`
+mapping and for each affected reusable caller before changing exception types.
+Record every artifact relocation and public thrown-exception change in the
+Migration Tables and reconcile it with MiMa during Phase 4.
+
+#### Version-specific subscription ownership
+
+`SubscriptionUtil` is server runtime behavior and moves from `onfhir-common`
+to `onfhir-core`, preserving its package name during the split. Core owns the
+subscription orchestration facade and a release-specific strategy contract;
+the active FHIR version wiring supplies the strategy without making core or
+Kafka depend on a concrete FHIR release module.
+
+The existing behavior is explicitly characterized as the R4 subscription
+model and mechanism. Extract that behavior behind the core contract as the R4
+implementation supplied by `onfhir-server-r4`. Do not treat it as a release-
+neutral implementation or reuse it silently for R5: FHIR R5 changed both the
+Subscription resource model and its mechanism, so an R5 implementation must
+be supplied separately by `onfhir-server-r5` when R5 subscription support is
+implemented.
+
+Remove direct construction of `SubscriptionUtil` from `onfhir-kafka`. Core
+must provide the release-appropriate parsed/validated subscription behavior to
+Kafka through an injected contract or normalized server-owned value. Approve
+the exact strategy and construction signatures in the Phase 3.5 decision
+record before implementation, then add them to the Migration Tables.
+
+**Exit criteria:** no HTTP-status-specific exception is defined in or thrown
+by a library-family production module; `SubscriptionUtil` is absent from
+library-family artifacts; R4 subscription characterization tests and the
+exception mapping tests pass; core and Kafka contain no compile-time edge to
+`onfhir-server-r4` or another release module; all permanent gates, the full
+reactor compile, targeted tests, and the server-r4 regression suite pass.
+
+#### Phase 3.5 implementation record - completed 2026-08-03
+
+- Moved all ten HTTP response exceptions from Common to Core without changing
+  their `io.onfhir.exception` packages. Common bundle parsing now reports
+  `BundleRequestParsingException`; Core maps it to HTTP 400, Client wraps it in
+  `FhirClientException`, and Common impossible states use
+  `IllegalStateException`.
+- Replaced Common's concrete subscription utility with a Core-owned
+  `SubscriptionUtil` contract. R4 supplies `R4SubscriptionUtil`; R5 and STU3
+  explicitly select `UnsupportedSubscriptionUtil` until release-specific
+  support is implemented. Kafka receives only the selected parser function
+  and activation flag.
+- Added characterization and boundary coverage for server exception mapping,
+  neutral bundle parsing, client exception translation, R4 subscription
+  parsing/validation, and Kafka parser injection. The focused suites passed
+  13 tests with zero failures or errors.
+- The forbidden-import gate, library HTTP-exception scan, library
+  `SubscriptionUtil` scan, server-release dependency scan, and
+  `git diff --check` all passed. A clean 17-module reactor compile succeeded.
+- `mvn -pl onfhir-server-r4 -am test` passed all 146 tests with zero failures
+  or errors, including all 28 `OnFhirLocalClientTest` cases.
+
+### Phase 3.6 - Move In-Memory FHIR Search Execution To Query
+
+`ImMemorySearchUtil` evaluates parsed FHIR search parameters against Json4s
+resources, and `InMemoryPrefixModifierHandler` implements the corresponding
+FHIR prefix and modifier semantics. These are query-execution responsibilities,
+not Common primitives, and belong in `onfhir-query`.
+
+#### Phase 3.6 decision record - approved 2026-08-03
+
+- Move both objects from Common to Query while preserving their existing
+  `io.onfhir.api.util` package names and public object names.
+- Keep `ImMemorySearchUtil` as the public execution facade. Core must not call
+  `InMemoryPrefixModifierHandler` directly; missing-parameter evaluation is
+  routed through the facade so the helper can be narrowed separately later.
+- Do not combine the ownership move with correction of the historical
+  `ImMemorySearchUtil` spelling. A correctly spelled replacement and any
+  deprecation alias require a separate public-API decision.
+- Add characterization tests in Common and run them before relocating the
+  implementation; relocate those tests to Query with the production files.
+
+**Exit criteria:** neither object is present in the Common source or compiled
+artifact; Query owns both implementations and their characterization tests;
+Core uses only the execution facade; the relocation and artifact dependency
+impact are recorded in the Migration Tables; Query/Common focused tests, a
+clean reactor compile, permanent gates, and the server-r4 regression suite
+pass.
+
+#### Phase 3.6 implementation record - completed 2026-08-03
+
+- Added seven characterization tests in Common before changing production
+  ownership. They pin string modifiers, numeric prefixes, implicit date
+  ranges, token matching, local reference normalization, missing values, and
+  restricted-path extraction.
+- Moved `ImMemorySearchUtil` and `InMemoryPrefixModifierHandler`, unchanged in
+  package and public name, from Common to Query. The characterization suite
+  moved with them and remained green; all nine Query tests pass.
+- Core's `ResourceChecker` now delegates missing-parameter evaluation through
+  `ImMemorySearchUtil`, so it no longer calls the helper directly. The complete
+  Query/Core reactor slice passed, including all 78 Core tests.
+- A clean 17-module reactor compile proved both classes absent from Common's
+  compiled artifact and present in Query's artifact. The full server-r4 suite
+  passed all 146 tests with zero failures or errors.
+- The forbidden-import gate, Common source/artifact ownership checks, Core
+  direct-helper scan, and `git diff --check` all passed.
 
 ### Phase 4 - Release Hygiene And Independent-Build Rehearsal
 
@@ -571,6 +957,17 @@ monorepo root GPL license.
   license only in the extracted library repository after approval.
 - Add MiMa compatibility reporting and reconcile every intended break with the
   Migration Table.
+- Create or update a README for each of the nine library modules. Every module
+  README must briefly describe its purpose, scope and non-goals, Maven
+  coordinates, principal public APIs, relationships to other onFHIR modules,
+  and a minimal usage example.
+- Give standalone or tool-like modules, especially `onfhir-path`,
+  `onfhir-query`, `onfhir-validation`, and `onfhir-template-engine`, expanded
+  usage documentation covering supported functionality, configuration,
+  limitations, and runnable examples. Document `onfhir-common` explicitly as
+  a foundational module rather than a destination for unrelated utilities.
+- Update the library root README with a module catalog and guidance for
+  selecting only the artifacts a consumer needs.
 - Rehearse the split in a disposable clone or temporary directory:
   1. construct the proposed library parent and library-only reactor;
   2. install the library artifacts to an isolated local Maven repository;
@@ -578,13 +975,68 @@ monorepo root GPL license.
   4. build Repofyr only against those installed artifacts.
 
 **Exit criteria:** audit approval is recorded or release is explicitly blocked;
-both rehearsed builds are green; no cross-repository dependency uses
-`${project.version}`.
+all nine library modules have the required README content; tool-like module
+examples and intra-repository documentation links are verified in the
+library-only layout; both rehearsed builds are green; no cross-repository
+dependency uses `${project.version}`.
 
-### Phase 5 - Physical Split, Licensing, And Staging Release
+#### Phase 4 implementation record - completed 2026-08-03
+
+- Expanded the permanent PowerShell boundary gate to scan Scala and Java
+  production sources for imports and fully qualified references and to scan
+  production resources for Akka/Pekko namespaces or class names. Added the
+  transitive Maven Enforcer rule to each library module and wired Gates A-C as
+  blocking CI work.
+- Added a dependency-license allow-list check. The aggregate production graph
+  contains 33 external dependencies with an approved permissive license path;
+  the missing ANTLR 3.3 POM metadata is explicitly reviewed as BSD-3-Clause.
+  No monorepo license was changed.
+- Added DCO contribution guidance, proposed NOTICE/header content, and the
+  contributor/IP audit record. The maintainer confirmed that all ten human
+  identity groups are current or former SRDC employees and that SRDC has
+  relicensing authority. Apache-2.0 extraction is approved for Phase 5.
+- Added MiMa reporting against public version 3.3, an accepted deterministic
+  baseline, and issue-family reconciliation with the migration tables. Query
+  and Template Engine are recorded as new artifacts; Expression is binary
+  compatible; the intentional major-version breaks are documented.
+- Added `onfhir.libs.version` and changed every library-family dependency edge
+  to use it. Server-family dependencies continue to use `${project.version}`.
+  This makes the server parent ready for independent library versioning.
+- Added or updated all nine module READMEs and a root module catalog. The four
+  tool-like modules document functionality, configuration, limitations, and
+  examples. All local documentation links resolve; the library test reactor
+  passed 98 tests with zero failures or errors, including an executable
+  Template Engine README example.
+- Recorded the approved permanent disposition of `onfhir-event_2.13` as a
+  deliberately small server-only SPI. The `onfhir-core -> onfhir-kafka`
+  inversion remains explicit post-split architectural debt.
+- Added a disposable split-rehearsal script. The generated
+  `io.onfhir:onfhir-libs-parent` reactor installed all nine libraries to an
+  isolated Maven repository; a source-free Repofyr library boundary then
+  compiled and ran all 146 server-r4 tests against those artifacts with zero
+  failures or errors.
+- The forbidden source/resource scan, transitive Enforcer gate, license gate,
+  README link check, library reactor, isolated server-r4 suite, and
+  `git diff --check` passed. The approval required before Phase 5 relicensing
+  is recorded in `docs/release/library-relicensing-audit.md`.
+
+### Phase 5A - Physical Split, Licensing, And Staging Release
 
 Perform history extraction using `git filter-repo` only in a dedicated clone.
 Never run it in this working copy.
+
+Approved local layout:
+
+```text
+C:\srdc\codes\onfhir-io\
+|-- onfhir\       existing Git working copy; becomes the Repofyr repository
+`-- onfhir-libs\  new filtered Git repository for the reusable libraries
+```
+
+Create the filtered history in a disposable clone under `C:\tmp` before
+placing the validated result in the sibling `onfhir-libs` folder. The current
+working copy and its `.git` directory remain the Repofyr repository. Do not
+push a repository or publish artifacts without separate authorization.
 
 #### New library repository
 
@@ -598,7 +1050,7 @@ Never run it in this working copy.
   modules.
 - After audit approval, set root `LICENSE` to Apache-2.0, add `NOTICE`, update
   POM license metadata, and package license/notice files in published JARs.
-- Stage the proposed `4.0.0` release and verify its published POMs and resolved
+- Stage the approved `4.0.0` release and verify its published POMs and resolved
   dependency graphs.
 
 #### Repofyr repository
@@ -612,6 +1064,58 @@ Never run it in this working copy.
 **Exit criteria:** both repositories build independently from fresh checkouts;
 library staging contains correct licenses, sources, Javadocs/ScalaDocs, POMs,
 and signatures; Repofyr server-r4 tests pass against staged artifacts.
+
+### Phase 5B - Repofyr Maven And Package Namespace Migration
+
+Start this only after Phase 5A is green. The reusable libraries retain the
+`io.onfhir` group, existing artifact IDs, and `io.onfhir.*` packages. Rename
+only server-owned Repofyr code and artifacts; this is not a global text
+replacement because Repofyr continues to import `io.onfhir` library APIs.
+
+Approved Maven mapping:
+
+| Existing server coordinate | Repofyr coordinate |
+|---|---|
+| `io.onfhir:fhir-repository_2.13` | `io.repofyr:repofyr-parent` |
+| `io.onfhir:onfhir-event_2.13` | `io.repofyr:repofyr-event_2.13` |
+| `io.onfhir:onfhir-core_2.13` | `io.repofyr:repofyr-core_2.13` |
+| `io.onfhir:onfhir-operations_2.13` | `io.repofyr:repofyr-operations_2.13` |
+| `io.onfhir:onfhir-kafka_2.13` | `io.repofyr:repofyr-kafka_2.13` |
+| `io.onfhir:onfhir-server-r4_2.13` | `io.repofyr:repofyr-server-r4_2.13` |
+| `io.onfhir:onfhir-server-r5_2.13` | `io.repofyr:repofyr-server-r5_2.13` |
+| `io.onfhir:onfhir-server-stu3_2.13` | `io.repofyr:repofyr-server-stu3_2.13` |
+
+Rename module directories to match the new artifact names. Inventory every
+server-owned type before changing packages, then move it from `io.onfhir.*` to
+the corresponding `io.repofyr.*` namespace. Keep reusable contracts such as
+neutral HTTP models, FHIR configuration models, client APIs, FHIRPath, query,
+validation, and R4 library parsers under `io.onfhir.*`.
+
+Update Scala imports, reflection and plugin class names,
+`OperationDefinition.name` implementation paths, application resources,
+tests, fixtures, documentation, and migration tables. Audit event/serialization
+payloads for persisted or transmitted fully qualified class names.
+
+The first release under both new version lines is `4.0.0`:
+
+- reusable libraries: `io.onfhir:*:4.0.0`;
+- Repofyr server: `io.repofyr:*:4.0.0`;
+- Repofyr declares `onfhir.libs.version=4.0.0`.
+
+The matching initial number does not couple future releases; the library and
+server versions may diverge after `4.0.0`. The old `io.onfhir` server artifact
+line ends at 3.x; version 4 server artifacts use `io.repofyr` coordinates.
+
+Keep existing `onfhir.*` runtime configuration keys, MongoDB collection names,
+FHIR URLs, persistence identifiers, and other stored-data conventions during
+Phase 5B. Any such operational namespace migration requires a later,
+compatibility-focused phase.
+
+**Exit criteria:** all server modules use the approved `io.repofyr` Maven
+coordinates and server-owned packages; no reusable library coordinate or
+package changed; reflection/configuration references resolve; migration
+guidance covers every public server move; Repofyr builds only against staged
+`io.onfhir:*:4.0.0` artifacts; all server-r4 tests pass.
 
 ### Phase 6 - Consumer Migration And Release Chain
 
@@ -629,20 +1133,24 @@ These rows are planned contracts. Each implementation phase replaces
 
 ### 7.1 Module relocations
 
-| Public package/type | Old artifact | New artifact | Package change | Phase |
-|---|---|---|---|---|
-| `io.onfhir.api.client.*` - all 22 files | `onfhir-common_2.13` | `onfhir-client_2.13` | none | 1A |
-| `io.onfhir.event.*` | `onfhir-common_2.13` | `onfhir-event_2.13` | none | 1D |
-| `io.onfhir.util.InternalJsonMarshallers` | `onfhir-common_2.13` | `onfhir-event_2.13` | none | 1D |
-| `io.onfhir.audit.*` | `onfhir-common_2.13` | `onfhir-core_2.13` | none | 1D |
-| `io.onfhir.db.*` | `onfhir-common_2.13` | `onfhir-core_2.13` | none | 1D |
-| server authz runtime types listed in Phase 1D | `onfhir-common_2.13` | `onfhir-core_2.13` | none | 1D |
-| `AuthzConfig`, `AuditConfig`, `IFhirServerConfigurator`, `IndexConfigurator` | `onfhir-common_2.13` | `onfhir-core_2.13` | none | 1D |
-| `BaseFhirServerConfigurator` | `onfhir-config_2.13` | `onfhir-core_2.13` | none | 1D |
-| `IResourceSpecificValidator` | `onfhir-common_2.13` | `onfhir-core_2.13` | none | 1D |
-| `OnfhirConfig` | `onfhir-common_2.13` | `onfhir-core_2.13` | none | 1D |
-| `FhirQueryParser` | `onfhir-common_2.13` | `onfhir-query_2.13` | none | 1D |
-| `FHIRResultParameterResolver` | `onfhir-common_2.13` | `onfhir-query_2.13` | none | 1D |
+| Public package/type | Old artifact | New artifact | Package change | Phase | Status |
+|---|---|---|---|---|---|
+| `io.onfhir.api.client.*` - all 22 files | `onfhir-common_2.13` | `onfhir-client_2.13` | none | 1A | implemented 2026-08-03 |
+| `io.onfhir.event.*` | `onfhir-common_2.13` | `onfhir-event_2.13` | none | 1D | implemented 2026-08-03 |
+| `io.onfhir.util.InternalJsonMarshallers` | `onfhir-common_2.13` | `onfhir-event_2.13` | none | 1D | implemented 2026-08-03 |
+| `io.onfhir.audit.*` | `onfhir-common_2.13` | `onfhir-core_2.13` | none | 1D | implemented 2026-08-03 |
+| `io.onfhir.db.*` | `onfhir-common_2.13` | `onfhir-core_2.13` | none | 1D | implemented 2026-08-03 |
+| server authz runtime types listed in Phase 1D | `onfhir-common_2.13` | `onfhir-core_2.13` | none | 1D | implemented 2026-08-03 |
+| `AuthzConfig`, `AuditConfig`, `IFhirServerConfigurator`, `IndexConfigurator` | `onfhir-common_2.13` | `onfhir-core_2.13` | none | 1D | implemented 2026-08-03 |
+| `BaseFhirServerConfigurator` | `onfhir-config_2.13` | `onfhir-core_2.13` | none | 1D | implemented 2026-08-03 |
+| `IResourceSpecificValidator` | `onfhir-common_2.13` | `onfhir-core_2.13` | none | 1D | implemented 2026-08-03 |
+| `OnfhirConfig` | `onfhir-common_2.13` | `onfhir-core_2.13` | none | 1D | implemented 2026-08-03 |
+| `FhirQueryParser` | `onfhir-common_2.13` | `onfhir-query_2.13` | none | 1D | implemented 2026-08-03 |
+| `FHIRResultParameterResolver` | `onfhir-common_2.13` | `onfhir-query_2.13` | none | 1D | implemented 2026-08-03 |
+| all ten HTTP response exceptions listed in Phase 3.5 | `onfhir-common_2.13` | `onfhir-core_2.13` | none | 3.5 | implemented 2026-08-03 |
+| `io.onfhir.api.util.SubscriptionUtil` contract | `onfhir-common_2.13` | `onfhir-core_2.13` | none | 3.5 | implemented 2026-08-03 |
+| `io.onfhir.api.util.ImMemorySearchUtil` | `onfhir-common_2.13` | `onfhir-query_2.13` | none | 3.6 | implemented 2026-08-03 |
+| `io.onfhir.api.util.InMemoryPrefixModifierHandler` | `onfhir-common_2.13` | `onfhir-query_2.13` | none | 3.6 | implemented 2026-08-03 |
 
 Consumers relying on transitive availability from `onfhir-common` must add a
 direct dependency on the new owning artifact where applicable.
@@ -651,25 +1159,64 @@ direct dependency on the new owning artifact where applicable.
 
 | Old API/type | Planned replacement | Phase |
 |---|---|---|
-| Akka `Uri` in library signatures | `java.net.URI` | 2 |
-| Akka `DateTime` in library signatures | `java.time.Instant` | 2 |
-| Akka `StatusCode` | `io.onfhir.api.model.HttpStatus` | 2 |
-| Akka `HttpMethod` | `io.onfhir.api.model.HttpMethod` | 2 |
-| Akka `MediaType` / `ContentType` | neutral FHIR media/content models | 2 |
-| Akka conditional/header types | neutral ETag/date/forwarded models | 2 |
-| Akka `WWWAuthenticate` | `AuthenticateChallenge` | 2 |
-| `OnFhirNetworkClient(...)(implicit ActorSystem)` | constructor/factory without `ActorSystem` | 3 |
-| `FhirClientUtil(...)(implicit ActorSystem)` | factory without `ActorSystem` | 3 |
-| interceptor using Akka `HttpRequest` | interceptor using approved `ClientHttpRequest` | 3 |
-| existing Future methods with implicit `ExecutionContext` | retained unless separately approved | 3 |
+| `new FHIRSearchParameterValueParser(FhirServerConfig)` | `new FHIRSearchParameterValueParser(FhirServerConfig, FhirSearchHandling)` | 1C |
+| `new FhirQueryParser(FhirServerConfig)` | `new FhirQueryParser(FhirServerConfig, FhirSearchHandling)` | 1C |
+| `new XFhirQueryParser(FhirServerConfig, FhirPathEvaluator)` | `new XFhirQueryParser(FhirServerConfig, FhirSearchHandling, FhirPathEvaluator)` | 1C |
+| `new FHIRResultParameterResolver(FhirServerConfig)` | `new FHIRResultParameterResolver(FhirServerConfig, FhirResultDefaults)` | 1C |
+| `new SubscriptionUtil(FhirServerConfig)` | `new SubscriptionUtil(FhirServerConfig, FhirSubscriptionSettings, FhirSearchHandling)` | 1C |
+| `BundleRequestParser.parseBundleRequest(bundle, prefer, skip)` | `parseBundleRequest(bundle, FhirEndpointSettings, prefer, skip)` | 1C |
+| `BundleRequestParser.parseBundleRequestEntry(entry)` | `parseBundleRequestEntry(entry, FhirEndpointSettings)` | 1C |
+| `BundleRequestParser.parseUrl(uri)` | `parseUrl(uri, FhirEndpointSettings)` | 1C |
+| `FHIRRequest.initializeTransactionOrBatchRequest(resource, prefer)` | `initializeTransactionOrBatchRequest(resource, FhirEndpointSettings, prefer)` | 1C |
+| `FHIRUtil.resourceLocation(type, id)` | `resourceLocation(FhirEndpointSettings, type, id)` | 1C |
+| `FHIRUtil.resourceLocationWithVersion(type, id, version)` | `resourceLocationWithVersion(FhirEndpointSettings, type, id, version)` | 1C |
+| `FHIRUtil.getResourceContentByPreference(resource, prefer)` | `getResourceContentByPreference(resource, prefer, FhirReturnPreference)` | 1C |
+| `ImMemorySearchUtil.handleSimpleParameter(parameter, config, values)` | adds `FhirEndpointSettings` | 1C |
+| `ImMemorySearchUtil.handleCompositeParameter(parameter, config, values, configs)` | adds `FhirEndpointSettings` | 1C |
+| `new FhirContentValidator(..., resourceValidator)` | optional local endpoint in the validator context; server factory receives `FhirEndpointSettings` | 1C |
+| `IFhirVersionConfigurator.getFoundationResourceParser(complex, primitive)` | `getFoundationResourceParser(complex, primitive, FhirCapabilityDefaults)` | 1C |
+| `new R4Parser(complex, primitive)` | optional third `FhirCapabilityDefaults` argument; historical `Standard` remains the direct-constructor default | 1C |
+| `FHIRSearchParameterValueParser.parseSearchParametersFromUri/Entity(...)` | `new FHIRSearchParameterValueParserDirectives(parser).parseSearchParametersFromUri/Entity(...)` in `onfhir-core_2.13` | 1D |
+| `FHIRRequest` Akka `HttpMethod`, content type, ETag, date, and forwarded fields | `HttpMethod`, `FhirContentType`, `EntityTagCondition`, `Instant`, `ForwardedFor`, and `ForwardedHost` | 2B - implemented 2026-08-03 |
+| `FHIRResponse` / `FHIROperationResponse` Akka `StatusCode`, `Uri`, `DateTime`, and `WWWAuthenticate` fields | `HttpStatus`, `java.net.URI`, `Instant`, and `AuthenticateChallenge` | 2B - implemented 2026-08-03 |
+| `FHIRResponse.errorResponse(StatusCode, ...)` and authorization helpers using Akka challenges | helpers using `HttpStatus` and `AuthenticateChallenge` | 2B - implemented 2026-08-03 |
+| FHIR media and content constants/configuration using Akka `MediaType` / `ContentType` | `FhirMediaType` / `FhirContentType` | 2B - implemented 2026-08-03 |
+| `BundleRequestParser.parseUrl(akka.http.scaladsl.model.Uri, FhirEndpointSettings)` | `parseUrl(java.net.URI, FhirEndpointSettings)` | 2B - implemented 2026-08-03 |
+| `DateTimeUtil.parseHttpDateToDateTime(String): akka.http.scaladsl.model.DateTime` | `parseHttpDate(String): Instant`; compatibility method now also returns `Instant` | 2B - implemented 2026-08-03 |
+| `FHIRUtil` status/date signatures using Akka `StatusCode` / `DateTime` | signatures using `HttpStatus` / `Instant` | 2B - implemented 2026-08-03 |
+| Path and query internals using Akka `Uri.Query` | `OrderedQuery`, preserving order, duplicates, encoding, and absent versus empty values | 2B - implemented 2026-08-03 |
+| `IFhirAuditCreator` Akka `StatusCode` contract | `HttpStatus` | 2B - implemented 2026-08-03 |
+| `OnFhirNetworkClient(...)(implicit ActorSystem)` | constructor/factory with caller-owned implicit `ExecutionContext` | 3 - implemented 2026-08-03 |
+| `FhirClientUtil(...)(implicit ActorSystem)` | factory with caller-owned implicit `ExecutionContext` | 3 - implemented 2026-08-03 |
+| interceptor using Akka `HttpRequest` | interceptor using approved `ClientHttpRequest` | 3 - implemented 2026-08-03 |
+| existing Future methods with implicit `ExecutionContext` | retained | 3 - implemented 2026-08-03 |
+| `OnFhirNetworkClient` case-class `copy` / `unapply` surface | normal final class with factories and shared JDK transport | 3 - implemented 2026-08-03 |
+| `FhirReadRequestBuilder.ifModifiedSince(DateTime)` | `ifModifiedSince(Instant)` | 3 - implemented 2026-08-03 |
+| `FHIRHistoryBundle` history timestamps as Akka `DateTime` | history timestamps as `Instant` | 3 - implemented 2026-08-03 |
+| `BearerTokenInterceptorFromTokenEndpoint.getToken: Option[String]` | asynchronous `getToken(): Future[String]` with single-flight refresh | 3 - implemented 2026-08-03 |
+| `akka.http.client` and `akka.http.host-connection-pool` configuration | `onfhir.client.http` connect timeout, optional request timeout, and retry settings | 3 - implemented 2026-08-03 |
+| `BundleRequestParser` throwing `BadRequestException` / `NotFoundException` | `BundleRequestParsingException`; Core maps to HTTP 400 and Client wraps in `FhirClientException` | 3.5 - implemented 2026-08-03 |
+| `BaseFhirClient` missing resource type/id throwing `BadRequestException` | `FhirClientException` | 3.5 - implemented 2026-08-03 |
+| Common impossible states throwing `InternalServerException` | `IllegalStateException`; HTTP 500 exception remains in Core | 3.5 - implemented 2026-08-03 |
+| concrete `new SubscriptionUtil(config, settings, handling)` | release-specific `SubscriptionUtil` obtained from `IFhirServerConfigurator.getSubscriptionUtil(...)` | 3.5 - implemented 2026-08-03 |
 
 ### 7.3 Build and version contracts
 
 | Old contract | New contract | Phase |
 |---|---|---|
 | one parent `fhir-repository_2.13` for both families | Repofyr parent plus new `onfhir-libs-parent` | 5 |
-| all internal dependencies use `${project.version}` | Repofyr cross-repo edges use `${onfhir.libs.version}` | 5 |
+| all internal dependencies use `${project.version}` | library-family edges use `${onfhir.libs.version}`; server-family edges retain `${project.version}` | 4 - implemented 2026-08-03 |
 | one monorepo revision | independently versioned library and server releases | 5 |
+
+### 7.4 Server construction contracts
+
+| Old contract | New contract | Phase | Status |
+|---|---|---|---|
+| `KafkaEventProducer.props(FhirServerConfig)` plus companion-owned `KafkaConfig` loaded from `OnfhirConfig` | `KafkaEventProducer.props(KafkaConfig, FhirServerConfig, Boolean)` with all values supplied by `Onfhir` | 1B | implemented 2026-08-03 |
+| `new KafkaEventProducer(KafkaConfig, FhirServerConfig)` with subscription activation read from `OnfhirConfig` | `new KafkaEventProducer(KafkaConfig, FhirServerConfig, Boolean)` | 1B | implemented 2026-08-03 |
+| Phase 1B `KafkaEventProducer(..., Boolean)` subscription flag | `KafkaEventProducer(..., FhirSubscriptionSettings, FhirSearchHandling)` | 1C | implemented 2026-08-03 |
+| `new ResourceChecker(FhirServerConfig)` | `new ResourceChecker(FhirServerConfig, FhirEndpointSettings)` | 1C | implemented 2026-08-03 |
+| common-owned `SubscriptionUtil` instantiated directly by core and Kafka | core-owned contract selected by `IFhirServerConfigurator`; R4 implementation supplied by `onfhir-server-r4`; Kafka receives an injected neutral parser function | 3.5 | implemented 2026-08-03 |
 
 ## 8. Risks And Mitigations
 
@@ -691,6 +1238,9 @@ direct dependency on the new owning artifact where applicable.
    and same-change updates.
 9. **History rewrite damage.** Mitigation: filter only a dedicated clone and
    preserve the original Repofyr history.
+10. **FHIR release-specific subscription drift.** Mitigation: core owns only
+    orchestration and the strategy contract; each server release module owns
+    and tests its Subscription model and mechanism implementation.
 
 ## 9. Final Definition Of Done
 
@@ -713,15 +1263,7 @@ The split is complete only when all of the following are true:
 
 ## 10. Next Action
 
-Phase 0 is complete. In the next dedicated working session, begin only Phase
-1A:
-
-1. update the Status header to `Phase 1A in progress`;
-2. rerun and retain the Phase 0 forbidden-import baseline;
-3. move exactly the 22 client API Scala files from `onfhir-common` to
-   `onfhir-client` without changing their packages;
-4. add the planned `onfhir-config -> onfhir-client` dependency and update the
-   corresponding Migration Table row with the implemented result;
-5. run the Phase 1A compile, client, forbidden-import, and server-r4 gates.
-
-Do not include Phase 1B Kafka construction changes in that session.
+Phase 3.6 is complete. In the next dedicated working session, begin only Phase
+4: add release-hygiene automation and rehearse the library-only build and
+repository extraction without changing the monorepo's GPL license or filtering
+the original working copy.

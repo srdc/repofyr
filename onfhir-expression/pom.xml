@@ -11,6 +11,7 @@
     </parent>
 
     <artifactId>onfhir-expression_2.13</artifactId>
+    <properties><library.gates.skip>false</library.gates.skip></properties>
     <name>Module to handle FHIR expressions.</name>
 
     <packaging>jar</packaging>

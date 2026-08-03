@@ -1,5 +1,7 @@
 package io.onfhir.operation
 
+import io.onfhir.api.model.AkkaHttpModelAdapter._
+
 import java.util.UUID
 import akka.http.scaladsl.model.{DateTime, StatusCodes, Uri}
 import io.onfhir.api.{FHIR_PARAMETER_CATEGORIES, FHIR_PARAMETER_TYPES, Resource}
@@ -7,7 +9,7 @@ import io.onfhir.api.model._
 import io.onfhir.api.parsers.FHIRSearchParameterValueParser
 import io.onfhir.api.service.FHIROperationHandlerService
 import io.onfhir.api.util.FHIRUtil
-import io.onfhir.config.{FhirServerConfig, IFhirConfigurationManager}
+import io.onfhir.config.{FhirServerConfig, IFhirConfigurationManager, OnfhirConfig}
 import io.onfhir.db.ResourceManager
 import io.onfhir.exception._
 import io.onfhir.util.JsonFormatter._
@@ -112,7 +114,7 @@ class ExpandOperationHandler(fhirConfigurationManager:IFhirConfigurationManager)
               logger.debug("resource found, returning...")
               val fhirResponse = new FHIROperationResponse(
                 StatusCodes.OK, //HTTP Status code
-                Some(Uri(FHIRUtil.resourceLocationWithVersion(RESOURCE_VALUESET, rid, currentVersion))),
+                Some(Uri(FHIRUtil.resourceLocationWithVersion(OnfhirConfig.fhirEndpointSettings, RESOURCE_VALUESET, rid, currentVersion))),
                 Some(lastModified), //HTTP Last-Modified header
                 Some("" + currentVersion)) //HTTP Etag header
 

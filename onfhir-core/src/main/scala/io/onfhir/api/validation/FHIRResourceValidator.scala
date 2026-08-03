@@ -76,7 +76,12 @@ class FHIRResourceValidator(fhirConfigurationManager: IFhirConfigurationManager)
             .sequence(
               profileChainsToValidate
                 .map(pc => {
-                  val contentValidator = FhirContentValidator.apply(fhirConfigurationManager.fhirConfig, pc.head.url, new ReferenceResolver(fhirConfigurationManager, resource, bundle), this)
+                  val contentValidator = FhirContentValidator.apply(
+                    fhirConfigurationManager.fhirConfig,
+                    pc.head.url,
+                    new ReferenceResolver(fhirConfigurationManager, resource, bundle),
+                    this,
+                    OnfhirConfig.fhirEndpointSettings)
                   contentValidator
                     .validateComplexContentAgainstProfile(pc, resource, parentPath)
                     .map(

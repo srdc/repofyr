@@ -1,5 +1,7 @@
 package io.onfhir.api.endpoint
 
+import io.onfhir.api.model.AkkaHttpModelAdapter._
+
 import akka.http.scaladsl.model.headers.`If-Match`
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directives, Route}
@@ -30,7 +32,7 @@ trait FHIRPatchEndpoint {
           pathPrefix(RESOURCE_TYPE_REGEX / RESOURCE_ID_REGEX) { (_type, _id) =>
             pathEndOrSingleSlash {
               //Create the FHIR request object
-              fhirRequest.initializePatchRequest(_type, Some(_id), ifMatch, prefer)
+              fhirRequest.initializePatchRequest(_type, Some(_id), ifMatch.map(toNeutralEntityTagCondition), prefer)
               entity(as[Resource]) { resource =>
                 fhirRequest.resource = Some(resource)
                 //Try to resolve target FHIR resource
@@ -49,7 +51,7 @@ trait FHIRPatchEndpoint {
             pathPrefix(RESOURCE_TYPE_REGEX) { _type =>
               pathEndOrSingleSlash {
                 //Create the FHIR request object
-                fhirRequest.initializePatchRequest(_type, None, ifMatch, prefer)
+                fhirRequest.initializePatchRequest(_type, None, ifMatch.map(toNeutralEntityTagCondition), prefer)
                 Directives.parameterMultiMap{ searchParameters =>
                   //Put the parameters and content into the FHIR Request
                   fhirRequest.queryParams = searchParameters

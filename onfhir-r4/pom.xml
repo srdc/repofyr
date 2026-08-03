@@ -11,6 +11,7 @@
     </parent>
 
     <artifactId>onfhir-r4_2.13</artifactId>
+    <properties><library.gates.skip>false</library.gates.skip></properties>
     <name>FHIR R4 implementation</name>
 
     <packaging>jar</packaging>

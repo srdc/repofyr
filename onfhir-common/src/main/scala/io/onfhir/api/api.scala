@@ -1,6 +1,6 @@
 package io.onfhir
 
-import akka.http.scaladsl.model.{ContentType, HttpCharsets, MediaType}
+import io.onfhir.api.model.{FhirContentType, FhirMediaType}
 import io.onfhir.api.util.FHIRUtil
 import org.json4s.JsonAST.JObject
 
@@ -643,17 +643,17 @@ package object api {
   }
 
   object FHIR_MEDIA_TYPES {
-    val FHIR_JSON_MEDIA_TYPE = MediaType.applicationWithOpenCharset("fhir+json")
-    val FHIR_XML_MEDIA_TYPE = MediaType.applicationWithOpenCharset("fhir+xml")
-    val FHIR_XML_PATCH_MEDIA_TYPE = MediaType.applicationWithOpenCharset("xml-patch+xml")
-    val FHIR_JSON_PATCH_MEDIA_TYPE = MediaType.applicationWithOpenCharset("json-patch+json")
+    val FHIR_JSON_MEDIA_TYPE = FhirMediaType.application("fhir+json")
+    val FHIR_XML_MEDIA_TYPE = FhirMediaType.application("fhir+xml")
+    val FHIR_XML_PATCH_MEDIA_TYPE = FhirMediaType.application("xml-patch+xml")
+    val FHIR_JSON_PATCH_MEDIA_TYPE = FhirMediaType.application("json-patch+json")
   }
 
   object  FHIR_CONTENT_TYPES {
-    val FHIR_JSON_CONTENT_TYPE = ContentType.apply(FHIR_MEDIA_TYPES.FHIR_JSON_MEDIA_TYPE, HttpCharsets.`UTF-8`)
-    val FHIR_XML_CONTENT_TYPE = ContentType.apply(FHIR_MEDIA_TYPES.FHIR_XML_MEDIA_TYPE, HttpCharsets.`UTF-8`)
-    val FHIR_XML_PATCH_CONTENT_TYPE = ContentType.apply(FHIR_MEDIA_TYPES.FHIR_XML_PATCH_MEDIA_TYPE, HttpCharsets.`UTF-8`)
-    val FHIR_JSON_PATCH_CONTENT_TYPE = ContentType.apply(FHIR_MEDIA_TYPES.FHIR_JSON_PATCH_MEDIA_TYPE, HttpCharsets.`UTF-8`)
+    val FHIR_JSON_CONTENT_TYPE = FhirContentType(FHIR_MEDIA_TYPES.FHIR_JSON_MEDIA_TYPE, Some("UTF-8"))
+    val FHIR_XML_CONTENT_TYPE = FhirContentType(FHIR_MEDIA_TYPES.FHIR_XML_MEDIA_TYPE, Some("UTF-8"))
+    val FHIR_XML_PATCH_CONTENT_TYPE = FhirContentType(FHIR_MEDIA_TYPES.FHIR_XML_PATCH_MEDIA_TYPE, Some("UTF-8"))
+    val FHIR_JSON_PATCH_CONTENT_TYPE = FhirContentType(FHIR_MEDIA_TYPES.FHIR_JSON_PATCH_MEDIA_TYPE, Some("UTF-8"))
   }
 
 

@@ -2,7 +2,7 @@ package io.onfhir.api.validation
 
 import io.onfhir.api.FHIR_ROOT_URL_FOR_DEFINITIONS
 import io.onfhir.api.model.{FhirReference, OutcomeIssue}
-import io.onfhir.config.BaseFhirConfig
+import io.onfhir.config.{BaseFhirConfig, FhirEndpointSettings}
 import org.json4s.JsonAST.JObject
 
 import scala.collection.mutable
@@ -18,7 +18,8 @@ abstract class AbstractFhirContentValidator(
                                              val fhirConfig:BaseFhirConfig,
                                              val profileUrl:String,
                                              val referenceResolver:Option[IReferenceResolver] = None,
-                                             val terminologyValidator: IFhirTerminologyValidator
+                                             val terminologyValidator: IFhirTerminologyValidator,
+                                             val localEndpoint: Option[FhirEndpointSettings] = None
                                            ) {
   //Chain of profiles for this profile, where parents are on the right in hierarchy order e.g. MyObservation2 -> MyObservation -> Observation -> DomainResource -> Resource
   val rootProfileChain: Seq[ProfileRestrictions] = fhirConfig.findProfileChainByCanonical(profileUrl)

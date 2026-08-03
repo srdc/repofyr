@@ -1,10 +1,12 @@
 package io.onfhir.r4.config
 
 import io.onfhir.api.parsers.IFhirFoundationResourceParser
+import io.onfhir.api.util.SubscriptionUtil
 import io.onfhir.audit.IFhirAuditCreator
 import io.onfhir.config._
 import io.onfhir.r4.audit.R4AuditCreator
 import io.onfhir.r4.parsers.R4Parser
+import io.onfhir.r4.subscription.R4SubscriptionUtil
 
 
 
@@ -19,6 +21,13 @@ class FhirR4Configurator extends BaseFhirServerConfigurator {
 
   def getAuditCreator(auditConfig: AuditConfig):IFhirAuditCreator = new R4AuditCreator()
 
+  override def getSubscriptionUtil(
+      fhirConfig: FhirServerConfig,
+      subscriptionSettings: FhirSubscriptionSettings,
+      defaultSearchHandling: FhirSearchHandling
+  ): SubscriptionUtil =
+    new R4SubscriptionUtil(fhirConfig, subscriptionSettings, defaultSearchHandling)
+
 
   /**
    * Return the parser for R4
@@ -26,6 +35,6 @@ class FhirR4Configurator extends BaseFhirServerConfigurator {
    * @param primitiveTypes  List of FHIR primitive types defined in the standard
    *  @return
    */
-  def getFoundationResourceParser(complexTypes:Set[String], primitiveTypes:Set[String]):IFhirFoundationResourceParser =
-    new R4Parser(complexTypes, primitiveTypes)
+  def getFoundationResourceParser(complexTypes:Set[String], primitiveTypes:Set[String], capabilityDefaults: FhirCapabilityDefaults):IFhirFoundationResourceParser =
+    new R4Parser(complexTypes, primitiveTypes, capabilityDefaults)
 }

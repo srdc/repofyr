@@ -1,10 +1,9 @@
 package io.onfhir.api.util
 
-import akka.http.scaladsl.model._
 import io.onfhir.api._
 import io.onfhir.api.model._
 import io.onfhir.api.validation.ProfileRestrictions
-import io.onfhir.config.OnfhirConfig
+import io.onfhir.config.{FhirEndpointSettings, FhirReturnPreference}
 import io.onfhir.util.JsonFormatter.formats
 
 import java.time.Instant
@@ -43,8 +42,8 @@ object FHIRUtil {
    * @param _id   id of the resource
    * @return URL of the resource
    */
-  def resourceLocation(_type: String, _id: String): String = {
-    OnfhirConfig.fhirRootUrl + "/" + _type + "/" + _id
+  def resourceLocation(endpointSettings: FhirEndpointSettings, _type: String, _id: String): String = {
+    endpointSettings.rootUrl + "/" + _type + "/" + _id
   }
 
   /**
@@ -55,8 +54,8 @@ object FHIRUtil {
    * @param _vid  version id of the resource
    * @return URL of the resource
    */
-  def resourceLocationWithVersion(_type: String, _id: String, _vid: Long): String = {
-    OnfhirConfig.fhirRootUrl + "/" + _type + "/" + _id + "/" + FHIR_HTTP_OPTIONS.HISTORY + "/" + _vid
+  def resourceLocationWithVersion(endpointSettings: FhirEndpointSettings, _type: String, _id: String, _vid: Long): String = {
+    endpointSettings.rootUrl + "/" + _type + "/" + _id + "/" + FHIR_HTTP_OPTIONS.HISTORY + "/" + _vid
   }
 
   /**
@@ -82,7 +81,7 @@ object FHIRUtil {
    * @param statusCode Possible HttpResponse status for this operation
    * @return
    */
-  def createEmptyResourceForDelete(_type: String, _id: String, _vid: Long, lastModified: DateTime, statusCode: StatusCode): Resource = {
+  def createEmptyResourceForDelete(_type: String, _id: String, _vid: Long, lastModified: Instant, statusCode: HttpStatus): Resource = {
     val resourceForDeletion =
       (FHIR_COMMON_FIELDS.RESOURCE_TYPE -> _type) ~
         (FHIR_COMMON_FIELDS.ID -> _id) ~
@@ -159,11 +158,11 @@ object FHIRUtil {
    * @param httpMethod
    * @param httpStatusCode
    */
-  def populateResourceWithExtraFields(resource: Resource, httpMethod: String, httpStatusCode: StatusCode): Resource = {
+  def populateResourceWithExtraFields(resource: Resource, httpMethod: String, httpStatusCode: HttpStatus): Resource = {
     val extra =
       //(FHIR_EXTRA_FIELDS.CURRENT -> true) ~
       (FHIR_EXTRA_FIELDS.METHOD -> httpMethod) ~
-        (FHIR_EXTRA_FIELDS.STATUS_CODE -> httpStatusCode.intValue.toString)
+        (FHIR_EXTRA_FIELDS.STATUS_CODE -> httpStatusCode.intValue().toString)
 
     resource ~ extra
   }
@@ -209,8 +208,8 @@ object FHIRUtil {
    * @param prefer   value of the prefer header
    * @return a string in json format
    */
-  def getResourceContentByPreference(resource: Resource, prefer: Option[String]): Option[Resource] = {
-    prefer.getOrElse(OnfhirConfig.fhirDefaultReturnPreference) match {
+  def getResourceContentByPreference(resource: Resource, prefer: Option[String], defaultReturnPreference: FhirReturnPreference): Option[Resource] = {
+    prefer.getOrElse(defaultReturnPreference.code) match {
       case preferHeader if preferHeader.contains(FHIR_HTTP_OPTIONS.FHIR_RETURN_MINIMAL) => None //if return=minimal send empty string
       case preferHeader if preferHeader.contains(FHIR_HTTP_OPTIONS.FHIR_RETURN_REPRESENTATION) => Some(resource) //resource.clone() //if return=representation send whole resource back
       case preferHeader if preferHeader.contains(FHIR_HTTP_OPTIONS.FHIR_RETURN_OPERATION_OUTCOME) => Some(FHIRResponse.createOperationOutcomeWithSuccess())
@@ -277,7 +276,7 @@ object FHIRUtil {
    * @param resource
    * @return
    */
-  def extractBaseMetaFields(resource: Resource): (String, Long, DateTime) = {
+  def extractBaseMetaFields(resource: Resource): (String, Long, Instant) = {
     (
       extractIdFromResource(resource),
       extractVersionFromResource(resource),
@@ -337,7 +336,7 @@ object FHIRUtil {
    * @param resource
    * @return
    */
-  def extractLastUpdatedFromResource(resource: Resource): DateTime = {
+  def extractLastUpdatedFromResource(resource: Resource): Instant = {
     val lastUpdatedString = (resource \ FHIR_COMMON_FIELDS.META \ FHIR_COMMON_FIELDS.LAST_UPDATED).extract[String]
     DateTimeUtil.parseInstant(lastUpdatedString).get
   }

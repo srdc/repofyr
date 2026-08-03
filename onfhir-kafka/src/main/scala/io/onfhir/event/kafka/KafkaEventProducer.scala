@@ -2,8 +2,8 @@ package io.onfhir.event.kafka
 
 import java.util.Properties
 import akka.actor.{Actor, Props}
-import io.onfhir.api.util.SubscriptionUtil
-import io.onfhir.config.{FhirServerConfig, OnfhirConfig}
+import io.onfhir.api.Resource
+import io.onfhir.api.model.FhirSubscription
 import io.onfhir.event.{FhirDataEvent, ResourceCreated, ResourceDeleted, ResourceUpdated}
 import io.onfhir.util.InternalJsonMarshallers
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord}
@@ -12,9 +12,14 @@ import org.slf4j.{Logger, LoggerFactory}
 /**
   * Kafka event producer for FHIR events
   * @param kafkaConfig Configuration for Kafka integration
-  * @param fhirConfig FHIR server configuration
+  * @param fhirSubscriptionActive Whether Subscription events use the dedicated topic
+  * @param parseFhirSubscription Release-specific Subscription parser injected by core
   */
-class KafkaEventProducer(kafkaConfig:KafkaConfig, fhirConfig:FhirServerConfig) extends Actor {
+class KafkaEventProducer(
+  kafkaConfig: KafkaConfig,
+  fhirSubscriptionActive: Boolean,
+  parseFhirSubscription: Resource => FhirSubscription
+) extends Actor {
   private val logger:Logger = LoggerFactory.getLogger("KafkaEventProducer")
   /**
     * Properties for Kafka connection
@@ -44,7 +49,7 @@ class KafkaEventProducer(kafkaConfig:KafkaConfig, fhirConfig:FhirServerConfig) e
     */
   override def receive: Receive = {
     case fhirEvent: FhirDataEvent =>
-      if(fhirEvent.rtype == "Subscription" && OnfhirConfig.fhirSubscriptionActive)
+      if(fhirEvent.rtype == "Subscription" && fhirSubscriptionActive)
         handleSubscription(fhirEvent)
       else
         sendString(kafkaConfig.kafkaTopic, fhirEvent.getTopicKey(),  InternalJsonMarshallers.serializeToJson(fhirEvent))
@@ -58,10 +63,10 @@ class KafkaEventProducer(kafkaConfig:KafkaConfig, fhirConfig:FhirServerConfig) e
   def handleSubscription(event:FhirDataEvent) = {
        event match {
          case rc:ResourceCreated =>
-           val parsedSubscription = new SubscriptionUtil(fhirConfig).parseFhirSubscription(rc.resource)
+           val parsedSubscription = parseFhirSubscription(rc.resource)
            sendString(kafkaConfig.kafkaSubscriptionTopic, rc.rid, InternalJsonMarshallers.serializeToJson(parsedSubscription))
          case ru:ResourceUpdated =>
-           val parsedSubscription = new SubscriptionUtil(fhirConfig).parseFhirSubscription(ru.resource)
+           val parsedSubscription = parseFhirSubscription(ru.resource)
            sendString(kafkaConfig.kafkaSubscriptionTopic, ru.rid, InternalJsonMarshallers.serializeToJson(parsedSubscription))
          case rd:ResourceDeleted =>
            sendString(kafkaConfig.kafkaSubscriptionTopic, rd.rid, "")
@@ -87,12 +92,16 @@ class KafkaEventProducer(kafkaConfig:KafkaConfig, fhirConfig:FhirServerConfig) e
 object KafkaEventProducer {
   final val ACTOR_NAME = "kafka-event-producer"
 
-  lazy val kafkaConfig = new KafkaConfig(OnfhirConfig.config)
-
   /**
    * Generate the actor
-   * @param fhirConfig
+   * @param kafkaConfig
+   * @param fhirSubscriptionActive Whether Subscription events use the dedicated topic
+   * @param parseFhirSubscription Release-specific Subscription parser
    * @return
    */
-  def props(fhirConfig:FhirServerConfig) = Props(new KafkaEventProducer(kafkaConfig, fhirConfig))
+  def props(
+    kafkaConfig: KafkaConfig,
+    fhirSubscriptionActive: Boolean,
+    parseFhirSubscription: Resource => FhirSubscription
+  ): Props = Props(new KafkaEventProducer(kafkaConfig, fhirSubscriptionActive, parseFhirSubscription))
 }

@@ -1,8 +1,9 @@
 package io.onfhir.client.util
 
-import akka.actor.ActorSystem
 import io.onfhir.client.OnFhirNetworkClient
 import io.onfhir.client.model.{BasicAuthenticationSettings, BearerTokenAuthorizationSettings, FixedTokenAuthenticationSettings, IFhirRepositorySecuritySettings}
+
+import scala.concurrent.ExecutionContext
 
 object FhirClientUtil {
   /**
@@ -16,12 +17,11 @@ object FhirClientUtil {
    *                           - `BearerTokenAuthorizationSettings` for OAuth2/OpenID Connect bearer tokens.
    *                           - `BasicAuthenticationSettings` for basic username/password authentication.
    *                           - `FixedTokenAuthenticationSettings` for fixed token-based authentication.
-   * @param actorSystem      The Akka ActorSystem, provided implicitly, for handling the underlying
-   *                         network operations and asynchronous behavior.
+   * @param executionContext Execution context used for asynchronous client work.
    * @return A configured `OnFhirNetworkClient` ready for use.
    */
   def createOnFhirClient(fhirRepoUrl: String, securitySettings: Option[IFhirRepositorySecuritySettings] = None)
-                        (implicit actorSystem: ActorSystem): OnFhirNetworkClient = {
+                        (implicit executionContext: ExecutionContext): OnFhirNetworkClient = {
     // Create a basic client with the provided FHIR repository URL.
     val client = OnFhirNetworkClient.apply(fhirRepoUrl)
 

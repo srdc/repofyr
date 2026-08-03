@@ -3,7 +3,7 @@ package io.onfhir.expression
 import io.onfhir.api.{FHIR_PARAMETER_CATEGORIES, FHIR_SEARCH_RESULT_PARAMETERS}
 import io.onfhir.api.model.Parameter
 import io.onfhir.api.parsers.FHIRSearchParameterValueParser
-import io.onfhir.config.FhirServerConfig
+import io.onfhir.config.{FhirSearchHandling, FhirServerConfig}
 import io.onfhir.exception.InvalidParameterException
 import io.onfhir.path.FhirPathEvaluator
 import org.json4s.JsonAST.{JNothing, JValue}
@@ -15,12 +15,14 @@ import org.json4s.JsonAST.{JNothing, JValue}
  *        Observation?date=lt2026-02-27&code=http://loinc.org|5384-4,http://loinc.org|5382-4
  *
  * @param fhirServerConfig    Target FHIR server configuration
+ * @param defaultSearchHandling Handling used when the query has no request-level override
  * @param fhirPathEvaluator   FHIR Path evaluator for placeholder resolution
  */
 class XFhirQueryParser(fhirServerConfig: FhirServerConfig,
+                       defaultSearchHandling: FhirSearchHandling,
                        fhirPathEvaluator: FhirPathEvaluator) {
 
-  private val fhirQueryParser = new FHIRSearchParameterValueParser(fhirServerConfig)
+  private val fhirQueryParser = new FHIRSearchParameterValueParser(fhirServerConfig, defaultSearchHandling)
 
   /**
    * Parse/validate a given x-fhir-query statement against the server config by resolving the FHIRPath expressions in the placeholders

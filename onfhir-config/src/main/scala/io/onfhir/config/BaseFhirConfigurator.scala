@@ -52,7 +52,10 @@ abstract class BaseFhirConfigurator extends IFhirVersionConfigurator {
     fhirConfig.FHIR_PRIMITIVE_TYPES = allTypes.filter(_.head.isLower).toSet
     fhirConfig.FHIR_RESOURCE_TYPES = baseResourceProfileResources.flatMap(getTypeFromStructureDefinition).toSet
     //Get the parser for parsing FHIR foundation resources
-    val foundationResourceParser = getFoundationResourceParser(fhirConfig.FHIR_COMPLEX_TYPES, fhirConfig.FHIR_PRIMITIVE_TYPES)
+    val foundationResourceParser = getFoundationResourceParser(
+      fhirConfig.FHIR_COMPLEX_TYPES,
+      fhirConfig.FHIR_PRIMITIVE_TYPES,
+      FhirCapabilityDefaults.Standard)
 
     logger.info("Reading FHIR foundation resources to start configuration of onFHIR server ...")
     //Read the StructureDefinitions for all supported profiles

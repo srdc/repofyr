@@ -1,10 +1,12 @@
 package io.onfhir.api.service
 
-import akka.http.scaladsl.model.headers.`If-Match`
+import io.onfhir.api.model.AkkaHttpModelAdapter._
+
 import akka.http.scaladsl.model.{StatusCodes, Uri}
 import io.onfhir.api._
-import io.onfhir.api.model.{FHIRRequest, FHIRResponse, OutcomeIssue, Parameter}
+import io.onfhir.api.model.{EntityTagCondition, FHIRRequest, FHIRResponse, OutcomeIssue, Parameter}
 import io.onfhir.config.FhirConfigurationManager.fhirConfig
+import io.onfhir.config.OnfhirConfig
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.api.validation.FHIRApiValidator
 import io.onfhir.authz.AuthzContext
@@ -55,7 +57,7 @@ class FHIRUpdateService(transactionSession: Option[TransactionSession] = None) e
     * @param _type      Resource type
     * @param _id        Resource id
     */
-  private def validateUpdateInteraction(resource: Resource, _type:String, _id:String, ifmatch:Option[`If-Match`]):Future[Unit] = {
+  private def validateUpdateInteraction(resource: Resource, _type:String, _id:String, ifmatch:Option[EntityTagCondition]):Future[Unit] = {
     //1.1) Validate if "update" is supported for Resource Type
     FHIRApiValidator.validateInteractionOnResourceType(FHIR_INTERACTIONS.UPDATE, _type)
     //1.2) Check the id field and id in URL (e.g. is matching, conformant to ID format)
@@ -99,7 +101,7 @@ class FHIRUpdateService(transactionSession: Option[TransactionSession] = None) e
   private def conditionalUpdateResource(resource: Resource,
                                         _type:String,
                                         searchParameters:List[Parameter],
-                                        ifMatch:Option[`If-Match`],
+                                        ifMatch:Option[EntityTagCondition],
                                         prefer:Option[String],
                                         testUpdate:Boolean = false
                                         ) : Future[FHIRResponse] = {
@@ -190,7 +192,7 @@ class FHIRUpdateService(transactionSession: Option[TransactionSession] = None) e
                      oldTargetResource:Option[Resource],
                      _type:String,
                      _id:String,
-                     ifMatch:Option[`If-Match`],
+                     ifMatch:Option[EntityTagCondition],
                      prefer:Option[String],
                      testUpdate:Boolean = false) : Future[FHIRResponse] = {
     logger.debug(s"requesting 'update' for ${_type} with ${_id}...")
@@ -238,8 +240,8 @@ class FHIRUpdateService(transactionSession: Option[TransactionSession] = None) e
             case (newId, newVersion, lastModified, createdResource) =>
               FHIRResponse(
                 StatusCodes.Created ,
-                FHIRUtil.getResourceContentByPreference(createdResource, prefer), //HTTP Body
-                Some(Uri(FHIRUtil.resourceLocationWithVersion(rtype, newId, newVersion))), //HTTP Location header
+                FHIRUtil.getResourceContentByPreference(createdResource, prefer, OnfhirConfig.fhirRequestDefaults.returnPreference), //HTTP Body
+                Some(Uri(FHIRUtil.resourceLocationWithVersion(OnfhirConfig.fhirEndpointSettings, rtype, newId, newVersion))), //HTTP Location header
                 Some(lastModified), //HTTP Last-Modified header
                 Some(""+newVersion) //HTTP ETag header
               )
@@ -254,8 +256,8 @@ class FHIRUpdateService(transactionSession: Option[TransactionSession] = None) e
             case (newVersion, lastModified, updatedResource) =>
               FHIRResponse(
                 if(ov._1 > 0 && !wasDeleted) StatusCodes.OK else StatusCodes.Created,
-                FHIRUtil.getResourceContentByPreference(updatedResource, prefer), //HTTP Body
-                Some(Uri(FHIRUtil.resourceLocationWithVersion(rtype, rid.get, newVersion))), //HTTP Location header
+                FHIRUtil.getResourceContentByPreference(updatedResource, prefer, OnfhirConfig.fhirRequestDefaults.returnPreference), //HTTP Body
+                Some(Uri(FHIRUtil.resourceLocationWithVersion(OnfhirConfig.fhirEndpointSettings, rtype, rid.get, newVersion))), //HTTP Location header
                 Some(lastModified), //HTTP Last-Modified header
                 Some(""+newVersion) //HTTP ETag header
               )
@@ -278,8 +280,8 @@ class FHIRUpdateService(transactionSession: Option[TransactionSession] = None) e
         case (lastModified, updatedResource) =>
           FHIRResponse(
             StatusCodes.OK,
-            FHIRUtil.getResourceContentByPreference(updatedResource, prefer), //HTTP Body
-            Some(Uri(FHIRUtil.resourceLocation(rtype, rid.get))), //HTTP Location header
+            FHIRUtil.getResourceContentByPreference(updatedResource, prefer, OnfhirConfig.fhirRequestDefaults.returnPreference), //HTTP Body
+            Some(Uri(FHIRUtil.resourceLocation(OnfhirConfig.fhirEndpointSettings, rtype, rid.get))), //HTTP Location header
             Some(lastModified), //HTTP Last-Modified header
             None //HTTP ETag header
           )

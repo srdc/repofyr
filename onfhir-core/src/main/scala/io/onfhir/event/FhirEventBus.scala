@@ -2,13 +2,13 @@ package io.onfhir.event
 
 import akka.actor.ActorRef
 import io.onfhir.api.util.ResourceChecker
-import io.onfhir.config.FhirServerConfig
+import io.onfhir.config.{FhirServerConfig, OnfhirConfig}
 
 /**
   * FHIR Event Bus to handle event subscription for actors
   */
 class FhirEventBus(fhirConfig: FhirServerConfig) extends IFhirEventBus {
-  val resourceChecker = new ResourceChecker(fhirConfig)
+  val resourceChecker = new ResourceChecker(fhirConfig, OnfhirConfig.fhirEndpointSettings)
   /**
     * For ordering subscriptions
     * @param a

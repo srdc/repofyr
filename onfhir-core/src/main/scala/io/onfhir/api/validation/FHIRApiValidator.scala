@@ -2,9 +2,7 @@ package io.onfhir.api.validation
 
 import java.net.{URI, URL}
 
-import akka.http.scaladsl.model.DateTime
-import akka.http.scaladsl.model.StatusCodes.ClientError
-import akka.http.scaladsl.model.headers.{EntityTag, `If-Match`, `If-Modified-Since`, `If-None-Match`}
+import io.onfhir.api.model.{AnyEntityTag, EntityTagCondition, EntityTagList}
 import io.onfhir.api._
 import io.onfhir.api.model.{FHIRRequest, FHIRResponse, OutcomeIssue, Parameter}
 import io.onfhir.api.service.FHIRSubscriptionBusinessValidator
@@ -230,7 +228,7 @@ object FHIRApiValidator {
     * @param rtype
     * @param ifmatch
     */
-  def validateVersionedUpdate(rtype:String, ifmatch:Option[`If-Match`]):Unit = {
+  def validateVersionedUpdate(rtype:String, ifmatch:Option[EntityTagCondition]):Unit = {
     //If versioned update is forced and ifMatch header is empty
     if(fhirConfig.resourceConfigurations.apply(rtype).versioning == FHIR_VERSIONING_OPTIONS.VERSIONED_UPDATE && ifmatch.isEmpty)
       throw new BadRequestException(Seq(
@@ -463,11 +461,10 @@ def validateSearchParameters(_type:String, parameters:Set[String], preferHeader:
     * @param ifMatch The version (as Option) sent by the client
     * @param currentVersion Current version of a resource to be checked agains
     */
-  def validateIfMatch(ifMatch:Option[`If-Match`], currentVersion:Long):Unit =  {
+  def validateIfMatch(ifMatch:Option[EntityTagCondition], currentVersion:Long):Unit =  {
     if(ifMatch.isDefined){
-      val version = ifMatch.get.m.toString()
-      if(version.equals(EntityTag(currentVersion.toString, weak = false).toString) ||
-         version.equals(EntityTag(currentVersion.toString, weak = true).toString())){
+      val version = ifMatch.get.render
+      if(entityTagConditionMatches(ifMatch.get, currentVersion)){
         //allow user to proceed
       }
       //if requested version does not match with the current version send 409 Conflict
@@ -494,11 +491,9 @@ def validateSearchParameters(_type:String, parameters:Set[String], preferHeader:
     * @param ifNoneMatch The version (as Option) sent by the client
     * @param currentVersion Current version of a resource to be checked agains
     */
-  def validateIfNoneMatch(ifNoneMatch:Option[`If-None-Match`], currentVersion:Long):Unit = {
+  def validateIfNoneMatch(ifNoneMatch:Option[EntityTagCondition], currentVersion:Long):Unit = {
     if(ifNoneMatch.isDefined){
-      val version = ifNoneMatch.get.m.toString
-      if(version.equals(EntityTag(currentVersion.toString, weak = false).toString) ||
-         version.equals(EntityTag(currentVersion.toString, weak = true).toString())){
+      if(entityTagConditionMatches(ifNoneMatch.get, currentVersion)){
         throw new NotModifiedException()
       }
     }
@@ -510,14 +505,20 @@ def validateSearchParameters(_type:String, parameters:Set[String], preferHeader:
     * @param ifModifiedSince The version (as Option) sent by the client
     * @param lastUpdated Current version of a resource to be checked against
     */
-  def validateIfModifiedSince(ifModifiedSince:Option[`If-Modified-Since`], lastUpdated:DateTime):Unit = {
+  def validateIfModifiedSince(ifModifiedSince:Option[java.time.Instant], lastUpdated:java.time.Instant):Unit = {
     if(ifModifiedSince.isDefined){
-      val since = ifModifiedSince.get.date.compare(lastUpdated)
+      val since = ifModifiedSince.get.compareTo(lastUpdated)
       if(since >= 0) {
         throw new NotModifiedException()
       }
     }
   }
+
+  private def entityTagConditionMatches(condition: EntityTagCondition, currentVersion: Long): Boolean =
+    condition match {
+      case AnyEntityTag => true
+      case EntityTagList(tags) => tags.exists(_.value == currentVersion.toString)
+    }
 
   /**
     * Checks the compartment type based on the resource type to ensure the

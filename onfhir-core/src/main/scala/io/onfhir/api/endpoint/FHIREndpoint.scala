@@ -6,6 +6,7 @@ import akka.http.scaladsl.server.Directives._
 import io.onfhir.Onfhir
 import io.onfhir.api.FHIR_HTTP_OPTIONS
 import io.onfhir.api.model.FHIRRequest
+import io.onfhir.api.model.AkkaHttpModelAdapter._
 import io.onfhir.api.util.{FHIRServerUtil, FHIRUtil}
 import io.onfhir.server.ErrorHandler.fhirErrorHandler
 import io.onfhir.server.FHIRRejectionHandler.fhirRejectionHandler
@@ -70,10 +71,10 @@ trait FHIREndpoint
                                   FHIRRequest(
                                     interaction = "unknown",
                                     requestUri = requestUri.toString(),
-                                    xForwardedFor = xForwardedFor,
-                                    xForwardedHost = xForwardedHost,
+                                    xForwardedFor = xForwardedFor.map(toNeutralForwardedFor),
+                                    xForwardedHost = xForwardedHost.map(toNeutralForwardedHost),
                                     xIntermediary = xIntermediary,
-                                    contentType = contentType.map(ct => ct.contentType)
+                                    contentType = contentType.map(ct => toNeutralContentType(ct.contentType))
                                   ).setId(xRequestId) //Set the identifier of the request
                                 //Resolve Token/Auth/Authz context
                                 AuthManager.authenticate() { authContext =>

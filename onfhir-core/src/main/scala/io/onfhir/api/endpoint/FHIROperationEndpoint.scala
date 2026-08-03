@@ -1,5 +1,7 @@
 package io.onfhir.api.endpoint
 
+import io.onfhir.api.model.AkkaHttpModelAdapter._
+
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directive0, Route}
 import io.onfhir.api.{RESOURCE_TYPE_REGEX, Resource}
@@ -116,7 +118,7 @@ trait FHIROperationEndpoint {
           //Initialize FHIR operation request
           fhirRequest.initializeOperationRequest("$" + operationConf.name, resourceType, resourceId)
           //Set the method
-          fhirRequest.httpMethod = Some(httpMethod)
+          fhirRequest.httpMethod = Some(toNeutralMethod(httpMethod))
           //Initialize parameters in the request
           fhirRequest.queryParams = parameters
           entity(as[Resource]) { resource =>

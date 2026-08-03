@@ -1,5 +1,7 @@
 package io.onfhir.db
 
+import io.onfhir.api.model.AkkaHttpModelAdapter._
+
 import java.time.Instant
 import akka.http.scaladsl.model.{DateTime, StatusCode, StatusCodes}
 import io.onfhir.Onfhir
@@ -30,7 +32,7 @@ class ResourceManager(fhirConfig: FhirServerConfig, fhirEventBus: IFhirEventBus 
   private implicit val logger: Logger = LoggerFactory.getLogger("ResourceManager")
 
   implicit val executionContext: ExecutionContext = Onfhir.actorSystem.dispatchers.lookup("akka.actor.onfhir-blocking-dispatcher")
-  val fhirResultParameterResolver = new FHIRResultParameterResolver(fhirConfig)
+  val fhirResultParameterResolver = new FHIRResultParameterResolver(fhirConfig, OnfhirConfig.fhirResultDefaults)
 
   /**
    * FHIR Search Operation
@@ -1729,7 +1731,7 @@ class ResourceManager(fhirConfig: FhirServerConfig, fhirEventBus: IFhirEventBus 
     DocumentManager
       .replaceCurrent(rtype, rid, Document(populatedResource.toBson), shardQueryOpt)
       .map(_ =>
-        DateTimeUtil.instantToDateTime(lastModified) -> resourceWithMeta
+        toAkkaDateTime(lastModified) -> resourceWithMeta
       )
   }
 

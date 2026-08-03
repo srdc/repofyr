@@ -1,6 +1,5 @@
 package io.onfhir.client
 
-import akka.actor.ActorSystem
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.client.intrcp.BasicAuthenticationInterceptor
 import org.json4s.JsonAST.{JBool, JObject, JString}
@@ -15,7 +14,6 @@ class TerminologyServiceClientTest extends Specification {
   val username = "<!!!!FILL HERE BEFORE TESTING>"
   val password = "<!!!!FILL HERE BEFORE TESTING>"
 
-  implicit val actorSystem: ActorSystem = ActorSystem("TerminologyServiceClientTest")
   implicit val ec:ExecutionContext = ExecutionContext.global
 
   val terminologyServiceClient = new TerminologyServiceClient(OnFhirNetworkClient.apply(baseUrl, new BasicAuthenticationInterceptor(username, password)))

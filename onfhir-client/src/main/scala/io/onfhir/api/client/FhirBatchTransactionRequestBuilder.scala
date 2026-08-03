@@ -1,0 +1,86 @@
+package io.onfhir.api.client
+
+import io.onfhir.api.FHIR_INTERACTIONS
+import io.onfhir.api.model.{FHIRRequest}
+import io.onfhir.api.parsers.{BundleRequestParser, BundleRequestParsingException}
+import io.onfhir.config.FhirEndpointSettings
+import org.json4s.JsonAST.JObject
+import org.slf4j.{Logger, LoggerFactory}
+
+import scala.concurrent.{ExecutionContext, Future}
+
+/**
+ * Builder for FHIR transcation or batch requests
+ * @param onFhirClient  OnFhir client instance
+ * @param isBatch       If this is batch or transaction
+ */
+class FhirBatchTransactionRequestBuilder(onFhirClient:IOnFhirClient, isBatch:Boolean) extends
+  FhirRequestBuilder(onFhirClient,
+    FHIRRequest(interaction = if(isBatch) FHIR_INTERACTIONS.BATCH else FHIR_INTERACTIONS.TRANSACTION, requestUri = s"${onFhirClient.getBaseUrl()}")
+  ){
+
+  //Logger
+  implicit val logger: Logger = LoggerFactory.getLogger(this.getClass.getName)
+
+  /**
+   * Add Request entries from given FHIR Bundle to the request
+   * @param bundle      FHIR Bundle including request entries
+   * @return
+   */
+  def entriesFromBundle(bundle:JObject):FhirBatchTransactionRequestBuilder = {
+    val parsedChildRequests =
+      try {
+        BundleRequestParser
+          .parseBundleRequest(bundle, FhirEndpointSettings(onFhirClient.getBaseUrl()), None, skipEntriesWithoutRequest = true)
+      } catch {
+        case error: BundleRequestParsingException =>
+          throw FhirClientException.causedBy(error.getMessage, error)
+      }
+    request.childRequests = request.childRequests ++ parsedChildRequests
+    this
+  }
+
+  /**
+   * Add entry to the bundle without a fullUrl
+   * @param rbFunction
+   * @return
+   */
+  def entry(rbFunction:IOnFhirClient => FhirRequestBuilder):FhirBatchTransactionRequestBuilder = {
+    request.childRequests = request.childRequests :+ rbFunction(onFhirClient).compileRequest()
+    this
+  }
+
+  /**
+   * Add entry to the bundle with a given a fullUrl
+   * @param fullUrlUuid
+   * @param rbFunction
+   * @return
+   */
+  def entry(fullUrlUuid:String, rbFunction:IOnFhirClient => FhirRequestBuilder):FhirBatchTransactionRequestBuilder = {
+    if(!fullUrlUuid.startsWith("urn:uuid:"))
+      throw FhirClientException(s"Given fullUrl $fullUrlUuid  is not in urn:uuid format!")
+
+    request.childRequests = request.childRequests :+ rbFunction(onFhirClient).compileRequest().setId(Some(fullUrlUuid))
+    this
+  }
+
+  /**
+   * Execute the interaction and return the response as FHIR Bundle
+   * @param executionContext
+   * @return
+   */
+  def executeAndReturnBundle()(implicit executionContext: ExecutionContext):Future[FHIRTransactionBatchBundle] = {
+    execute()
+      .map(r => {
+        if(r.httpStatus.isFailure() || r.responseBody.isEmpty)
+          throw FhirClientException("Problem in FHIR batch/transaction!", Some(r))
+        try {
+          new FHIRTransactionBatchBundle(r.responseBody.get)
+        } catch {
+          case e:Throwable =>
+            logger.error("!!!There is an error while parsing FHIR batch/transaction bundle response!",e)
+            throw FhirClientException("Invalid transaction/batch result bundle!", Some(r))
+        }
+      })
+  }
+}

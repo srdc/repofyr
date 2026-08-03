@@ -1,5 +1,7 @@
 package io.onfhir.api.service
 
+import io.onfhir.api.model.AkkaHttpModelAdapter._
+
 import akka.http.scaladsl.model.{StatusCodes, Uri}
 import io.onfhir.api._
 import io.onfhir.api.model.{FHIRRequest, FHIRResponse, OutcomeIssue}
@@ -7,6 +9,7 @@ import io.onfhir.api.util.FHIRUtil
 import io.onfhir.api.validation.FHIRApiValidator
 import io.onfhir.authz.AuthzContext
 import io.onfhir.db.{ResourceManager, TransactionSession}
+import io.onfhir.config.OnfhirConfig
 import io.onfhir.exception.PreconditionFailedException
 
 import scala.concurrent.Future
@@ -98,7 +101,7 @@ class FHIRCreateService(transactionSession: Option[TransactionSession] = None) e
     else {
       //Extract the base meta fields
       val (id, version, lastModified) = FHIRUtil.extractBaseMetaFields(resource)
-      val location = Uri(FHIRUtil.resourceLocationWithVersion(_type, id, version))
+      val location = Uri(FHIRUtil.resourceLocationWithVersion(OnfhirConfig.fhirEndpointSettings, _type, id, version))
 
       FHIRResponse(
         StatusCodes.OK,
@@ -123,8 +126,8 @@ class FHIRCreateService(transactionSession: Option[TransactionSession] = None) e
       fhirConfigurationManager.resourceManager.createResource(_type, resource, generatedId)(transactionSession) flatMap { case (newId, newVersion, lastModified, createdResource) =>
         Future.apply(FHIRResponse (
           StatusCodes.Created, //Http Status code
-          FHIRUtil.getResourceContentByPreference(createdResource, prefer), //HTTP body
-          Some(Uri(FHIRUtil.resourceLocationWithVersion(_type, newId, newVersion))), //HTTP Location header
+          FHIRUtil.getResourceContentByPreference(createdResource, prefer, OnfhirConfig.fhirRequestDefaults.returnPreference), //HTTP body
+          Some(Uri(FHIRUtil.resourceLocationWithVersion(OnfhirConfig.fhirEndpointSettings, _type, newId, newVersion))), //HTTP Location header
           Some(lastModified), //HTTP Last-Modified header
           Some(""+newVersion) // HTTP ETag header
         ))

@@ -1,7 +1,9 @@
 package io.onfhir.api.service
 
-import akka.http.scaladsl.model.{HttpMethod, HttpMethods, StatusCodes}
-import io.onfhir.api.model.{FHIRRequest, FHIRResponse, OutcomeIssue}
+import io.onfhir.api.model.AkkaHttpModelAdapter._
+
+import akka.http.scaladsl.model.StatusCodes
+import io.onfhir.api.model.{FHIRRequest, FHIRResponse, HttpMethod, OutcomeIssue}
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.api.validation.FHIRApiValidator
 import io.onfhir.api._
@@ -95,7 +97,7 @@ class FHIRBatchTransactionService extends FHIRInteractionService {
     case FHIR_INTERACTIONS.UPDATE | FHIR_INTERACTIONS.PATCH => 3
     case op if op.startsWith("$") =>
       httpMethod match {
-        case Some(HttpMethods.GET) => 4
+        case Some(HttpMethod.GET) => 4
         case _ => 2
       }
     case _ => 4
@@ -408,7 +410,7 @@ class FHIRBatchTransactionService extends FHIRInteractionService {
         //If location is defined we use it
         if (requestResponse.response.get.location.isDefined)
           Some(requestResponse.response.get.location.get.path.toString())
-        else if (requestResponse.response.get.httpStatus.isSuccess) {
+        else if (requestResponse.response.get.httpStatus.isSuccess()) {
           //Otherwise we try to construct the url from the request
           val rtype: String = requestResponse.resourceType.map(rt => "/" + rt).getOrElse("")
           val rid: String = requestResponse.resourceId.map(r => "/" + r).getOrElse("")

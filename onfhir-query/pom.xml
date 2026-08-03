@@ -7,6 +7,7 @@
         <version>${revision}</version>
     </parent>
     <artifactId>onfhir-query_2.13</artifactId>
+    <properties><library.gates.skip>false</library.gates.skip></properties>
     <name>onfhir-query</name>
     <description>Module handling x-fhir-query statement parsing and execution on a Json4s serialized resource</description>
     <url>http://maven.apache.org</url>
@@ -43,17 +44,17 @@
         <dependency>
             <groupId>io.onfhir</groupId>
             <artifactId>onfhir-common_${scala.binary.version}</artifactId>
-            <version>${revision}</version>
+            <version>${onfhir.libs.version}</version>
         </dependency>
         <dependency>
             <groupId>io.onfhir</groupId>
             <artifactId>onfhir-expression_${scala.binary.version}</artifactId>
-            <version>${revision}</version>
+            <version>${onfhir.libs.version}</version>
         </dependency>
         <dependency>
             <groupId>io.onfhir</groupId>
             <artifactId>onfhir-path_${scala.binary.version}</artifactId>
-            <version>${revision}</version>
+            <version>${onfhir.libs.version}</version>
         </dependency>
 
         <!-- Unit Testing -->

@@ -1,13 +1,15 @@
 package io.onfhir.api.service
 
-import akka.http.scaladsl.model.headers.{`If-Modified-Since`, `If-None-Match`}
+import io.onfhir.api.model.AkkaHttpModelAdapter._
+
 import akka.http.scaladsl.model.{StatusCodes, Uri}
 import io.onfhir.api._
-import io.onfhir.api.model.{FHIRRequest, FHIRResponse, OutcomeIssue, Parameter}
+import io.onfhir.api.model.{EntityTagCondition, FHIRRequest, FHIRResponse, OutcomeIssue, Parameter}
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.api.validation.FHIRApiValidator
 import io.onfhir.authz.AuthzContext
 import io.onfhir.db.{ResourceManager, TransactionSession}
+import io.onfhir.config.OnfhirConfig
 import io.onfhir.exception.NotFoundException
 
 import scala.concurrent.Future
@@ -72,8 +74,8 @@ class FHIRReadService(transactionSession: Option[TransactionSession] = None) ext
   def getResource(_type:String,
                   _id:String,
                   _vid:Option[String],
-                  ifNoneMatch:Option[`If-None-Match`],
-                  ifModifiedSince:Option[`If-Modified-Since`],
+                  ifNoneMatch:Option[EntityTagCondition],
+                  ifModifiedSince:Option[java.time.Instant],
                   queryParams:List[Parameter]):Future[FHIRResponse] = {
     logger.debug(s"requesting '${if(_vid.isDefined)"v" else ""}read' for ${_type} with id ${_id} ...")
     //If exist resolve _summary or _elements parameters
@@ -136,7 +138,7 @@ class FHIRReadService(transactionSession: Option[TransactionSession] = None) ext
           FHIRResponse(
             StatusCodes.OK, //HTTP Status code
             Some(resource), //HTTP body
-            Some(Uri(FHIRUtil.resourceLocationWithVersion(_type, _id, currentVersion))),
+            Some(Uri(FHIRUtil.resourceLocationWithVersion(OnfhirConfig.fhirEndpointSettings, _type, _id, currentVersion))),
             Some(lastModified), //HTTP Last-Modified header
             Some(""+currentVersion)) //HTTP Etag header
         }

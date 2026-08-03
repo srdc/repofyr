@@ -1,12 +1,13 @@
 package io.onfhir.api.model
 
-import akka.http.javadsl.model.headers.WWWAuthenticate
-import akka.http.scaladsl.model.{DateTime, StatusCode, Uri}
 import io.onfhir.api.{FHIR_COMMON_FIELDS, FHIR_DATA_TYPES, Resource}
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.util.JsonFormatter._
 import org.json4s.Extraction
 import org.json4s.JsonAST.JObject
+
+import java.net.URI
+import java.time.Instant
 
 import scala.collection.mutable
 
@@ -14,7 +15,7 @@ import scala.collection.mutable
   * Created by tuncay on 10/3/2017.
   * FHIR Operation response
   */
-class FHIROperationResponse(httpStatus:StatusCode, location:Option[Uri] = None, lastModified:Option[DateTime] = None, newVersion:Option[String] = None)
+class FHIROperationResponse(httpStatus:HttpStatus, location:Option[URI] = None, lastModified:Option[Instant] = None, newVersion:Option[String] = None)
   extends FHIRResponse(httpStatus, location = location, lastModified = lastModified, newVersion = newVersion) {
 
   //Return parameters for Operation

@@ -1,7 +1,7 @@
-# ADR 0002: Transitional onfhir-event Boundary
+# ADR 0002: Server Event SPI Boundary
 
-- Status: Accepted
-- Date: 2026-07-31
+- Status: Accepted; permanent disposition approved
+- Date: 2026-07-31; Phase 4 disposition 2026-08-03
 - Decision owners: onFHIR / Repofyr maintainers
 - Applies to: Repofyr server-family module graph
 
@@ -57,22 +57,25 @@ server bootstrap -> onfhir-kafka -> event SPI or core contracts
 onfhir-core -X-> onfhir-kafka
 ```
 
-By the Phase 4 exit, maintainers must record one of two outcomes:
+## Phase 4 Permanent Disposition
 
-1. retain `onfhir-event` as a deliberately small, stable server event SPI; or
-2. eliminate it after dependency inversion makes the separate module
-   unnecessary.
+The maintainers approved retaining `onfhir-event_2.13` as a deliberately
+small, stable, server-only event SPI for the repository split. It remains in
+Repofyr and is not part of the reusable library release.
 
-The physical repository split must not proceed without that decision.
+Removing the `onfhir-core -> onfhir-kafka` edge requires a larger server
+bootstrap composition change and is deferred to a separate post-split
+refactor. That future refactor may reconsider whether the event SPI still
+justifies its own artifact, but it is not a prerequisite for Phase 5.
 
 ## Consequences
 
 - Server event and marshalling concerns leave `onfhir-common` in Phase 1D.
 - The in-place Maven reactor remains acyclic.
-- Repofyr temporarily gains a small module and one additional published or
-  internal artifact coordinate.
-- The workaround is visible and time-bounded, reducing the chance that it is
-  mistaken for the intended permanent architecture.
+- Repofyr retains a small module and one additional published or internal
+  artifact coordinate.
+- The remaining core/Kafka inversion is explicit architectural debt rather
+  than an implicit reason to destabilize the repository split.
 
 ## Non-Goals
 

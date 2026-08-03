@@ -1,9 +1,10 @@
 package io.onfhir.api.service
 
+import io.onfhir.api.model.AkkaHttpModelAdapter._
+
 import akka.http.scaladsl.model.StatusCodes
-import akka.http.scaladsl.model.headers.`If-Match`
 import io.onfhir.api._
-import io.onfhir.api.model.{FHIRRequest, FHIRResponse, OutcomeIssue, Parameter}
+import io.onfhir.api.model.{EntityTagCondition, FHIRRequest, FHIRResponse, OutcomeIssue, Parameter}
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.api.validation.FHIRApiValidator
 import io.onfhir.authz.AuthzContext
@@ -92,7 +93,7 @@ class FHIRPatchService(transactionSession: Option[TransactionSession] = None) ex
     * @param prefer   Prefer header
     * @return
     */
-  private def patchResource(patch: Resource, oldResourceContent:Option[Resource], _type:String, _id:String, ifMatch:Option[`If-Match`], prefer:Option[String], isTesting:Boolean) : Future[FHIRResponse] = {
+  private def patchResource(patch: Resource, oldResourceContent:Option[Resource], _type:String, _id:String, ifMatch:Option[EntityTagCondition], prefer:Option[String], isTesting:Boolean) : Future[FHIRResponse] = {
     logger.debug(s"requesting 'patch' for ${_type} with ${_id}...")
 
     //2) check if resource already exists
@@ -138,7 +139,7 @@ class FHIRPatchService(transactionSession: Option[TransactionSession] = None) ex
   private def conditionalPatchResource(patch: Resource,
                                        _type:String,
                                        searchParameters:List[Parameter],
-                                       ifMatch:Option[`If-Match`],
+                                       ifMatch:Option[EntityTagCondition],
                                        prefer:Option[String],
                                        isTesting:Boolean
                                       ) : Future[FHIRResponse] = {

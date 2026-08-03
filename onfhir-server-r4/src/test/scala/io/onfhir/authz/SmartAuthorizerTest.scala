@@ -5,7 +5,7 @@ import com.typesafe.config.ConfigFactory
 import io.onfhir.api.{FHIR_INTERACTIONS, FHIR_PARAMETER_CATEGORIES, FHIR_PARAMETER_TYPES}
 import io.onfhir.api.model.{FHIRRequest, Parameter}
 import io.onfhir.api.parsers.FHIRSearchParameterValueParser
-import io.onfhir.config.{FSConfigReader, FhirConfigurationManager}
+import io.onfhir.config.{FSConfigReader, FhirConfigurationManager, FhirSearchHandling, OnfhirConfig}
 import io.onfhir.r4.config.FhirR4Configurator
 import org.junit.runner.RunWith
 import org.specs2.mutable.Specification
@@ -28,7 +28,7 @@ class SmartAuthorizerTest extends Specification {
       Set.empty
     )
   FhirConfigurationManager.fhirConfig = serverConfig
-  val fhirSearchParameterValueParser = new FHIRSearchParameterValueParser(serverConfig)
+  val fhirSearchParameterValueParser = new FHIRSearchParameterValueParser(serverConfig, FhirSearchHandling.Strict)
   FhirConfigurationManager.fhirSearchParameterValueParser = fhirSearchParameterValueParser
   val smartAuthorizer = new SmartAuthorizer(None, FhirConfigurationManager)
 
@@ -266,7 +266,7 @@ class SmartAuthorizerTest extends Specification {
           )
         )
 
-      val resourceChecker = new io.onfhir.api.util.ResourceChecker(serverConfig)
+      val resourceChecker = new io.onfhir.api.util.ResourceChecker(serverConfig, OnfhirConfig.fhirEndpointSettings)
 
       val ownRecord = org.json4s.JObject(
         "resourceType" -> JString("Patient"),

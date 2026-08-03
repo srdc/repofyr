@@ -12,7 +12,7 @@ import io.onfhir.audit.{AuditManager, RequestLogManager}
 import io.onfhir.authz._
 import io.onfhir.config.{FhirConfigurationManager, IFhirServerConfigurator, OnfhirConfig, SSLConfig}
 import io.onfhir.db.{DBConflictManager, EmbeddedMongo}
-import io.onfhir.event.kafka.KafkaEventProducer
+import io.onfhir.event.kafka.{KafkaConfig, KafkaEventProducer}
 import io.onfhir.event.{FhirDataEvent, FhirEventSubscription}
 import io.onfhir.operation.IFhirOperationLibrary
 import org.slf4j.{Logger, LoggerFactory}
@@ -78,12 +78,21 @@ class Onfhir(
 
 
   //Create Kafka producer if enabled or subscription is active
+  private val kafkaConfig = new KafkaConfig(OnfhirConfig.config)
+
   val kafkaEventProducer =
-    if(KafkaEventProducer.kafkaConfig.kafkaEnabled || OnfhirConfig.fhirSubscriptionActive) {
-      val actorRef = Onfhir.actorSystem.actorOf(KafkaEventProducer.props(FhirConfigurationManager.fhirConfig), KafkaEventProducer.ACTOR_NAME)
+    if(kafkaConfig.kafkaEnabled || OnfhirConfig.fhirSubscriptionActive) {
+      val actorRef = Onfhir.actorSystem.actorOf(
+        KafkaEventProducer.props(
+          kafkaConfig,
+          OnfhirConfig.fhirSubscriptionActive,
+          FhirConfigurationManager.subscriptionUtil.parseFhirSubscription
+        ),
+        KafkaEventProducer.ACTOR_NAME
+      )
 
       val fhirSubscriptionAllowedResources = if(OnfhirConfig.fhirSubscriptionActive) OnfhirConfig.fhirSubscriptionAllowedResources else Some(Nil)
-      val kafkaEnabledResources = KafkaEventProducer.kafkaConfig.kafkaEnabledResources
+      val kafkaEnabledResources = kafkaConfig.kafkaEnabledResources
       val resourcesToSendToKafka = (fhirSubscriptionAllowedResources, kafkaEnabledResources) match {
         case (Some(l1), Some(l2)) =>
           if(OnfhirConfig.fhirSubscriptionActive)

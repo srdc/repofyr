@@ -7,7 +7,7 @@ import io.onfhir.api.model.FHIRResponse.{OUTCOME_CODES, SEVERITY_CODES}
 import io.onfhir.api.model.{FhirLiteralReference, OutcomeIssue}
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.api.validation._
-import io.onfhir.config.BaseFhirConfig
+import io.onfhir.config.{BaseFhirConfig, FhirEndpointSettings}
 import io.onfhir.exception.InitializationException
 import io.onfhir.path.{FhirPathComplex, FhirPathEvaluator}
 import org.json4s.{JInt, JNothing, JNull}
@@ -32,13 +32,15 @@ class FhirContentValidator(
                             fhirConfig:BaseFhirConfig,
                             profileUrl:String,
                             referenceResolver:Option[IReferenceResolver] = None,
-                            resourceValidator:Option[IFhirResourceValidator] = None
+                            resourceValidator:Option[IFhirResourceValidator] = None,
+                            localEndpoint: Option[FhirEndpointSettings] = None
                           )(implicit val ec:ExecutionContext)
   extends AbstractFhirContentValidator(
     fhirConfig,
     profileUrl,
     referenceResolver,
-    resourceValidator.flatMap(_.getTerminologyValidator()).getOrElse(FhirTerminologyValidator.apply(fhirConfig, Nil))) {
+    resourceValidator.flatMap(_.getTerminologyValidator()).getOrElse(FhirTerminologyValidator.apply(fhirConfig, Nil)),
+    localEndpoint) {
   protected val logger: Logger = LoggerFactory.getLogger(this.getClass)
   //Temporary store of bundle content for bundle validations
   private var bundle:Option[Resource] = None
@@ -1557,7 +1559,8 @@ object FhirContentValidator {
    * @param referenceResolver
    * @return
    */
-  def apply(fhirConfig: BaseFhirConfig, profileUrl: String, referenceResolver: IReferenceResolver, resourceValidator:IFhirResourceValidator)(implicit ec:ExecutionContext): FhirContentValidator = new FhirContentValidator(fhirConfig, profileUrl, Some(referenceResolver), Some(resourceValidator))
+  def apply(fhirConfig: BaseFhirConfig, profileUrl: String, referenceResolver: IReferenceResolver, resourceValidator:IFhirResourceValidator, localEndpoint: FhirEndpointSettings)(implicit ec:ExecutionContext): FhirContentValidator =
+    new FhirContentValidator(fhirConfig, profileUrl, Some(referenceResolver), Some(resourceValidator), Some(localEndpoint))
 
 
   def apply(fhirConfig: BaseFhirConfig, profileUrl: String, referenceResolver: IReferenceResolver)(implicit ec:ExecutionContext): FhirContentValidator = new FhirContentValidator(fhirConfig, profileUrl, Some(referenceResolver))

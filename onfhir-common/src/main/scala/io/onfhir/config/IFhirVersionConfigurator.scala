@@ -35,9 +35,13 @@ trait IFhirVersionConfigurator {
    *
    * @param complexTypes   List of FHIR complex types defined in the standard
    * @param primitiveTypes List of FHIR primitive types defined in the standard
+   * @param capabilityDefaults Defaults for omitted CapabilityStatement resource fields
    * @return
    */
-  def getFoundationResourceParser(complexTypes: Set[String], primitiveTypes: Set[String]): IFhirFoundationResourceParser
+  def getFoundationResourceParser(
+      complexTypes: Set[String],
+      primitiveTypes: Set[String],
+      capabilityDefaults: FhirCapabilityDefaults): IFhirFoundationResourceParser
 
   /**
    * Get Resource type or Data type from a StructureDefinition resource if it is not abstract

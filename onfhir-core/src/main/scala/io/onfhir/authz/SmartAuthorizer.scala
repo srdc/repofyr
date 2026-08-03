@@ -8,7 +8,7 @@ import io.onfhir.api.model.{FHIRRequest, Parameter}
 import io.onfhir.api.parsers.FHIRSearchParameterValueParser
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.authz.SmartAuthorizer._
-import io.onfhir.config.IFhirConfigurationManager
+import io.onfhir.config.{IFhirConfigurationManager, OnfhirConfig}
 import io.onfhir.exception.InitializationException
 import io.onfhir.expression.XFhirQueryParser
 import io.onfhir.path.FhirPathEvaluator
@@ -45,12 +45,17 @@ class SmartAuthorizer(smartAuthzConfig:Option[Config], fhirConfigurationManager:
   /**
    * FHIR search expression parser to parse Smart-on-Fhir complex scopes like patient/Observation?category=...
    */
-  private val fhirSearchParameterValueParser = new FHIRSearchParameterValueParser(fhirConfigurationManager.fhirConfig)
+  private val fhirSearchParameterValueParser = new FHIRSearchParameterValueParser(
+    fhirConfigurationManager.fhirConfig,
+    OnfhirConfig.fhirRequestDefaults.searchHandling)
 
   /**
    * For parsing x-fhir-query statements
    */
-  private val xFhirQueryParser = new XFhirQueryParser(fhirConfigurationManager.fhirConfig, FhirPathEvaluator().withDefaultFunctionLibraries())
+  private val xFhirQueryParser = new XFhirQueryParser(
+    fhirConfigurationManager.fhirConfig,
+    OnfhirConfig.fhirRequestDefaults.searchHandling,
+    FhirPathEvaluator().withDefaultFunctionLibraries())
 
   /**
    * Default scopes assigned to any authenticated user

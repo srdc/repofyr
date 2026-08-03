@@ -1,8 +1,7 @@
 package io.onfhir.r5.audit
 
-import akka.http.scaladsl.model.StatusCode
 import io.onfhir.api.Resource
-import io.onfhir.api.model.{FHIRRequest, OutcomeIssue}
+import io.onfhir.api.model.{FHIRRequest, HttpStatus, OutcomeIssue}
 import io.onfhir.audit.{AgentsInfo, IFhirAuditCreator, ONFHIR_AUDIT_DETAIL_TYPES, ONFHIR_AUDIT_ENTITY_ROLES}
 import io.onfhir.authz.{AuthContext, AuthzContext}
 import io.onfhir.config.{AuditConfig, OnfhirConfig}
@@ -24,7 +23,7 @@ class R5AuditCreator(auditConfig: AuditConfig) extends IFhirAuditCreator {
    * @param batchTransactionId If exists, the transaction/batch identifier that this is child request is bound to
    * @return
    */
-  override def createAuditResource(fhirRequest: FHIRRequest, authContext: AuthContext, authzContext: Option[AuthzContext], statusCode: StatusCode, batchTransactionId: Option[String]): Resource = {
+  override def createAuditResource(fhirRequest: FHIRRequest, authContext: AuthContext, authzContext: Option[AuthzContext], statusCode: HttpStatus, batchTransactionId: Option[String]): Resource = {
     //Resolve agents
     val userAgent = createHumanUserAgent(authContext, authzContext)
     val clientAgent = createClientAgent(authContext, authzContext)
@@ -243,8 +242,8 @@ class R5AuditCreator(auditConfig: AuditConfig) extends IFhirAuditCreator {
    * @param statusCode    Overall HTTP status code
    * @return
    */
-  protected def createOutcome(fhirRequest:FHIRRequest, statusCode: StatusCode):JObject = {
-    val outcomeCode = statusCode.intValue match {
+  protected def createOutcome(fhirRequest:FHIRRequest, statusCode: HttpStatus):JObject = {
+    val outcomeCode = statusCode.intValue() match {
       case succ if succ <300 && succ >= 200 => "success" //SUCCESS
       case mf if mf <500 && mf >= 400 => "error" //Minor Failure
       case sf if sf <600 && sf >= 500 => "fatal" //Serious Failure
@@ -280,8 +279,8 @@ class R5AuditCreator(auditConfig: AuditConfig) extends IFhirAuditCreator {
     outcomeDetail
   }
 
-  override def resolveAuditEventOutcomeCode(statusCode: StatusCode):String = {
-    statusCode.intValue match {
+  override def resolveAuditEventOutcomeCode(statusCode: HttpStatus):String = {
+    statusCode.intValue() match {
       case succ if succ <300 && succ >= 200 => "success" //SUCCESS
       case mf if mf <500 && mf >= 400 => "error" //Minor Failure
       case sf if sf <600 && sf >= 500 => "fatal" //Serious Failure

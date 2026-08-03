@@ -1,5 +1,7 @@
 package io.onfhir.api.service
 
+import io.onfhir.api.model.AkkaHttpModelAdapter._
+
 import akka.http.scaladsl.model.StatusCodes
 import io.onfhir.api._
 import io.onfhir.api.model.{FHIRRequest, FHIRResponse, FHIRSearchResult, Parameter}

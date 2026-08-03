@@ -1,6 +1,5 @@
 package io.onfhir.client
 
-import akka.actor.ActorSystem
 import io.onfhir.api.Resource
 import io.onfhir.api.service.IFhirIdentityCache
 import io.onfhir.api.util.FHIRUtil
@@ -20,7 +19,6 @@ class IdentityServiceClientTest extends Specification with BeforeAfterAll {
   val patientWithoutLink1: Resource =  Source.fromInputStream(getClass.getResourceAsStream("/patient-with-link.json")).mkString.parseJson
   val patientWithoutLink2: Resource =  Source.fromInputStream(getClass.getResourceAsStream("/patient-with-link2.json")).mkString.parseJson
 
-  implicit val actorSystem: ActorSystem = ActorSystem("OnFhirClientTest")
   implicit val ec:ExecutionContext = ExecutionContext.global
   val onFhirClient: OnFhirNetworkClient = OnFhirNetworkClient.apply(baseUrl)
 

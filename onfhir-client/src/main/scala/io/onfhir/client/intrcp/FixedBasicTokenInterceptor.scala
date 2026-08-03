@@ -1,8 +1,7 @@
 package io.onfhir.client.intrcp
 
-import akka.http.scaladsl.model.HttpRequest
-import akka.http.scaladsl.model.headers.{Authorization, GenericHttpCredentials}
 import io.onfhir.client.IHttpRequestInterceptor
+import io.onfhir.client.model.ClientHttpRequest
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -18,10 +17,6 @@ class FixedBasicTokenInterceptor(token: String) extends IHttpRequestInterceptor 
    * @param httpRequest
    * @return
    */
-  override def processRequest(httpRequest: HttpRequest)(implicit ex: ExecutionContext): Future[HttpRequest] = {
-    Future.apply {
-      httpRequest
-        .withHeaders(httpRequest.headers :+ Authorization.apply(GenericHttpCredentials.apply("Basic", token)))
-    }
-  }
+  override def processRequest(httpRequest: ClientHttpRequest)(implicit ex: ExecutionContext): Future[ClientHttpRequest] =
+    Future.successful(httpRequest.addHeader("Authorization", s"Basic $token"))
 }

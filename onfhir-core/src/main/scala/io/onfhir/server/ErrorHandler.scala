@@ -1,10 +1,13 @@
 package io.onfhir.server
 
+import io.onfhir.api.model.AkkaHttpModelAdapter._
+
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.{Directives, ExceptionHandler}
 import com.fasterxml.jackson.core.JsonParseException
 import com.fasterxml.jackson.databind.JsonMappingException
 import io.onfhir.api.model.{FHIRRequest, FHIRResponse, OutcomeIssue}
+import io.onfhir.api.parsers.BundleRequestParsingException
 import io.onfhir.exception._
 import io.onfhir.api.model.FHIRMarshallers._
 import io.onfhir.util.JsonFormatter.formats
@@ -74,6 +77,8 @@ object ErrorHandler {
             )
           )
         )
+      case ex: BundleRequestParsingException =>
+        FHIRResponse.errorResponse(StatusCodes.BadRequest, ex.outcomeIssues)
       /** Intentional exceptions for FHIR - thrown intentionally based on cases */
       //Problem in search parameter
       case ex: InvalidParameterException =>

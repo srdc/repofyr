@@ -17,7 +17,7 @@
 
     <build>
         <sourceDirectory>src/main/scala</sourceDirectory>
-        <!--testSourceDirectory>src/test/scala</testSourceDirectory-->
+        <testSourceDirectory>src/test/scala</testSourceDirectory>
         <plugins>
             <!-- Allows compiling/testing/running/documenting Scala code in Maven. -->
             <plugin>
@@ -42,6 +42,10 @@
             <artifactId>onfhir-common_${scala.binary.version}</artifactId>
         </dependency>
         <dependency>
+            <groupId>io.onfhir</groupId>
+            <artifactId>onfhir-event_${scala.binary.version}</artifactId>
+        </dependency>
+        <dependency>
             <groupId>com.typesafe</groupId>
             <artifactId>config</artifactId>
         </dependency>
@@ -56,6 +60,23 @@
                     <artifactId>slf4j-log4j12</artifactId>
                 </exclusion>
             </exclusions>
+        </dependency>
+
+        <!-- Unit Testing -->
+        <dependency>
+            <groupId>org.specs2</groupId>
+            <artifactId>specs2-core_${scala.binary.version}</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.specs2</groupId>
+            <artifactId>specs2-junit_${scala.binary.version}</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.typesafe.akka</groupId>
+            <artifactId>akka-testkit_${scala.binary.version}</artifactId>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 

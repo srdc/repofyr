@@ -1,14 +1,11 @@
 package io.onfhir.client
 
 import java.time.Instant
-import akka.http.javadsl.model.StatusCodes
-import akka.http.scaladsl.model.StatusCode
 import io.onfhir.OnFhirTest
 import io.onfhir.api.Resource
-import io.onfhir.api.client.{FHIRHistoryBundle, FHIRSearchSetBundle, FHIRTransactionBatchBundle, OnFhirLocalClient}
-import io.onfhir.api.model.FHIRResponse
+import io.onfhir.api.client.{FHIRHistoryBundle, FHIRSearchSetBundle, FHIRTransactionBatchBundle, FhirClientException, OnFhirLocalClient}
+import io.onfhir.api.model.{FHIRResponse, HttpStatus}
 import io.onfhir.api.util.FHIRUtil
-import io.onfhir.exception.BadRequestException
 import io.onfhir.path.FhirPathEvaluator
 import io.onfhir.util.JsonFormatter._
 import org.json4s.JsonAST.{JObject, JString}
@@ -46,7 +43,7 @@ class OnFhirLocalClientTest extends OnFhirTest {
           .create(patientWithoutId)
           .execute()
 
-      response.map(_.httpStatus) must be_==(StatusCodes.CREATED).await
+      response.map(_.httpStatus) must be_==(HttpStatus.Created).await
     }
 
     "should help creating a new resource with conditional create - return OK as resource already exist" in {
@@ -56,12 +53,12 @@ class OnFhirLocalClientTest extends OnFhirTest {
         .where("identifier", "urn:oid:1.2.36.146.595.217.0.1|12345")
         .execute()
 
-      response.map(_.httpStatus) must be_==(StatusCodes.OK).await
+      response.map(_.httpStatus) must be_==(HttpStatus.OK).await
     }
 
     "should help creating a new resource -  execute called implicitly and return FHIRResponse"  in {
       val response:Future[FHIRResponse] = OnFhirLocalClient.create(patientWithoutId)
-      response.map(_.httpStatus) must be_==(StatusCodes.CREATED).await
+      response.map(_.httpStatus) must be_==(HttpStatus.Created).await
     }
 
     "should help creating a new resource -  execute called implicitly and implicit conversion to resource"  in {
@@ -70,7 +67,7 @@ class OnFhirLocalClientTest extends OnFhirTest {
     }
 
     "should help creating a new resource - handling error" in {
-      OnFhirLocalClient.create(JObject()).execute() must throwA[BadRequestException]
+      OnFhirLocalClient.create(JObject()).execute() must throwA[FhirClientException]
     }
 
     "should help creating a new resource with conditional create - return precondition failed as there are multiple" in {
@@ -80,7 +77,7 @@ class OnFhirLocalClientTest extends OnFhirTest {
           .where("identifier", "urn:oid:1.2.36.146.595.217.0.1|12345")
           .execute()
 
-      response.map(_.httpStatus) must be_==(StatusCodes.PRECONDITION_FAILED).await
+      response.map(_.httpStatus) must be_==(HttpStatus.PreconditionFailed).await
     }
 
     "should help creating a new resource with preferences" in {
@@ -88,7 +85,7 @@ class OnFhirLocalClientTest extends OnFhirTest {
         .create(patientWithoutId)
         .returnMinimal()
 
-      response.map(_.httpStatus) must be_==(StatusCodes.CREATED).await
+      response.map(_.httpStatus) must be_==(HttpStatus.Created).await
       response.map(_.responseBody) must beNone.await
     }
 
@@ -101,7 +98,7 @@ class OnFhirLocalClientTest extends OnFhirTest {
               .update(r.mapField(f => f._1 -> (if(f._1 == "gender") JString("female") else f._2)).asInstanceOf[JObject])
               .execute()
           )
-      response.map(_.httpStatus) must be_==(StatusCodes.OK).await
+      response.map(_.httpStatus) must be_==(HttpStatus.OK).await
       response.map(r => FHIRUtil.extractValue[String](r.responseBody.getOrElse(JObject()), "gender")) must be_==("female").await
     }
 
@@ -110,7 +107,7 @@ class OnFhirLocalClientTest extends OnFhirTest {
           .update(patientWithoutId)
           .where("identifier", "urn:oid:1.2.36.146.595.217.0.1|12345")
           .execute()
-      response.map(_.httpStatus) must be_==(StatusCodes.PRECONDITION_FAILED).await
+      response.map(_.httpStatus) must be_==(HttpStatus.PreconditionFailed).await
     }
 
     "should help updating a resource with version aware update" in {
@@ -121,7 +118,7 @@ class OnFhirLocalClientTest extends OnFhirTest {
           .execute()
       )
 
-      response.map(_.httpStatus) must be_==(StatusCodes.PRECONDITION_FAILED).await
+      response.map(_.httpStatus) must be_==(HttpStatus.PreconditionFailed).await
       //As we don't force version controlled update, it accepts
       val resource:Future[Resource] = createdResource.flatMap(r =>
         OnFhirLocalClient
@@ -139,7 +136,7 @@ class OnFhirLocalClientTest extends OnFhirTest {
           OnFhirLocalClient.delete("Patient", FHIRUtil.extractValue[String](r, "id"))
         )
 
-      response.map(_.httpStatus) must be_==(StatusCodes.NO_CONTENT).await
+      response.map(_.httpStatus) must be_==(HttpStatus.NoContent).await
     }
 
     "should help deleting a resource with conditional delete" in {
@@ -148,7 +145,7 @@ class OnFhirLocalClientTest extends OnFhirTest {
         .delete("Patient")
         .where("identifier", "urn:oid:1.2.36.146.595.217.0.1|12345")
 
-      response.map(_.httpStatus) must be_==(StatusCodes.NO_CONTENT).await
+      response.map(_.httpStatus) must be_==(HttpStatus.NoContent).await
     }
 
     "should help reading a resource" in {
@@ -170,7 +167,7 @@ class OnFhirLocalClientTest extends OnFhirTest {
           .ifModifiedSince(lastUpdated)
           .execute()
 
-      response.map(_.httpStatus) must be_==(StatusCodes.NOT_MODIFIED).await
+      response.map(_.httpStatus) must be_==(HttpStatus.NotModified).await
 
       response =
         OnFhirLocalClient
@@ -178,7 +175,7 @@ class OnFhirLocalClientTest extends OnFhirTest {
           .ifNoneMatch(1)
           .execute()
 
-      response.map(_.httpStatus) must be_==(StatusCodes.NOT_MODIFIED).await
+      response.map(_.httpStatus) must be_==(HttpStatus.NotModified).await
     }
 
     "should help reading a resource with element preferences" in {
@@ -352,9 +349,9 @@ class OnFhirLocalClientTest extends OnFhirTest {
         5 seconds)
 
       bundle.responses.length mustEqual 3
-      atLeastOnce(bundle.responses.map(_._2.httpStatus)) ((_:StatusCode) must be_==(StatusCodes.NO_CONTENT))
-      atLeastOnce(bundle.responses.map(_._2.httpStatus)) ((_:StatusCode) must be_==(StatusCodes.PRECONDITION_FAILED))
-      atLeastOnce(bundle.responses.map(_._2.httpStatus)) ((_:StatusCode) must be_==(StatusCodes.CREATED))
+      atLeastOnce(bundle.responses.map(_._2.httpStatus)) ((_:HttpStatus) must be_==(HttpStatus.NoContent))
+      atLeastOnce(bundle.responses.map(_._2.httpStatus)) ((_:HttpStatus) must be_==(HttpStatus.PreconditionFailed))
+      atLeastOnce(bundle.responses.map(_._2.httpStatus)) ((_:HttpStatus) must be_==(HttpStatus.Created))
     }
 
     "should help sending transaction requests" in {
@@ -366,8 +363,8 @@ class OnFhirLocalClientTest extends OnFhirTest {
         5 seconds)
 
       bundle.responses.length mustEqual 2
-      bundle.getResponse("urn:uuid:74891afc-ed52-42a2-bcd7-f13d9b60f096").httpStatus mustEqual(StatusCodes.CREATED)
-      bundle.getResponse("urn:uuid:88f151c0-a954-468a-88bd-5ae15c08e059").httpStatus mustEqual(StatusCodes.CREATED)
+      bundle.getResponse("urn:uuid:74891afc-ed52-42a2-bcd7-f13d9b60f096").httpStatus mustEqual(HttpStatus.Created)
+      bundle.getResponse("urn:uuid:88f151c0-a954-468a-88bd-5ae15c08e059").httpStatus mustEqual(HttpStatus.Created)
     }
 
     "should help sending operation requests" in {
@@ -380,7 +377,7 @@ class OnFhirLocalClientTest extends OnFhirTest {
         5 seconds
       )
 
-      opResponse.httpStatus mustEqual(StatusCodes.OK)
+      opResponse.httpStatus mustEqual(HttpStatus.OK)
       opResponse.getOutputParam("return") must not beEmpty
     }
 

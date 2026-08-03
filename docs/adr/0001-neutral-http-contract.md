@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-07-31
+- Phase 2A ratification: approved 2026-08-03
 - Decision owners: onFHIR / Repofyr maintainers
 - Applies to: library-family public and internal HTTP-facing models
 

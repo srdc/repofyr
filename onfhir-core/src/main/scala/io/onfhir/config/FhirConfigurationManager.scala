@@ -5,6 +5,7 @@ import io.onfhir.api.DEFAULT_IMPLEMENTED_FHIR_OPERATIONS
 import io.onfhir.api.parsers.{FHIRResultParameterResolver, FHIRSearchParameterValueParser}
 import io.onfhir.api.service.TargetResourceResolver
 import io.onfhir.api.util.FHIRServerUtil
+import io.onfhir.api.util.SubscriptionUtil
 import io.onfhir.api.validation.{FHIRResourceValidator, IFhirResourceValidator, IFhirTerminologyValidator}
 import io.onfhir.audit.{AuditManager, IFhirAuditCreator}
 import io.onfhir.authz.AuthzManager
@@ -45,6 +46,8 @@ object FhirConfigurationManager extends IFhirConfigurationManager {
   var fhirSearchParameterValueParser:FHIRSearchParameterValueParser = _
   var fhirResultParameterResolver:FHIRResultParameterResolver = _
   var fhirServerUtil:FHIRServerUtil = _
+  //FHIR-release-specific Subscription parsing and validation strategy
+  var subscriptionUtil: SubscriptionUtil = _
   /**
    * Read FHIR foundational definitions and configure the platform
    *
@@ -72,6 +75,11 @@ object FhirConfigurationManager extends IFhirConfigurationManager {
             DEFAULT_IMPLEMENTED_FHIR_OPERATIONS.keySet ++ //Default FHIR operations
               fhirOperationFactories.flatMap(_.listSupportedOperations()).toSet //Provided implementation factories
         )
+    subscriptionUtil = fhirConfigurator.getSubscriptionUtil(
+      fhirConfig,
+      OnfhirConfig.fhirSubscriptionSettings,
+      OnfhirConfig.fhirRequestDefaults.searchHandling
+    )
     val allSupportedOps = fhirConfig.supportedOperations.map(_.url).toSet
 
     //Initialize operation libraries
@@ -106,7 +114,7 @@ object FhirConfigurationManager extends IFhirConfigurationManager {
     val integratedTerminologyServices =
       OnfhirConfig
       .integratedTerminologyServices
-      .map(_.map(tsConf => tsConf._1 -> new TerminologyServiceClient(OnFhirNetworkClient.apply(tsConf._2)(Onfhir.actorSystem))(Onfhir.actorSystem.dispatcher)))
+      .map(_.map(tsConf => tsConf._1 -> new TerminologyServiceClient(OnFhirNetworkClient.apply(tsConf._2)(Onfhir.actorSystem.dispatcher))(Onfhir.actorSystem.dispatcher)))
       .getOrElse(Nil)
 
     fhirTerminologyValidator = new FhirTerminologyValidator(fhirConfig, integratedTerminologyServices)
@@ -117,8 +125,10 @@ object FhirConfigurationManager extends IFhirConfigurationManager {
         fhirAuditCreator = fhirConfigurator.getAuditCreator(auditConfig)
       )
 
-    fhirSearchParameterValueParser = new FHIRSearchParameterValueParser(fhirConfig)
-    fhirResultParameterResolver = new FHIRResultParameterResolver(fhirConfig)
+    fhirSearchParameterValueParser = new FHIRSearchParameterValueParser(
+      fhirConfig,
+      OnfhirConfig.fhirRequestDefaults.searchHandling)
+    fhirResultParameterResolver = new FHIRResultParameterResolver(fhirConfig, OnfhirConfig.fhirResultDefaults)
     fhirServerUtil = new FHIRServerUtil(fhirConfig)
     printSystemRuntime()
   }

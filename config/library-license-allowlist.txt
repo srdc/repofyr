@@ -1,0 +1,10 @@
+# SPDX license families allowed in the reusable library dependency graph.
+# A dependency with multiple advertised licenses passes when at least one
+# listed alternative is allowed. Project artifacts (io.onfhir) are ignored
+# until the separate contributor/relicensing audit is approved.
+Apache-2.0
+BSD-2-Clause
+BSD-3-Clause
+MIT
+EPL-1.0
+MPL-1.1

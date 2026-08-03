@@ -1,0 +1,4 @@
+# Maven coordinate=SPDX identifier
+# ANTLR 3.3's published POM omits its license although its distribution uses
+# the BSD 3-Clause license. Keep this explicit and review it on upgrades.
+org.antlr:antlr-runtime:3.3=BSD-3-Clause

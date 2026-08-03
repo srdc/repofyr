@@ -7,6 +7,7 @@
         <version>${revision}</version>
     </parent>
     <artifactId>onfhir-template-engine</artifactId>
+    <properties><library.gates.skip>false</library.gates.skip></properties>
     <name>onfhir-template-engine</name>
     <packaging>jar</packaging>
     <build>
@@ -40,12 +41,12 @@
         <dependency>
             <groupId>io.onfhir</groupId>
             <artifactId>onfhir-expression_${scala.binary.version}</artifactId>
-            <version>${revision}</version>
+            <version>${onfhir.libs.version}</version>
         </dependency>
         <dependency>
             <groupId>io.onfhir</groupId>
             <artifactId>onfhir-path_${scala.binary.version}</artifactId>
-            <version>${revision}</version>
+            <version>${onfhir.libs.version}</version>
         </dependency>
 
         <!-- Unit Testing -->

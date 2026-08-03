@@ -11,6 +11,7 @@
     </parent>
 
     <artifactId>onfhir-common_2.13</artifactId>
+    <properties><library.gates.skip>false</library.gates.skip></properties>
     <name>Common classes across onFHIR</name>
 
     <packaging>jar</packaging>
@@ -41,24 +42,6 @@
             <groupId>org.scala-lang.modules</groupId>
             <artifactId>scala-parser-combinators_${scala.binary.version}</artifactId>
         </dependency>
-        <!-- Akka  Http Core for headers, etc -->
-        <dependency>
-            <groupId>com.typesafe.akka</groupId>
-            <artifactId>akka-http-core_${scala.binary.version}</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.typesafe.akka</groupId>
-            <artifactId>akka-http_${scala.binary.version}</artifactId>
-        </dependency>
-        <!-- Akka and Akka Streaming -->
-        <dependency>
-            <groupId>com.typesafe.akka</groupId>
-            <artifactId>akka-actor_${scala.binary.version}</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.typesafe.akka</groupId>
-            <artifactId>akka-stream_${scala.binary.version}</artifactId>
-        </dependency>
         <!-- JSON Utilities -->
         <dependency>
             <groupId>org.json4s</groupId>
@@ -71,20 +54,6 @@
         <dependency>
             <groupId>org.scala-lang.modules</groupId>
             <artifactId>scala-xml_${scala.binary.version}</artifactId>
-        </dependency>
-        <!-- Application Configuration -->
-        <dependency>
-            <groupId>com.typesafe</groupId>
-            <artifactId>config</artifactId>
-        </dependency>
-        <!-- Authorization Configuration and Handling-->
-        <dependency>
-            <groupId>com.nimbusds</groupId>
-            <artifactId>nimbus-jose-jwt</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.nimbusds</groupId>
-            <artifactId>oauth2-oidc-sdk</artifactId>
         </dependency>
         <!-- Logging-->
         <dependency>

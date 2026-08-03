@@ -6,8 +6,8 @@ import io.onfhir.Onfhir
 import io.onfhir.api._
 import io.onfhir.api.model.{FhirSubscription, Parameter}
 import io.onfhir.api.parsers.FHIRSearchParameterValueParser
-import io.onfhir.api.util.{FHIRUtil, SubscriptionUtil}
-import io.onfhir.config.{FhirConfigurationManager, SearchParameterConf}
+import io.onfhir.api.util.FHIRUtil
+import io.onfhir.config.{FhirConfigurationManager, OnfhirConfig, SearchParameterConf}
 import io.onfhir.db.ResourceManager
 import org.json4s.JsonAST.{JObject, JString}
 import io.onfhir.config.FhirConfigurationManager.fhirConfig
@@ -17,8 +17,10 @@ import scala.concurrent.{ExecutionContext, Future}
 class OnFhirInternalApiService {
   implicit val executionContext:ExecutionContext = Onfhir.actorSystem.dispatcher
 
-  val subscriptionUtil = new SubscriptionUtil(fhirConfig)
-  val searchParameterValueParser = new FHIRSearchParameterValueParser(fhirConfig)
+  val subscriptionUtil = FhirConfigurationManager.subscriptionUtil
+  val searchParameterValueParser = new FHIRSearchParameterValueParser(
+    fhirConfig,
+    OnfhirConfig.fhirRequestDefaults.searchHandling)
   /**
    * Retrieve subscriptions
    * @param page

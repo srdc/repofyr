@@ -2,9 +2,8 @@ package io.onfhir.r4.audit
 
 import java.time.Instant
 
-import akka.http.scaladsl.model.StatusCode
 import io.onfhir.api.Resource
-import io.onfhir.api.model.FHIRRequest
+import io.onfhir.api.model.{FHIRRequest, HttpStatus}
 import io.onfhir.audit.{AgentsInfo, IFhirAuditCreator}
 import io.onfhir.authz.{AuthContext, AuthzContext}
 import io.onfhir.config.OnfhirConfig
@@ -24,7 +23,7 @@ class R4AuditCreator extends IFhirAuditCreator {
     * @param batchTransactionId If exists, the transaction/batch identifier that this is child request is bound to
     * @return
     */
-  override def createAuditResource(fhirRequest: FHIRRequest, authContext: AuthContext, authzContext: Option[AuthzContext], statusCode: StatusCode, batchTransactionId: Option[String]): Resource = {
+  override def createAuditResource(fhirRequest: FHIRRequest, authContext: AuthContext, authzContext: Option[AuthzContext], statusCode: HttpStatus, batchTransactionId: Option[String]): Resource = {
     //Resolve agents
     val agentsInfo = extractAgentInfoFromAuthzContext(authContext, authzContext)
     val userAgent = createUserAgent(agentsInfo)

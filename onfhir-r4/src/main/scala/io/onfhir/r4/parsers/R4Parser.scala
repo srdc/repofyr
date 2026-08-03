@@ -3,7 +3,7 @@ package io.onfhir.r4.parsers
 import io.onfhir.api.{FHIR_PARAMETER_CATEGORIES, Resource}
 import io.onfhir.api.parsers.IFhirFoundationResourceParser
 import io.onfhir.api.validation.{ProfileRestrictions, ValueSetRestrictions}
-import io.onfhir.config.{FHIRCapabilityStatement, FHIRCompartmentDefinition, FHIRSearchParameter, OnfhirConfig, OperationConf, OperationParamDef, ResourceConf}
+import io.onfhir.config.{FHIRCapabilityStatement, FHIRCompartmentDefinition, FHIRSearchParameter, FhirCapabilityDefaults, OperationConf, OperationParamDef, ResourceConf}
 import io.onfhir.util.JsonFormatter.formats
 import io.onfhir.validation.TerminologyParser
 import org.json4s.JsonAST.{JArray, JObject}
@@ -26,7 +26,8 @@ class R4Parser(
                     fhirPrimitiveTypes: Set[String] =
                     Set("base64Binary", "boolean", "canonical", "code", "date", "dateTime", "decimal", "id", "instant",
                       "integer", "markdown", "oid", "positiveInt", "string", "time", "unsignedInt", "uri", "url",
-                      "uuid")) extends IFhirFoundationResourceParser {
+                      "uuid"),
+                    capabilityDefaults: FhirCapabilityDefaults = FhirCapabilityDefaults.Standard) extends IFhirFoundationResourceParser {
   /**
    * Parse a FHIR Capability Statement into our compact form
    *
@@ -57,13 +58,13 @@ class R4Parser(
                   .toSet
               case _ => Set.empty
             },
-          versioning = (resourceDef \ "versioning").extractOrElse[String](OnfhirConfig.fhirDefaultVersioning),
-          readHistory = (resourceDef \ "readHistory").extractOrElse[Boolean](OnfhirConfig.fhirDefaultReadHistory),
-          updateCreate = (resourceDef \ "updateCreate").extractOrElse[Boolean](OnfhirConfig.fhirDefaultUpdateCreate),
-          conditionalCreate = (resourceDef \ "conditionalCreate").extractOrElse[Boolean](OnfhirConfig.fhirDefaultConditionalCreate),
-          conditionalRead = (resourceDef \ "conditionalRead").extractOrElse[String](OnfhirConfig.fhirDefaultConditionalRead),
-          conditionalUpdate = (resourceDef \ "conditionalUpdate").extractOrElse[Boolean](OnfhirConfig.fhirDefaultConditionalUpdate),
-          conditionalDelete = (resourceDef \ "conditionalDelete").extractOrElse[String](OnfhirConfig.fhirDefaultConditionalDelete),
+          versioning = (resourceDef \ "versioning").extractOrElse[String](capabilityDefaults.versioning.code),
+          readHistory = (resourceDef \ "readHistory").extractOrElse[Boolean](capabilityDefaults.readHistory),
+          updateCreate = (resourceDef \ "updateCreate").extractOrElse[Boolean](capabilityDefaults.updateCreate),
+          conditionalCreate = (resourceDef \ "conditionalCreate").extractOrElse[Boolean](capabilityDefaults.conditionalCreate),
+          conditionalRead = (resourceDef \ "conditionalRead").extractOrElse[String](capabilityDefaults.conditionalRead.code),
+          conditionalUpdate = (resourceDef \ "conditionalUpdate").extractOrElse[Boolean](capabilityDefaults.conditionalUpdate),
+          conditionalDelete = (resourceDef \ "conditionalDelete").extractOrElse[String](capabilityDefaults.conditionalDelete.code),
           referencePolicies = (resourceDef \ "referencePolicy").extractOrElse[Seq[String]](Nil).toSet,
           searchInclude = (resourceDef \ "searchInclude").extractOrElse[Seq[String]](Nil).toSet,
           searchRevInclude = (resourceDef \ "searchRevInclude").extractOrElse[Seq[String]](Nil).toSet,

@@ -74,6 +74,7 @@
 
     <modules>
         <module>onfhir-common</module>
+        <module>onfhir-event</module>
         <module>onfhir-core</module>
         <module>onfhir-operations</module>
         <module>onfhir-kafka</module>
@@ -98,6 +99,10 @@
         <!-- This is a special placeholder to manage the version from a single property throughout the parent and child modules. No other property name can be used. -->
         <!-- https://maven.apache.org/maven-ci-friendly.html -->
         <revision>3.4.1-SNAPSHOT</revision>
+        <!-- Kept distinct now so the server reactor can consume independently
+             versioned library artifacts after the physical split. -->
+        <onfhir.libs.version>${revision}</onfhir.libs.version>
+        <library.gates.skip>true</library.gates.skip>
 
         <!-- plugin versions -->
         <scala.maven.plugin.version>4.8.1</scala.maven.plugin.version>
@@ -106,6 +111,7 @@
         <surefire.plugin.version>3.2.5</surefire.plugin.version>
         <maven-compiler.plugin.version>3.12.1</maven-compiler.plugin.version>
         <flatten.plugin.version>1.6.0</flatten.plugin.version>
+        <maven.enforcer.plugin.version>3.6.3</maven.enforcer.plugin.version>
 
         <!-- dependency versions -->
         <scala.version>2.13.16</scala.version>
@@ -221,6 +227,33 @@
         </pluginManagement>
 
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>${maven.enforcer.plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>ban-actor-frameworks-from-library-modules</id>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <skip>${library.gates.skip}</skip>
+                            <rules>
+                                <bannedDependencies>
+                                    <searchTransitive>true</searchTransitive>
+                                    <excludes>
+                                        <exclude>com.typesafe.akka:*</exclude>
+                                        <exclude>org.apache.pekko:*</exclude>
+                                    </excludes>
+                                    <message>Library modules must not resolve Akka or Pekko dependencies.</message>
+                                </bannedDependencies>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>flatten-maven-plugin</artifactId>
@@ -369,12 +402,17 @@
             <dependency>
                 <groupId>io.onfhir</groupId>
                 <artifactId>onfhir-common_${scala.binary.version}</artifactId>
+                <version>${onfhir.libs.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.onfhir</groupId>
+                <artifactId>onfhir-event_${scala.binary.version}</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.onfhir</groupId>
                 <artifactId>onfhir-config_${scala.binary.version}</artifactId>
-                <version>${project.version}</version>
+                <version>${onfhir.libs.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.onfhir</groupId>
@@ -394,7 +432,7 @@
             <dependency>
                 <groupId>io.onfhir</groupId>
                 <artifactId>onfhir-r4_${scala.binary.version}</artifactId>
-                <version>${project.version}</version>
+                <version>${onfhir.libs.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.onfhir</groupId>
@@ -409,27 +447,32 @@
             <dependency>
                 <groupId>io.onfhir</groupId>
                 <artifactId>onfhir-path_${scala.binary.version}</artifactId>
-                <version>${project.version}</version>
+                <version>${onfhir.libs.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.onfhir</groupId>
                 <artifactId>onfhir-validation_${scala.binary.version}</artifactId>
-                <version>${project.version}</version>
+                <version>${onfhir.libs.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.onfhir</groupId>
                 <artifactId>onfhir-client_${scala.binary.version}</artifactId>
-                <version>${project.version}</version>
+                <version>${onfhir.libs.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.onfhir</groupId>
                 <artifactId>onfhir-expression_${scala.binary.version}</artifactId>
-                <version>${project.version}</version>
+                <version>${onfhir.libs.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.onfhir</groupId>
                 <artifactId>onfhir-query_${scala.binary.version}</artifactId>
-                <version>${project.version}</version>
+                <version>${onfhir.libs.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.onfhir</groupId>
+                <artifactId>onfhir-template-engine</artifactId>
+                <version>${onfhir.libs.version}</version>
             </dependency>
 
             <!-- Akka HTTP Suite -->

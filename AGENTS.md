@@ -37,22 +37,22 @@ the in-place refactoring is complete (refactor first, split last).
 
 Library family (target: Apache-2.0, zero Akka/Pekko dependencies):
 
-| Module | Akka status (baseline 2026-07-31: 55 imports total) |
+| Module | Akka status (after Phase 3: zero imports total) |
 |---|---|
-| onfhir-common | 31 imports: client API + akka-http model types + misfiled server files (Phases 1A-2) |
-| onfhir-client | 22 imports: akka-http client, rewrite on java.net.http (Phase 3) |
-| onfhir-path | 1 stray (`FhirPathTerminologyServiceFunctions`: akka Uri) - fix in Phase 2 |
+| onfhir-common | clean |
+| onfhir-client | clean; JDK 11 `java.net.http` transport |
+| onfhir-path | clean |
 | onfhir-query | clean |
-| onfhir-config | 1 stray (`BaseFhirServerConfigurator`: akka MediaType) - moves to server in Phase 1D |
+| onfhir-config | clean |
 | onfhir-expression | clean |
 | onfhir-validation | clean |
 | onfhir-template-engine | clean |
 | onfhir-r4 | clean |
 
-Note: onfhir-path and onfhir-config declare no Akka POM dependency - their
-stray imports compile via transitive Akka from onfhir-common. They are the
-proof that only `scripts/check-forbidden-imports.ps1` (source-level), not POM
-inspection, is authoritative for invariant 1.
+All nine library modules are source-, resource-, and resolved-dependency-graph
+clean after Phase 3. Keep
+`scripts/check-forbidden-imports.ps1` as a source-level gate in addition to POM
+and resolved-dependency inspection.
 
 Server family (stays in this repo as repofyr; Akka remains until a separate
 Pekko/license decision, out of scope here):

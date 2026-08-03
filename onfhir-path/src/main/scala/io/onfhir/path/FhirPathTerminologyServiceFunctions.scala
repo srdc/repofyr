@@ -1,7 +1,7 @@
 package io.onfhir.path
 
-import akka.http.scaladsl.model.Uri
 import io.onfhir.api.FHIR_DATA_TYPES
+import io.onfhir.api.model.OrderedQuery
 import io.onfhir.api.service.IFhirTerminologyService
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.path.annotation.{FhirPathFunction, FhirPathFunctionDocumentation, FhirPathFunctionParameter, FhirPathFunctionReturn}
@@ -679,7 +679,7 @@ class FhirPathTerminologyServiceFunctions(context:FhirPathEnvironment, current:S
     if(paramsResult.length > 1 || !paramsResult.forall(_.isInstanceOf[FhirPathString]))
       throw FhirPathException("Invalid terminology service function call. The params expression (the function parameter) should evaluate to optional string value which should be the RL encoded string with other parameters for the validate-code operation.")
 
-    paramsResult.headOption.map(prms => Uri.Query(prms.asInstanceOf[FhirPathString].s).toMultiMap)
+    paramsResult.headOption.map(prms => OrderedQuery.parse(prms.asInstanceOf[FhirPathString].s).toMultiMap)
   }
 
 

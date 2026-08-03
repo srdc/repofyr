@@ -1,0 +1,9 @@
+onFHIR reusable libraries
+Copyright 2019-2026 SRDC Corp. and contributors
+
+This product includes software developed by SRDC Corp. and contributors to
+the onFHIR project.
+
+This is proposed NOTICE content for the extracted library repository. It is
+not effective in the GPL-3.0 monorepo and must be reviewed with the contributor
+and project-IP audit before release.

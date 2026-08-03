@@ -16,6 +16,29 @@
 
 You can use Repofyr as a standalone server or extend it with custom FHIR Operations to build complex application layers. It uses FHIR Infrastructure Resource definitions (CapabilityStatement, StructureDefinition, SearchParameter, etc.) to tailor the server to your specific profile and search requirements.
 
+## Reusable library modules
+
+The repository currently contains nine reusable modules that are being
+prepared for extraction into `srdc/onfhir-libs`. Select only the artifacts a
+consumer needs; `onfhir-common` is foundational but is not an all-in-one SDK.
+Coordinates and `io.onfhir.*` package names remain stable during the split.
+
+| Module | Use it for |
+|---|---|
+| [onfhir-common](onfhir-common/README.md) | neutral FHIR models, configuration values, interfaces, and shared utilities |
+| [onfhir-client](onfhir-client/README.md) | JDK HTTP FHIR client and request builders |
+| [onfhir-path](onfhir-path/README.md) | standalone FHIRPath parsing and evaluation |
+| [onfhir-query](onfhir-query/README.md) | FHIR/x-fhir-query parsing and in-memory search evaluation |
+| [onfhir-config](onfhir-config/README.md) | loading and interpreting FHIR infrastructure configuration |
+| [onfhir-expression](onfhir-expression/README.md) | expression model and language-handler dispatch |
+| [onfhir-validation](onfhir-validation/README.md) | profile, terminology, reference, and invariant validation |
+| [onfhir-template-engine](onfhir-template-engine/README.md) | JSON/FHIR template rendering with FHIRPath placeholders |
+| [onfhir-r4](onfhir-r4/README.md) | reusable FHIR R4 foundation-resource parsers |
+
+The monorepo remains GPL-3.0. Apache-2.0 licensing is approved only for the
+future extracted library repository; it will be applied during the physical
+split and does not change the Repofyr server license.
+
 * **Website:** [repofyr.io](https://repofyr.io)
 * **Open Source Core:** Maintained by [SRDC](https://srdc.com.tr)
 

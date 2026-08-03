@@ -1,11 +1,10 @@
 package io.onfhir.api.parsers
 
-import akka.http.scaladsl.server.{Directive1, Directives}
 import io.onfhir.api._
 import io.onfhir.exception._
 import io.onfhir.api.model.Parameter
 import io.onfhir.api.parsers.FHIRSearchParameterValueParser.{IncludeExprParser, NameParser, SortExprParser, StringParser}
-import io.onfhir.config.{FhirServerConfig, OnfhirConfig}
+import io.onfhir.config.{FhirSearchHandling, FhirServerConfig}
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.util.Try
@@ -13,9 +12,10 @@ import scala.util.parsing.combinator.RegexParsers
 
 /**
  * Parsers for parsing search parameter statements given in FHIR search
- * @param fhirConfig  FHIR server configuration
+ * @param fhirConfig            FHIR server configuration
+ * @param defaultSearchHandling Handling used when the request has no Prefer handling value
  */
-class FHIRSearchParameterValueParser(fhirConfig: FhirServerConfig) {
+class FHIRSearchParameterValueParser(fhirConfig: FhirServerConfig, defaultSearchHandling: FhirSearchHandling) {
   private val logger: Logger = LoggerFactory.getLogger("FHIRSearchParameterParser")
 
   /***
@@ -318,7 +318,7 @@ class FHIRSearchParameterValueParser(fhirConfig: FhirServerConfig) {
         } catch {
           case invalidParameterException: InvalidParameterException => throw  invalidParameterException
           case unsupportedParameterException: UnsupportedParameterException =>
-            if(preferHeader.getOrElse(OnfhirConfig.fhirSearchHandling)  == FHIR_HTTP_OPTIONS.FHIR_SEARCH_STRICT)
+            if(preferHeader.getOrElse(defaultSearchHandling.code) == FHIR_HTTP_OPTIONS.FHIR_SEARCH_STRICT)
               throw unsupportedParameterException
             else {
               //Just log warning and continue
@@ -354,25 +354,6 @@ class FHIRSearchParameterValueParser(fhirConfig: FhirServerConfig) {
   def parseSearchParameterWithResolver(_type: String, parameters: Map[String, List[String]], resolver: ISearchParamPlaceholderResolver) = {
     parseParameters(parameters - FHIR_HTTP_OPTIONS.FORMAT, _type, None, Some(resolver))
   }
-
-  /**
-    * Directive to parse search parameters from URI
-    * @param _type Resource type that search is on
-    * @param preferHeader Prefer header is search
-    * @return
-    */
-  def parseSearchParametersFromUri(_type: String, preferHeader:Option[String]):Directive1[List[Parameter]] =
-    Directives.parameterMultiMap.map(parseSearchParameters(_type, _, preferHeader))
-
-  /**
-    * Directive to parse search parameters from-url-encoded entity
-    * @param _type Resource type that search is on
-    * @param preferHeader Prefer header is search
-    * @return
-    */
-  def parseSearchParametersFromEntity(_type: String, preferHeader:Option[String]):Directive1[List[Parameter]] =
-    Directives.formFieldMultiMap.map(parseSearchParameters(_type, _, preferHeader))
-
 
   /**
     * Construct a compartment search parameter

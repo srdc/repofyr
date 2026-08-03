@@ -20,13 +20,19 @@ import scala.collection.immutable.StringOps
   */
 object FHIRMarshallers {
 
+  private def akkaContentType(contentType: FhirContentType): ContentType =
+    AkkaHttpModelAdapter.toAkkaContentType(contentType)
+
+  private def akkaMediaType(mediaType: FhirMediaType): MediaType =
+    AkkaHttpModelAdapter.toAkkaMediaType(mediaType)
+
   /**
     * Umarshaller for FHIR request HTTP bodies, umarshall to our Resource (LinkedHashMap) model
     */
   implicit val FHIRResourceUnmarshaller:Unmarshaller[HttpEntity, Resource] =
     Unmarshaller
       .stringUnmarshaller
-      .forContentTypes(fhirConfig.FHIR_SUPPORTED_CONTENT_TYPE_RANGES:_*)
+      .forContentTypes(fhirConfig.FHIR_SUPPORTED_CONTENT_TYPE_RANGES.map(ct => ContentTypeRange(akkaContentType(ct))):_*)
       .mapWithInput {
         case (entity: HttpEntity, data: String) =>
           if (entity.isKnownEmpty() || data.isEmpty) {
@@ -37,14 +43,14 @@ object FHIRMarshallers {
               convertToMap(data)
             } else
             //JSON Unmarshalling
-            if (fhirConfig.FHIR_JSON_MEDIA_TYPES.exists(supportedJsonMediaType => entity.contentType.mediaType.matches(supportedJsonMediaType))
+            if (fhirConfig.FHIR_JSON_MEDIA_TYPES.exists(supportedJsonMediaType => entity.contentType.mediaType.matches(akkaMediaType(supportedJsonMediaType)))
             ) {
               convertToMap(data)
-            } else if ( fhirConfig.FHIR_XML_MEDIA_TYPES.exists(supportedXmlMediaType => entity.contentType.mediaType.matches(supportedXmlMediaType))
+            } else if ( fhirConfig.FHIR_XML_MEDIA_TYPES.exists(supportedXmlMediaType => entity.contentType.mediaType.matches(akkaMediaType(supportedXmlMediaType)))
             ) {
               //XML Unmarshalling
               new XmlToJsonConvertor(FhirConfigurationManager.fhirConfig).parseFromXml(data).parseXML
-            } else if (fhirConfig.FHIR_PATCH_MEDIA_TYPES.exists(e => entity.contentType.mediaType.matches(e))
+            } else if (fhirConfig.FHIR_PATCH_MEDIA_TYPES.exists(e => entity.contentType.mediaType.matches(akkaMediaType(e)))
             ) {
               //Note: XML Patch is not supported
               //JSON Patch
@@ -66,15 +72,18 @@ object FHIRMarshallers {
         .FHIR_SUPPORTED_RESULT_CONTENT_TYPES
         .map(ctype => ctype.mediaType match {
           case jsontype if fhirConfig.FHIR_JSON_MEDIA_TYPES.contains(jsontype) =>
-            Marshaller.withFixedContentType[FHIRResponse, HttpResponse](ctype)(jsonResponseMarshaller(ctype))
+            val akkaType = akkaContentType(ctype)
+            Marshaller.withFixedContentType[FHIRResponse, HttpResponse](akkaType)(jsonResponseMarshaller(akkaType))
           case xmltype if  fhirConfig.FHIR_XML_MEDIA_TYPES.contains(xmltype) =>
-            Marshaller.withFixedContentType[FHIRResponse, HttpResponse](ctype)(xmlResponseMarshaller(ctype))
+            val akkaType = akkaContentType(ctype)
+            Marshaller.withFixedContentType[FHIRResponse, HttpResponse](akkaType)(xmlResponseMarshaller(akkaType))
           case htmltype  =>
-            Marshaller.withFixedContentType[FHIRResponse, HttpResponse](ctype)(htmlResponseMarshaller(ContentTypes.`text/html(UTF-8)`))
+            val akkaType = akkaContentType(ctype)
+            Marshaller.withFixedContentType[FHIRResponse, HttpResponse](akkaType)(htmlResponseMarshaller(ContentTypes.`text/html(UTF-8)`))
         }) ++
         fhirConfig
           .FHIR_ALLOWED_BINARY_TYPES
-          .map(mt => ContentType.apply(mt))
+          .map(mt => ContentType.apply(AkkaHttpModelAdapter.toAkkaBinaryMediaType(mt)))
           .map(ctype =>
             Marshaller.withFixedContentType[FHIRResponse, HttpResponse](ctype)(fhirBinaryResponseMarshaller(ctype))
           )
@@ -213,13 +222,13 @@ object FHIRMarshallers {
   private def buildHttpResponseWithoutEntity(fResponse:FHIRResponse):HttpResponse = {
     //Construct Http Headers
     val headers = Seq(
-      fResponse.lastModified.map(lm => `Last-Modified`(lm)), // Last-Modified header
+      fResponse.lastModified.map(lm => `Last-Modified`(AkkaHttpModelAdapter.toAkkaDateTime(lm))), // Last-Modified header
       fResponse.newVersion.map(nw => ETag(EntityTag(nw, weak = true))), // ETag header
-      fResponse.location.map(l => Location(l)),  // Location Header
-      fResponse.authenticateHeader //WWW-Authenticate header if any
+      fResponse.location.map(l => Location(AkkaHttpModelAdapter.toAkkaUri(l))),  // Location Header
+      fResponse.authenticateHeader.map(AkkaHttpModelAdapter.toAkkaAuthenticateHeader) //WWW-Authenticate header if any
     ).filter(_.isDefined).map(_.get).toList
 
-    var response = HttpResponse(fResponse.httpStatus)
+    var response = HttpResponse(AkkaHttpModelAdapter.toAkkaStatus(fResponse.httpStatus))
     if(headers.nonEmpty)
       response = response.withHeaders(headers)
 

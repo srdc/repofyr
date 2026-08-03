@@ -1,7 +1,6 @@
 package io.onfhir.server
 
-import akka.http.scaladsl.model.headers.{HttpChallenge, `WWW-Authenticate`}
-import io.onfhir.api.model.{FHIRResponse, OutcomeIssue}
+import io.onfhir.api.model.{AuthenticateChallenge, AuthenticationParameters, FHIRResponse, HttpParameter, OutcomeIssue}
 import io.onfhir.authz.AuthzResult
 
 object AuthorizationErrorResponseBuilder {
@@ -20,15 +19,12 @@ object AuthorizationErrorResponseBuilder {
       Seq("Header: Authorization")
     )
 
-  def authenticateHeader(authzResult: AuthzResult): `WWW-Authenticate` =
-    `WWW-Authenticate`(
-      HttpChallenge(
-        "Bearer",
-        "fhir",
-        Map(
-          "error" -> authzResult.errorCodeOrDefault,
-          "error_description" -> authzResult.errorDescOrDefault
-        )
-      )
-    )
+  def authenticateHeader(authzResult: AuthzResult): AuthenticateChallenge =
+    AuthenticateChallenge(
+      "Bearer",
+      AuthenticationParameters(Vector(
+        HttpParameter("realm", "fhir", quoted = true),
+        HttpParameter("error", authzResult.errorCodeOrDefault, quoted = true),
+        HttpParameter("error_description", authzResult.errorDescOrDefault, quoted = true)
+      )))
 }

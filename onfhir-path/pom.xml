@@ -11,6 +11,7 @@
     </parent>
 
     <artifactId>onfhir-path_2.13</artifactId>
+    <properties><library.gates.skip>false</library.gates.skip></properties>
     <name>FHIRPath evaluation module</name>
 
     <packaging>jar</packaging>
@@ -81,10 +82,6 @@
                         </goals>
                     </execution>
                 </executions>
-            </plugin>
-            <plugin>
-                <groupId>net.alchim31.maven</groupId>
-                <artifactId>scala-maven-plugin</artifactId>
             </plugin>
             <!-- Generates an executable jar with Maven, containing all dependencies. -->
             <plugin>

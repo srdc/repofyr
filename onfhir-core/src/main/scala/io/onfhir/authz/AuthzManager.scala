@@ -1,5 +1,7 @@
 package io.onfhir.authz
 
+import io.onfhir.api.model.AkkaHttpModelAdapter._
+
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directive0
 import akka.http.scaladsl.server.directives.{BasicDirectives, RouteDirectives}
@@ -26,7 +28,7 @@ class AuthzManager(fhirConfigurationManager: IFhirConfigurationManager) {
   implicit val executionContext: ExecutionContextExecutor = Onfhir.actorSystem.dispatcher
   //Logger
   private val logger: Logger = LoggerFactory.getLogger(this.getClass)
-  val resourceChecker = new ResourceChecker(fhirConfigurationManager.fhirConfig)
+  val resourceChecker = new ResourceChecker(fhirConfigurationManager.fhirConfig, OnfhirConfig.fhirEndpointSettings)
 
   /**
     * Our authorization directive

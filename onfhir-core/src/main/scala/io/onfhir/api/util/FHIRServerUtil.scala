@@ -1,5 +1,7 @@
 package io.onfhir.api.util
 
+import io.onfhir.api.model.AkkaHttpModelAdapter.toAkkaMediaType
+
 
 import akka.http.scaladsl.model.headers.{EntityTag, `Content-Type`}
 import akka.http.scaladsl.model.{HttpMethod, HttpMethods, MediaRange, MediaTypes, Uri}
@@ -24,7 +26,7 @@ import java.nio.charset.StandardCharsets
  * @param fhirConfig FHIR configurations
  */
 class FHIRServerUtil(fhirConfig:FhirServerConfig) {
-  val resultParameterResolver = new FHIRResultParameterResolver(fhirConfig)
+  val resultParameterResolver = new FHIRResultParameterResolver(fhirConfig, OnfhirConfig.fhirResultDefaults)
 
   /**
    * Generates and returns the bundle links for search responses
@@ -275,7 +277,7 @@ class FHIRServerUtil(fhirConfig:FhirServerConfig) {
     val resourceId = (resource \ FHIR_COMMON_FIELDS.ID).extract[String]
     val currentVersion = (resource \ FHIR_COMMON_FIELDS.META \ FHIR_COMMON_FIELDS.VERSION_ID).extractOpt[String].getOrElse("1")
     val lastUpdated = (resource \ FHIR_COMMON_FIELDS.META \ FHIR_COMMON_FIELDS.LAST_UPDATED).extract[String]
-    val resourceUrl = resourceLocation(resourceType, resourceId)
+    val resourceUrl = resourceLocation(OnfhirConfig.fhirEndpointSettings, resourceType, resourceId)
     val statusCode = (resource \ FHIR_EXTRA_FIELDS.STATUS_CODE).extract[String]
     val method = (resource \ FHIR_EXTRA_FIELDS.METHOD).extractOpt[String]
 
@@ -391,7 +393,7 @@ class FHIRServerUtil(fhirConfig:FhirServerConfig) {
       case Some(format) =>
         fhirConfig.FHIR_FORMAT_MIME_TYPE_MAP
           .get(format)
-          .map(MediaRange.apply)
+          .map(mediaType => MediaRange(toAkkaMediaType(mediaType)))
       case None =>
         //If there is no accept header
         if (mediaRanges.isEmpty) {
@@ -399,20 +401,20 @@ class FHIRServerUtil(fhirConfig:FhirServerConfig) {
             !contentType.get.contentType.mediaType.matches(MediaTypes.`application/x-www-form-urlencoded`)) //which is not equal to form url encoded
             fhirConfig.FHIR_FORMAT_MIME_TYPE_MAP
               .get(contentType.get.contentType.mediaType.value)
-              .map(MediaRange.apply) //Use that same in response
+              .map(mediaType => MediaRange(toAkkaMediaType(mediaType))) //Use that same in response
           else //Otherwise use default
-            Some(fhirConfig.FHIR_DEFAULT_MEDIA_TYPE).map(MediaRange.apply) //Use default
+            Some(fhirConfig.FHIR_DEFAULT_MEDIA_TYPE).map(mediaType => MediaRange(toAkkaMediaType(mediaType))) //Use default
         } else {
           mediaRanges
-            .find(mediaRange => fhirConfig.FHIR_SUPPORTED_RESULT_MEDIA_TYPES.exists(supportedMediaType => mediaRange.matches(supportedMediaType)))
+            .find(mediaRange => fhirConfig.FHIR_SUPPORTED_RESULT_MEDIA_TYPES.exists(supportedMediaType => mediaRange.matches(toAkkaMediaType(supportedMediaType))))
             .map {
-              case mr if mr.mainType().equals("*") => MediaRange.apply(fhirConfig.FHIR_DEFAULT_MEDIA_TYPE)
+              case mr if mr.mainType().equals("*") => MediaRange(toAkkaMediaType(fhirConfig.FHIR_DEFAULT_MEDIA_TYPE))
               case other => other
             }
             .orElse(
               //If this is a binary
               if(isBinaryReadOrVRead(requestUri))
-                mediaRanges.find(mediaRange => fhirConfig.FHIR_ALLOWED_BINARY_TYPES.exists(supportedMediaType => mediaRange.matches(supportedMediaType)))
+                mediaRanges.find(mediaRange => fhirConfig.FHIR_ALLOWED_BINARY_TYPES.exists(supportedMediaType => mediaRange.matches(toAkkaMediaType(supportedMediaType))))
               else
                 None
             )

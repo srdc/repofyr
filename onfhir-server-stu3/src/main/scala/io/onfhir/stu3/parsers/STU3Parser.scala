@@ -2,13 +2,13 @@ package io.onfhir.stu3.parsers
 
 import io.onfhir.api.Resource
 import io.onfhir.api.validation.ProfileRestrictions
-import io.onfhir.config.{FHIRCapabilityStatement, FHIRSearchParameter, OnfhirConfig, OperationConf, OperationParamDef, ResourceConf}
+import io.onfhir.config.{FHIRCapabilityStatement, FHIRSearchParameter, FhirCapabilityDefaults, OperationConf, OperationParamDef, ResourceConf}
 import io.onfhir.r4.parsers.R4Parser
 import org.json4s.{JArray, JObject}
 import org.json4s._
 import io.onfhir.util.JsonFormatter.formats
 
-class STU3Parser(complexTypes:Set[String], primitiveTypes:Set[String]) extends R4Parser(complexTypes, primitiveTypes) {
+class STU3Parser(complexTypes:Set[String], primitiveTypes:Set[String], capabilityDefaults: FhirCapabilityDefaults) extends R4Parser(complexTypes, primitiveTypes, capabilityDefaults) {
   /**
    * Parse a FHIR Capability Statement into our compact form
    *
@@ -39,13 +39,13 @@ class STU3Parser(complexTypes:Set[String], primitiveTypes:Set[String]) extends R
                   .toSet
               case _ => Set.empty
             },
-          versioning = (resourceDef \ "versioning").extractOrElse[String](OnfhirConfig.fhirDefaultVersioning),
-          readHistory = (resourceDef \ "readHistory").extractOrElse[Boolean](OnfhirConfig.fhirDefaultReadHistory),
-          updateCreate = (resourceDef \ "updateCreate").extractOrElse[Boolean](OnfhirConfig.fhirDefaultUpdateCreate),
-          conditionalCreate = (resourceDef \ "conditionalCreate").extractOrElse[Boolean](OnfhirConfig.fhirDefaultConditionalCreate),
-          conditionalRead = (resourceDef \ "conditionalRead").extractOrElse[String](OnfhirConfig.fhirDefaultConditionalRead),
-          conditionalUpdate = (resourceDef \ "conditionalUpdate").extractOrElse[Boolean](OnfhirConfig.fhirDefaultConditionalUpdate),
-          conditionalDelete = (resourceDef \ "conditionalDelete").extractOrElse[String](OnfhirConfig.fhirDefaultConditionalDelete),
+          versioning = (resourceDef \ "versioning").extractOrElse[String](capabilityDefaults.versioning.code),
+          readHistory = (resourceDef \ "readHistory").extractOrElse[Boolean](capabilityDefaults.readHistory),
+          updateCreate = (resourceDef \ "updateCreate").extractOrElse[Boolean](capabilityDefaults.updateCreate),
+          conditionalCreate = (resourceDef \ "conditionalCreate").extractOrElse[Boolean](capabilityDefaults.conditionalCreate),
+          conditionalRead = (resourceDef \ "conditionalRead").extractOrElse[String](capabilityDefaults.conditionalRead.code),
+          conditionalUpdate = (resourceDef \ "conditionalUpdate").extractOrElse[Boolean](capabilityDefaults.conditionalUpdate),
+          conditionalDelete = (resourceDef \ "conditionalDelete").extractOrElse[String](capabilityDefaults.conditionalDelete.code),
           referencePolicies = (resourceDef \ "referencePolicy").extractOrElse[Seq[String]](Nil).toSet,
           searchInclude = (resourceDef \ "searchInclude").extractOrElse[Seq[String]](Nil).toSet,
           searchRevInclude = (resourceDef \ "searchRevInclude").extractOrElse[Seq[String]](Nil).toSet,

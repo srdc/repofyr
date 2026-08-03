@@ -1,8 +1,5 @@
 package io.onfhir.api.util
 
-import akka.http.scaladsl.model.Uri
-import akka.http.scaladsl.model.Uri.Empty
-import io.onfhir.api.parsers.BundleRequestParser
 import io.onfhir.util.JsonFormatter.{formats, parseFromJson}
 import org.json4s.JsonAST.{JBool, JString}
 import org.junit.runner.RunWith

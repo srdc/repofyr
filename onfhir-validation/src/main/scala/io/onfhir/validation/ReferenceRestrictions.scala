@@ -4,7 +4,7 @@ import io.onfhir.api.model.{FhirCanonicalReference, FhirInternalReference, FhirL
 import io.onfhir.api.{FHIR_COMMON_FIELDS, FHIR_DATA_TYPES}
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.api.validation.{AbstractFhirContentValidator, ConstraintFailure, FhirRestriction}
-import io.onfhir.config.{FhirServerConfig, OnfhirConfig, ResourceConf}
+import io.onfhir.config.{FhirServerConfig, ResourceConf}
 import org.json4s
 import org.json4s.JsonAST.{JObject, JString, JValue}
 
@@ -106,7 +106,8 @@ case class ReferenceRestrictions(referenceDataTypes:Set[String],
                   issues = issues :+ ConstraintFailure(s"Element uses literal referencing (with Reference.reference) while it is not allowed for resource '$resourceType'! ")
 
                 //If reference policy is local, all references should be local
-                if (resourceConf.referencePolicies.contains("local") && url.exists(!_.startsWith(OnfhirConfig.fhirRootUrl)))
+                if (resourceConf.referencePolicies.contains("local") &&
+                    fhirContentValidator.localEndpoint.exists(settings => url.exists(!_.startsWith(settings.rootUrl))))
                   issues = issues :+ ConstraintFailure(s"Element uses referencing to a resource in a remote repository (with Reference.reference) while it is not allowed for resource '$resourceType'! ")
                 //If enforced, add it to list to check together with related target profiles
                 if (resourceConf.referencePolicies.contains("enforced") && targetProfiles.nonEmpty) {

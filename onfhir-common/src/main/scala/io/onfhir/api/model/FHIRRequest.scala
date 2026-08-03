@@ -1,12 +1,11 @@
 package io.onfhir.api.model
 
 import java.time.Instant
-import akka.http.scaladsl.model.{ContentType, HttpMethod, Uri}
-import akka.http.scaladsl.model.headers.{`If-Match`, `If-Modified-Since`, `If-None-Match`, `X-Forwarded-For`, `X-Forwarded-Host`}
 import io.onfhir.api.Resource
 import io.onfhir.api._
 import io.onfhir.api.parsers.BundleRequestParser
 import io.onfhir.api.util.FHIRUtil
+import io.onfhir.config.FhirEndpointSettings
 import io.onfhir.util.JsonFormatter
 import io.onfhir.util.JsonFormatter.formats
 
@@ -44,14 +43,14 @@ case class FHIRRequest(
                         //HTTP Headers used in different interactions
                         var ifNoneExist:Option[String] = None,
                         var prefer:Option[String] = None,
-                        var ifMatch:Option[`If-Match`] = None,
-                        var ifNoneMatch: Option[`If-None-Match`] = None,
-                        var ifModifiedSince:Option[`If-Modified-Since`] = None,
-                        var xForwardedFor:Option[`X-Forwarded-For`] = None,
-                        var xForwardedHost:Option[`X-Forwarded-Host`] = None,
+                        var ifMatch:Option[EntityTagCondition] = None,
+                        var ifNoneMatch: Option[EntityTagCondition] = None,
+                        var ifModifiedSince:Option[Instant] = None,
+                        var xForwardedFor:Option[ForwardedFor] = None,
+                        var xForwardedHost:Option[ForwardedHost] = None,
                         var xIntermediary:Option[String] = None,
                         //Other contextual params
-                        var contentType: Option[ContentType] = None,
+                        var contentType: Option[FhirContentType] = None,
                         var isIdGenerated:Boolean = true, //If we generate the id of request or is it come from the Bundle request
                         var requestTime:Instant = Instant.now(), //Time when request is constructed
                         var response:Option[FHIRResponse] = None, // FHIR response to the request
@@ -200,7 +199,7 @@ case class FHIRRequest(
     * @param ifMatch        FHIR IfMatch Header value
     * @param prefer         FHIR Prefer Header value
     */
-  def initializeUpdateRequest(resourceType:String, resourceId:Option[String], ifMatch:Option[`If-Match`], prefer:Option[String]):Unit = {
+  def initializeUpdateRequest(resourceType:String, resourceId:Option[String], ifMatch:Option[EntityTagCondition], prefer:Option[String]):Unit = {
     this.interaction = FHIR_INTERACTIONS.UPDATE
     this.resourceType = Some(resourceType)
     this.resourceId  = resourceId
@@ -241,8 +240,8 @@ case class FHIRRequest(
     */
   def initializeReadRequest(resourceType:String,
                             resourceId:String,
-                            ifModifiedSince:Option[`If-Modified-Since`],
-                            ifNoneMatch: Option[`If-None-Match`],
+                            ifModifiedSince:Option[Instant],
+                            ifNoneMatch: Option[EntityTagCondition],
                             summary:Option[String],
                             elements:Option[String]
                            ):Unit = {
@@ -278,7 +277,7 @@ case class FHIRRequest(
     * @param ifMatch        FHIR IfMatch Header value
     * @param prefer         FHIR Prefer Header value
     */
-  def initializePatchRequest(resourceType:String, resourceId:Option[String], ifMatch:Option[`If-Match`], prefer:Option[String]):Unit = {
+  def initializePatchRequest(resourceType:String, resourceId:Option[String], ifMatch:Option[EntityTagCondition], prefer:Option[String]):Unit = {
     this.interaction = FHIR_INTERACTIONS.PATCH
     this.resourceType = Some(resourceType)
     this.resourceId  = resourceId
@@ -314,9 +313,10 @@ case class FHIRRequest(
 
   /**
     * Initialize FHIR transaction or batch request
-    * @param resource Transcation/Batch request body
+    * @param resource         Transcation/Batch request body
+    * @param endpointSettings FHIR endpoint used while parsing child requests
     */
-  def initializeTransactionOrBatchRequest(resource: Resource, prefer:Option[String] = None): Unit = {
+  def initializeTransactionOrBatchRequest(resource: Resource, endpointSettings: FhirEndpointSettings, prefer:Option[String] = None): Unit = {
     this.interaction = (resource \ FHIR_COMMON_FIELDS.TYPE).extractOpt[String].getOrElse("unknown")
     this.resource = Some(resource)
     this.childRequests =
@@ -324,7 +324,7 @@ case class FHIRRequest(
         this.interaction = FHIR_INTERACTIONS.TRANSACTION
         BundleRequestParser.parseBundleDocumentRequest(resource, prefer)
       } else
-        BundleRequestParser.parseBundleRequest(resource, prefer)
+        BundleRequestParser.parseBundleRequest(resource, endpointSettings, prefer)
     //Set prefer header
     this.prefer = prefer
   }

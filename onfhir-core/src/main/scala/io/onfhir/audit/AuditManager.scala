@@ -1,5 +1,7 @@
 package io.onfhir.audit
 
+import io.onfhir.api.model.AkkaHttpModelAdapter._
+
 import java.util.concurrent.{ConcurrentLinkedQueue, TimeUnit}
 import akka.actor.{Actor, ActorSystem, Cancellable, Props}
 import akka.http.scaladsl.Http
@@ -224,7 +226,7 @@ class AuditManager(fhirConfigurationManager: IFhirConfigurationManager,
 
         Future.sequence(auditCreationJobs).map(responses => {
           responses.foreach {
-            case fr: FHIRResponse => if (!fr.httpStatus.isSuccess) logger.error(s"Problem in audit storage!")
+            case fr: FHIRResponse => if (!fr.httpStatus.isSuccess()) logger.error(s"Problem in audit storage!")
             case hr: HttpResponse => if (!hr.status.isSuccess) logger.error(s"Problem in audit sending; ${hr.toString}")
             case br:Boolean => if(!br) logger.error(s"Problem in custom audit sending!")
             case _ =>
@@ -248,25 +250,6 @@ object AuditManager {
   final val AUDITING_METHOD_REMOTE = "remote" //Audits (FHIR AuditEvent) are sent to a remote FHIR repository
   //Name for the actor
   final val ACTOR_NAME = "audit-manager"
-
-  /**
-    * Internal model for Audit Agents (parties that take role)
-    * @param userId                 User identifier accessing the user
-    * @param refToIdentityResource  Reference to the Identity resource corresponding to user e.g. Practitioner/....
-    * @param roles                  Roles of the user (system,code)
-    * @param userName               Name of the user
-    * @param clientId               Identifier for the client system
-    * @param clientName             Name of the client system
-    * @param networkAddress         Network IP address where the user is accessing to the resources
-    */
-  case class AgentsInfo(
-                         userId:Option[String], //
-                         refToIdentityResource:Option[String], //
-                         roles:Seq[(Option[String], String)], //
-                         userName:Option[String], //
-                         clientId:Option[String], //
-                         clientName:Option[String], //
-                         networkAddress:String) //
 
   /**
     * Event class for AuditManager actor to create audit records for request

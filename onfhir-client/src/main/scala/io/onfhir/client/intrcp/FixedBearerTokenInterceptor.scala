@@ -1,16 +1,13 @@
 package io.onfhir.client.intrcp
 
-import akka.http.scaladsl.model.HttpRequest
-import akka.http.scaladsl.model.headers.{Authorization, OAuth2BearerToken}
 import io.onfhir.client.IHttpRequestInterceptor
+import io.onfhir.client.model.ClientHttpRequest
 
 import scala.concurrent.{ExecutionContext, Future}
 
 abstract class BearerTokenInterceptor extends IHttpRequestInterceptor {
-  def addHeader(httpRequest: HttpRequest, bearerToken:String):HttpRequest = {
-    httpRequest
-      .withHeaders(httpRequest.headers :+ Authorization.apply(OAuth2BearerToken.apply(bearerToken)))
-  }
+  def addHeader(httpRequest: ClientHttpRequest, bearerToken:String):ClientHttpRequest =
+    httpRequest.addHeader("Authorization", s"Bearer $bearerToken")
 }
 
 case class FixedBearerTokenInterceptor(bearerToken:String) extends BearerTokenInterceptor {
@@ -20,7 +17,6 @@ case class FixedBearerTokenInterceptor(bearerToken:String) extends BearerTokenIn
    * @param httpRequest
    * @return
    */
-  override def processRequest(httpRequest: HttpRequest)(implicit ex:ExecutionContext): Future[HttpRequest] = {
-    Future.apply(addHeader(httpRequest, bearerToken))
-  }
+  override def processRequest(httpRequest: ClientHttpRequest)(implicit ex:ExecutionContext): Future[ClientHttpRequest] =
+    Future.successful(addHeader(httpRequest, bearerToken))
 }

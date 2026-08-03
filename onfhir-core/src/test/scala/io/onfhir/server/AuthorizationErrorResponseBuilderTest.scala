@@ -1,6 +1,6 @@
 package io.onfhir.server
 
-import akka.http.scaladsl.model.StatusCodes
+import io.onfhir.api.model.HttpStatus
 import io.onfhir.authz.AuthzResult
 import io.onfhir.exception.{AuthorizationFailedException, AuthorizationFailedRejection}
 import org.junit.runner.RunWith
@@ -16,7 +16,7 @@ class AuthorizationErrorResponseBuilderTest extends Specification {
           AuthorizationFailedRejection(AuthzResult.undecided("Cannot decide"))
         )
 
-      response.httpStatus === StatusCodes.Unauthorized
+      response.httpStatus === HttpStatus.Unauthorized
       response.outcomeIssues.head.diagnostics must beSome("Error: invalid_request; Cannot decide")
       response.authenticateHeader.map(_.value()) must beSome((value: String) => value.contains("invalid_request"))
     }
@@ -27,7 +27,7 @@ class AuthorizationErrorResponseBuilderTest extends Specification {
           new AuthorizationFailedException(AuthzResult.undecided("Cannot decide"))
         )
 
-      response.httpStatus === StatusCodes.Unauthorized
+      response.httpStatus === HttpStatus.Unauthorized
       response.outcomeIssues.head.diagnostics must beSome("Error: invalid_request; Cannot decide")
     }
 

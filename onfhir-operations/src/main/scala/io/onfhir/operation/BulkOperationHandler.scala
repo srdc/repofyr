@@ -1,5 +1,7 @@
 package io.onfhir.operation
 
+import io.onfhir.api.model.AkkaHttpModelAdapter._
+
 import akka.actor.ActorRef
 import akka.http.scaladsl.model.StatusCodes
 import io.onfhir.Onfhir

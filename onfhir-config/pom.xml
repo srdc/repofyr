@@ -11,6 +11,7 @@
     </parent>
 
     <artifactId>onfhir-config_2.13</artifactId>
+    <properties><library.gates.skip>false</library.gates.skip></properties>
     <name>Module for advanced configuration of onFHIR</name>
 
     <build>
@@ -34,6 +35,10 @@
         <dependency>
             <groupId>io.onfhir</groupId>
             <artifactId>onfhir-common_${scala.binary.version}</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.onfhir</groupId>
+            <artifactId>onfhir-client_${scala.binary.version}</artifactId>
         </dependency>
         <dependency>
             <groupId>io.onfhir</groupId>

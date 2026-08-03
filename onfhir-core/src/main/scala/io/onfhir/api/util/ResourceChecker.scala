@@ -2,7 +2,7 @@ package io.onfhir.api.util
 
 import io.onfhir.api._
 import io.onfhir.api.model.{FHIRResponse, FhirLiteralReference, OutcomeIssue, Parameter}
-import io.onfhir.config.{FhirServerConfig, SearchParameterConf}
+import io.onfhir.config.{FhirEndpointSettings, FhirServerConfig, SearchParameterConf}
 import io.onfhir.db.ResourceManager
 import io.onfhir.exception.NotImplementedException
 import scala.concurrent.Await
@@ -13,7 +13,7 @@ import scala.util.Try
 /**
   * Utility class that runs FHIR queries in memory on a specific resource
   */
-class ResourceChecker(fhirConfig:FhirServerConfig) {
+class ResourceChecker(fhirConfig:FhirServerConfig, endpointSettings: FhirEndpointSettings) {
   val resourceManager = new ResourceManager(fhirConfig)
   /**
     * Check if the given resource satisfies the restriction given search query
@@ -53,12 +53,7 @@ class ResourceChecker(fhirConfig:FhirServerConfig) {
           )
         ))
 
-        (parameter.paramType, parameter.suffix) match {
-          case (_, FHIR_PREFIXES_MODIFIERS.MISSING) =>
-            InMemoryPrefixModifierHandler.missingHandler(searchParameConf.get.extractElementPaths().toSeq, parameter.valuePrefixList.head._2, resource)
-          case (_, _) =>
-            handleSimpleParameter(parameter, searchParameConf.get, resource)
-        }
+        handleSimpleParameter(parameter, searchParameConf.get, resource)
     })
   }
 
@@ -172,7 +167,7 @@ class ResourceChecker(fhirConfig:FhirServerConfig) {
 
   private def handleSimpleParameter(parameter:Parameter, searchParameterConf:SearchParameterConf, resource: Resource): Boolean ={
     val values = ImMemorySearchUtil.extractValuesAndTargetTypes(searchParameterConf, resource)
-    ImMemorySearchUtil.handleSimpleParameter(parameter, searchParameterConf, values)
+    ImMemorySearchUtil.handleSimpleParameter(parameter, searchParameterConf, values, endpointSettings)
   }
 
 
@@ -206,6 +201,6 @@ class ResourceChecker(fhirConfig:FhirServerConfig) {
     */
   private def handleCompositeParameter(rtype:String, parameter:Parameter, searchParamConf:SearchParameterConf, validQueryParameters:Map[String, SearchParameterConf], resource: Resource):Boolean = {
     val commonParts = ImMemorySearchUtil.extractValuesAndTargetTypes(searchParamConf, resource)
-    ImMemorySearchUtil.handleCompositeParameter(parameter, searchParamConf, commonParts, validQueryParameters)
+    ImMemorySearchUtil.handleCompositeParameter(parameter, searchParamConf, commonParts, validQueryParameters, endpointSettings)
   }
 }

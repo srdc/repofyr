@@ -1,37 +1,43 @@
 # onfhir-client
-This module a provides a Scala library that you can use as a FHIR client to easily construct and send FHIR requests 
-(search, CRUD, operations) to a configured FHIR server (similar Firely .Net FHIR client). 
+This module provides a reusable Scala client for constructing and sending FHIR
+search, CRUD, history, batch/transaction, and operation requests. Maven
+coordinate: `io.onfhir:onfhir-client_2.13`.
+
+Principal APIs are `OnFhirNetworkClient`, `IOnFhirClient`, `BaseFhirClient`,
+the interaction-specific request builders, bundle wrappers, and authentication
+interceptors. It depends on Common and Path. It uses the JDK 11+
+`java.net.http.HttpClient`; it does not depend on Akka/Pekko, start a server,
+perform persistence, or validate resources against profiles.
 
 You can use the library over the wrapper [io.onfhir.client.OnFhirNetworkClient](./src/main/scala/io/onfhir/client/OnFhirNetworkClient.scala).
-There are two type of constructors for the OnFhirNetworkClient. The first one gets simply the base URL for FHIR endpoint. 
-This can be used for FHIR servers that does not apply any authentication mechanism. Both constructors need akka ActorSystem
-implicitly as the library is based on Akka HTTP. If you are already using akka actors in your code you can use the ActorSystem 
-you have created for your system. Otherwise, you can simply construct an ActorSystem and OnFhirNetworkClient instance 
-and share and use it everywhere you try to access target FHIR API.
+There are two types of constructors for `OnFhirNetworkClient`. The first simply receives the base URL for the FHIR endpoint
+and can be used for servers without authentication. Constructors receive a Scala `ExecutionContext` implicitly. The client
+uses the JDK 11 `java.net.http.HttpClient` and reuses one transport instance, so applications should share the configured
+`OnFhirNetworkClient` wherever they access the target FHIR API.
 
 The following snippet shows a simple usage of the library. 
 
 ```
 import io.onfhir.util.JsonFormatter._
-import akka.actor.ActorSystem
 import io.onfhir.api.Resource
 import io.onfhir.client._
+import scala.concurrent.ExecutionContext
 
-# An implicit akka ActorSystem is required as module is based on Akka Http
-implicit val actorSystem: ActorSystem = ActorSystem("OnFhirClientExample")
+// Supply the executor used for asynchronous client work
+implicit val executionContext: ExecutionContext = ExecutionContext.global
 
-# Constuct the client wrapper
+// Construct the client wrapper
 val fhirClient: OnFhirNetworkClient = OnFhirNetworkClient.apply("http://127.0.0.1:8080/fhir")
 
-# Creating a FHIR resource
+// Creating a FHIR resource
 val patient1: Resource =  Source.fromFile(...).mkString.parseJson
 var persistedPatient1 = Await.result(fhirClient.create(patient1), 2 seconds)
 
-# Updating a FHIR resource
+// Updating a FHIR resource
 ... //Update some elements of the persistedPatient1 resource
 persistedPatient1 = Await.result(fhirClient.update(persistedPatient1), 2 seconds)
 
-# Searching for FHIR resources
+// Searching for FHIR resources
 val bundle:FHIRSearchSetBundle = 
     Await.result(
             fhirClient
@@ -42,8 +48,8 @@ val bundle:FHIRSearchSetBundle =
 bundle.entries.map(e => ...) //Access to entries in the FHIR search-set bundle
 ```
 ## Constructing FHIR requests
-You can start to construct your FHIR request by using one of the methods given in the io.onfhir.api.client.BaseFhirClient 
-given in onfhir-common module. 
+You can start constructing a request with the methods on
+`io.onfhir.api.client.BaseFhirClient`, provided by this module.
 
 | Method signature                                        | FHIR interaction | Description/Example                                                                                                                                                                                                                                                                                                                                                                                                          |
 |---------------------------------------------------------|------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -84,7 +90,7 @@ For search requests you can use the following methods to construct your final re
 * lenientHandling(): Set the lenient handling for search (Prefer: handling=lenient)
 
 ```
-    # Searching blood pressure measurements of patient with id 'p1' after January 1 2024 sorted descending on date
+    // Search blood pressure measurements after January 1 2024.
     fhirClient
         .search("Observation")
         .forCompartment("Patient", "p1")
@@ -103,7 +109,7 @@ include the content for example created/updated FHIR resource but only related h
 OperationOutcome resource containing hints and warnings about the operation rather than the full resource. 
 
 For FHIR read requests, the following options can be used for conditional read. See [FHIR standard](https://hl7.org/fhir/R5/http.html#cread) details.
-* ifModifiedSince(since:DateTime): To indicate the resource is requested if it is modified after given time. 
+* ifModifiedSince(since:Instant): To indicate the resource is requested if it is modified after given time.
 * ifNoneMatch(version:Long): To indicate the resource is requested if a newer version is available.
 
 For conditional create, update, delete, patch requests, you can use the following option as in the search to provide the conditional statement.
