@@ -1,8 +1,8 @@
 # Contributing
 
-Thank you for contributing to onFHIR and Repofyr. Before opening a change,
-read `AGENTS.md` and the active plan under `docs/plans` when working on the
-library/server split.
+Thank you for contributing to Repofyr. Read `AGENTS.md` and the active plan
+under `docs/plans` before changing repository architecture or public server
+contracts.
 
 ## Development certificate of origin
 
@@ -15,16 +15,12 @@ git commit -s
 ```
 
 By signing off, you certify that you wrote the contribution or otherwise have
-the right to submit it under the project's applicable license. Sign-offs are
-not a substitute for the explicit historical contributor/IP approval required
-before relicensing the extracted library repository.
+the right to submit it under the project's applicable license.
 
 ## Before submitting
 
-- Keep reusable-library code independent of Akka, Pekko, and server runtime
-  concerns.
-- Record library module relocations and public API changes in the migration
-  table in `docs/plans/library-server-split-plan-v2.md`.
-- Run the relevant module tests and the `onfhir-server-r4` regression suite.
-- Run `powershell -File scripts/check-forbidden-imports.ps1`.
-- Do not change license files as part of ordinary code changes.
+- Keep reusable `io.onfhir` library dependencies external to this reactor.
+- Use `onfhir.libs.version` for every reusable-library dependency.
+- Run the relevant server module tests and the `onfhir-server-r4` regression
+  suite.
+- Keep Repofyr GPL-3.0 license metadata unchanged during the split.

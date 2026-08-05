@@ -1,112 +1,55 @@
 # AGENTS.md
 
-Working contract for AI agents (Claude Code, Codex, or others) operating in
-this repository. This repo is onFHIR (rebranded repofyr on GitHub:
-https://github.com/srdc/repofyr), currently being restructured: the reusable
-library modules are being separated from the FHIR server so the libraries can
-be released under Apache-2.0 while the server keeps its own license.
+Working contract for AI agents operating in the Repofyr server repository.
+The reusable onFHIR libraries have been physically extracted to the sibling
+`onfhir-libs` repository during Phase 5A.
 
-The active restructuring plan lives at
-`docs/plans/library-server-split-plan-v2.md`. Read it before any implementation
-work; execute one phase at a time and keep its Status header current. The
-original plan is retained only as historical design context.
+The active restructuring plan is
+`docs/plans/library-server-split-plan-v2.md`. Execute one phase at a time and
+keep its Status header current.
 
-## Branch Policy
+## Branch policy
 
-- Working branch for the split: `repository-split` (created 2026-07-31 from
-  master + `updating-operation-handling`; `mvn test` green). All split work
-  goes here.
-- Trunk for the new release line: `updating-operation-handling` (21 commits
-  ahead of `master`, fast-forwardable; confirmed 2026-07-31). It will become
-  the new `master` at release time.
-- Do not base work on `master`; it is legacy.
+- Split work belongs on `repository-split`.
+- `updating-operation-handling` is the intended trunk for the new release
+  line; do not base split work on legacy `master`.
+- Do not commit unless explicitly asked and never rewrite published history.
 
-## Refactoring Policy
+## Repository boundary
 
-Module membership is decided by logic and semantics, not by downstream usage.
-Dependent projects (ignifyr, gitlab.srdc.com.tr repos) are pinned to released
-onfhir versions and adapt afterwards. The cost of this freedom is that the
-Migration Table in the split plan is mandatory: every module relocation and
-public-signature change is recorded there in the same change that makes it.
-Coordinates do not change during the split (invariant 3 below).
+This reactor owns only the Repofyr server family:
 
-## Module Map And Target Architecture
+- `onfhir-event`
+- `onfhir-core`
+- `onfhir-operations`
+- `onfhir-kafka`
+- `onfhir-server-r4`
+- `onfhir-server-r5`
+- `onfhir-server-stu3`
 
-Two families. The split plan moves the library family to its own repo once
-the in-place refactoring is complete (refactor first, split last).
+Reusable models, clients, FHIRPath, query, configuration, expression,
+validation, template-engine, and R4 parser code belong to `srdc/onfhir-libs`.
+Do not copy their sources back into this reactor.
 
-Library family (target: Apache-2.0, zero Akka/Pekko dependencies):
+## Non-negotiable invariants
 
-| Module | Akka status (after Phase 3: zero imports total) |
-|---|---|
-| onfhir-common | clean |
-| onfhir-client | clean; JDK 11 `java.net.http` transport |
-| onfhir-path | clean |
-| onfhir-query | clean |
-| onfhir-config | clean |
-| onfhir-expression | clean |
-| onfhir-validation | clean |
-| onfhir-template-engine | clean |
-| onfhir-r4 | clean |
-
-All nine library modules are source-, resource-, and resolved-dependency-graph
-clean after Phase 3. Keep
-`scripts/check-forbidden-imports.ps1` as a source-level gate in addition to POM
-and resolved-dependency inspection.
-
-Server family (stays in this repo as repofyr; Akka remains until a separate
-Pekko/license decision, out of scope here):
-
-- onfhir-event (transitional Phase 1D cycle breaker), onfhir-core,
-  onfhir-operations, onfhir-kafka,
-  onfhir-server-r4, onfhir-server-r5, onfhir-server-stu3
-
-Verified inter-module facts (2026-07-31): the library family is a closed
-dependency set with no edges into server modules. The two historical edges
-(`onfhir-validation -> onfhir-server-r4`, `onfhir-path -> onfhir-client`) are
-commented out in the POMs and were test-scoped. Do not reintroduce either.
-
-## Non-Negotiable Invariants
-
-1. No `import akka.` or `import org.apache.pekko.` in library-family
-   `src/main`. Enforced by `scripts/check-forbidden-imports.ps1`; the count
-   must never increase, and reaches zero by the end of Phase 3.
-2. No server concerns in `onfhir-common`: no HTTP routing (Directives), no
-   response marshalling, no actor-based event bus. Such code moves to the
-   server modules.
-3. Coordinate stability during the split: groupId `io.onfhir`, existing
-   artifactIds, and Scala package roots (`io.onfhir.*`) do not change.
-   Hundreds of files across downstream repos (spark-on-fhir, tofhir,
-   onfhir-feast, CRT, and others) import these. A later Repofyr rebrand may
-   deliberately adopt `io.repofyr` coordinates and packages, but that is a
-   separate post-split major migration - never a side effect of this work.
-4. Public API changes in library modules are recorded in the migration table
-   in the split plan (old signature -> new signature), in the same change.
-5. License: library modules must not gain dependencies that are incompatible
-   with Apache-2.0 (no GPL/LGPL/BSL/SSPL). The relicense itself is pending a
-   contributor audit - do not change LICENSE files until that decision is
-   recorded.
+1. Repofyr retains GPL-3.0 metadata until a separate license decision.
+2. During Phase 5A, server coordinates remain under `io.onfhir`; the approved
+   `io.repofyr` Maven and package migration is Phase 5B only.
+3. Every reusable-library dependency uses `onfhir.libs.version`, never the
+   server `${project.version}`.
+4. Runtime configuration keys, persistence identifiers, and stored-data
+   conventions remain stable during the namespace migration.
+5. Public moves are recorded in the migration tables in the active plan.
 
 ## Verification
 
 - Reactor compile: `mvn -DskipTests compile`
-- Targeted module tests: `mvn -pl <module> -am test`
-- The main regression net is `onfhir-server-r4` (14 test files, endpoint
-  tests exercising the library code underneath). Library-module test coverage
-  is thin (0-3 files each), so every phase must end with the server-r4 suite
-  green, not just the touched module's tests.
-- Before refactoring a low-coverage class, add characterization tests first
-  (pin current behavior, then change). This applies especially to
-  `FHIRSearchParameterValueParser`.
+- Targeted server tests: `mvn -pl <module> -am test`
+- Main regression net: `mvn -pl onfhir-server-r4 -am test`
+- Phase 5A verification must use a fresh Maven cache configured to resolve
+  `io.onfhir:*` libraries from the staged library repository.
 
-## Working Conventions
-
-- Plan-first: multi-file work starts from `docs/plans/`; one phase per
-  session.
-- Keep scripts ASCII-only (Windows PowerShell 5.1 parses no-BOM files as
-  ANSI; non-ASCII characters corrupt parsing).
-- Do not commit unless asked. Never rewrite published history; the eventual
-  repo split uses git filter-repo on a dedicated clone, not on this working
-  copy.
-
-## Imported Claude Cowork project instructions
+Keep scripts ASCII-only for Windows PowerShell 5.1 compatibility. Do not push,
+publish, sign with a replacement identity, or alter credentials without
+explicit authorization.

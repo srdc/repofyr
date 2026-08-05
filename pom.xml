@@ -73,22 +73,13 @@
     </scm>
 
     <modules>
-        <module>onfhir-common</module>
         <module>onfhir-event</module>
         <module>onfhir-core</module>
         <module>onfhir-operations</module>
         <module>onfhir-kafka</module>
         <module>onfhir-server-r4</module>
         <module>onfhir-server-stu3</module>
-        <module>onfhir-path</module>
-        <module>onfhir-validation</module>
-        <module>onfhir-config</module>
         <module>onfhir-server-r5</module>
-        <module>onfhir-client</module>
-        <module>onfhir-expression</module>
-        <module>onfhir-r4</module>
-        <module>onfhir-template-engine</module>
-        <module>onfhir-query</module>
     </modules>
 
     <properties>
@@ -101,7 +92,7 @@
         <revision>3.4.1-SNAPSHOT</revision>
         <!-- Kept distinct now so the server reactor can consume independently
              versioned library artifacts after the physical split. -->
-        <onfhir.libs.version>${revision}</onfhir.libs.version>
+        <onfhir.libs.version>4.0.0</onfhir.libs.version>
         <library.gates.skip>true</library.gates.skip>
 
         <!-- plugin versions -->
