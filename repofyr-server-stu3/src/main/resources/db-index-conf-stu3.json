@@ -163,7 +163,7 @@
     },
     {
       "resource": "Coverage",
-      "shardKey": ["patient"],
+      "shardKey": ["payor"],
       "indexes": []
     },
     {
@@ -301,8 +301,7 @@
       "resource": "Group",
       "shardKey": ["_id"],
       "indexes": [
-        {"parameters": ["member"]},
-        {"parameters": ["managing-entity","member"]}
+        {"parameters": ["member"]}
       ]
     },
     {
@@ -317,7 +316,7 @@
     },
     {
       "resource": "ImagingStudy",
-      "shardKey": ["subject"],
+      "shardKey": ["patient"],
       "indexes": []
     },
     {
@@ -451,7 +450,6 @@
       "resource": "Provenance",
       "shardKey": ["_id"],
       "indexes": [
-        {"parameters": ["when"]},
         {"parameters": ["patient"]},
         {"parameters": ["agent"]},
         {"parameters": ["target"]}
@@ -475,7 +473,7 @@
       "resource": "Schedule",
       "shardKey": ["actor"],
       "indexes": [
-        {"parameters": ["service-type","date"]}
+        {"parameters": ["type","date"]}
       ]
     },
     {
@@ -487,7 +485,7 @@
       "resource": "Slot",
       "shardKey": ["_id"],
       "indexes": [
-        {"parameters": ["service-type","start"]}
+        {"parameters": ["slot-type","start"]}
       ]
     },
     {
@@ -518,7 +516,7 @@
     {
       "resource": "ValueSet",
       "indexes": [
-        {"parameters": ["url","code"]}
+        {"parameters": ["url"]}
       ]
     }
   ]
