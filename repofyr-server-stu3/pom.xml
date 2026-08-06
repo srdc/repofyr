@@ -102,6 +102,29 @@
             <groupId>io.repofyr</groupId>
             <artifactId>repofyr-server-r4_${scala.binary.version}</artifactId>
         </dependency>
+        <!-- STU3 foundation-resource parsers, moved to the reusable libraries. -->
+        <dependency>
+            <groupId>io.onfhir</groupId>
+            <artifactId>onfhir-stu3_${scala.binary.version}</artifactId>
+        </dependency>
+        <!-- Supplies definitions-stu3.json.zip and conformance-statement-stu3.json on
+             the classpath; the server no longer ships its own copies. -->
+        <dependency>
+            <groupId>io.onfhir</groupId>
+            <artifactId>onfhir-definitions-stu3</artifactId>
+        </dependency>
+
+        <!-- Unit Testing -->
+        <dependency>
+            <groupId>org.specs2</groupId>
+            <artifactId>specs2-core_${scala.binary.version}</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.specs2</groupId>
+            <artifactId>specs2-junit_${scala.binary.version}</artifactId>
+            <scope>provided</scope>
+        </dependency>
     </dependencies>
 
 </project>

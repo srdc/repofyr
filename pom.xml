@@ -401,6 +401,11 @@
                 <artifactId>onfhir-r5_${scala.binary.version}</artifactId>
                 <version>${onfhir.libs.version}</version>
             </dependency>
+            <dependency>
+                <groupId>io.onfhir</groupId>
+                <artifactId>onfhir-stu3_${scala.binary.version}</artifactId>
+                <version>${onfhir.libs.version}</version>
+            </dependency>
             <!-- FHIR standard definitions and base capability statements. Resource-only
                  artifacts, so they carry no Scala binary-version suffix. -->
             <dependency>
@@ -411,6 +416,11 @@
             <dependency>
                 <groupId>io.onfhir</groupId>
                 <artifactId>onfhir-definitions-r5</artifactId>
+                <version>${onfhir.libs.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.onfhir</groupId>
+                <artifactId>onfhir-definitions-stu3</artifactId>
                 <version>${onfhir.libs.version}</version>
             </dependency>
             <dependency>

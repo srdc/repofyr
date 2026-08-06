@@ -1519,7 +1519,9 @@ including the published `http://onfhir.io/fhir/OperationDefinition/import`.
 | server dependency management naming `io.onfhir:onfhir-template-engine` without a Scala binary-version suffix | `io.onfhir:onfhir-template-engine_2.13`, the coordinate that actually exists in the 4.0.0 library release. Latent defect corrected in passing: the old managed entry named a coordinate that does not exist, and was harmless only because no server module depended on it | 5B - implemented 2026-08-06 |
 | `onfhir.*` runtime configuration keys, `akka.actor.onfhir-blocking-dispatcher`, Kafka topic `onfhir.subscription` and `kafka.client.id = onfhir`, MongoDB names such as `onfhir-test`, `logs/fhir-repository*.log`, the `fhir-repository` default keystore password, and the `io.onfhir.path` / `io.onfhir.validation` Logback logger names | unchanged. Phase 5B renamed Maven coordinates and Scala packages only, so every runtime configuration key, Kafka topic, persistence identifier, and stored-data convention keeps its value and an existing deployment's configuration, database, and Kafka wire traffic continue to work untouched. The two Logback logger names target library loggers; renaming them would silently re-enable debug noise. json4s `ShortTypeHints` emits simple class names, so event payloads carry no package prefix either | 5B - deliberately unchanged 2026-08-06 |
 | `repofyr-server-r4` and `repofyr-server-r5` each embedding `definitions-rX.json.zip` and `conformance-statement-rX.json` in `src/main/resources` | the server modules declare `io.onfhir:onfhir-definitions-r4` / `-r5` at `${onfhir.libs.version}` and compile scope, and ship no definitions of their own; 18.3 MB of duplicated resources removed. The coordinates take no `_2.13` suffix. Both files still resolve by the same bare classpath name, because loading is `ClassLoader.getResourceAsStream` plus a streaming `ZipInputStream`. The dependency must not be `provided` or `test`: those scopes pass every test yet yield a standalone JAR with no definitions. `db-index-conf-rX.json` is server configuration and stays. `repofyr-server-stu3` is unaffected, since no `onfhir-definitions-stu3` artifact exists | 5B follow-up - implemented 2026-08-06 |
-| `repofyr-server-r5` depending on `onfhir-r4_2.13` and parsing foundation resources with `R4Parser` | depends on `onfhir-r5_2.13` and parses with `R5Parser`, which extends `R4Parser` with an identical constructor and no overrides, so behavior is unchanged and R5 gains a real extension point. A managed entry for `onfhir-r5_${scala.binary.version}` was added; `onfhir-r4` stays on the classpath transitively. `repofyr-server-r4` and `repofyr-server-stu3` keep their direct `onfhir-r4` dependency for `StructureDefinitionParser` | 5B follow-up - implemented 2026-08-06 |
+| `repofyr-server-r5` depending on `onfhir-r4_2.13` and parsing foundation resources with `R4Parser` | depends on `onfhir-r5_2.13` and parses with `R5Parser`, which extends `R4Parser` with an identical constructor and no overrides, so behavior is unchanged and R5 gains a real extension point. A managed entry for `onfhir-r5_${scala.binary.version}` was added; `onfhir-r4` stays on the classpath transitively. `repofyr-server-r4` keeps its direct `onfhir-r4` dependency for `StructureDefinitionParser` | 5B follow-up - implemented 2026-08-06 |
+| `io.repofyr.stu3.parsers.STU3Parser` and `io.repofyr.stu3.parsers.STU3StructureDefinitionParser` owned by `repofyr-server-stu3` | `io.onfhir.stu3.parsers.*` in the new `io.onfhir:onfhir-stu3_2.13`. Package root changes from `io.repofyr` to `io.onfhir` because these are reusable release parsers, not server runtime; a consumer importing them must update both the coordinate and the package. `STU3StructureDefinitionParser` had no external caller | 5B follow-up - implemented 2026-08-06 |
+| `repofyr-server-stu3` embedding `conformance-statement.json`, `definitions.json.zip`, and `db-index-conf.json`, none of which the default resolution branch could find | the module declares `io.onfhir:onfhir-definitions-stu3` for the first two, now correctly named `conformance-statement-stu3.json` and `definitions-stu3.json.zip`, and its own remaining index configuration was renamed to `db-index-conf-stu3.json`. This fixes a startup defect that predates the split: `FhirSTU3Configurator` reports release `STU3`, so all three lookups derive a `-stu3` suffixed name and previously threw. A deployment that overrode `fhir.initialization.index-conf-path` to a filesystem path is unaffected; one relying on the packaged classpath default now gets a server that starts | 5B follow-up - implemented 2026-08-06 |
 
 ### 7.4 Server construction contracts
 
@@ -1666,17 +1668,9 @@ Open items carried forward. None blocked Phase 5B:
    coordinates and Scala packages only. Any migration of runtime configuration
    keys, Kafka topics, or persistence identifiers still requires a separate,
    compatibility-focused phase.
-7. `repofyr-server-stu3` cannot resolve its own definitions at default
-   configuration. `FhirSTU3Configurator` reports `fhirVersion = "STU3"`, which
-   falls to the default branch in `BaseConfigReader`, `FSConfigReader`, and
-   `BaseFhirServerConfigurator` and therefore looks for
-   `definitions-stu3.json.zip`, `conformance-statement-stu3.json`, and
-   `db-index-conf-stu3.json`, while the module ships `definitions.json.zip`,
-   `conformance-statement.json`, and `db-index-conf.json`. This predates the
-   split and neither Phase 5B nor the definitions follow-up caused or worsened
-   it; STU3 has no published definitions artifact and keeps its own copies.
-   Fixing it means either renaming those three resources or teaching the
-   default branch the legacy unsuffixed names.
+7. Resolved 2026-08-06 in the STU3 follow-up recorded below. The three
+   resources STU3 startup needs now carry their release suffix, so the default
+   resolution branch finds them.
 
 #### Definitions artifacts and R5 parser follow-up - completed 2026-08-06
 
@@ -1733,8 +1727,63 @@ same gates.
   `io/onfhir/r5/parsers/R5Parser.class`. The isolated build against the signed
   Phase 5A staging repository was repeated so the two definitions coordinates
   and `onfhir-r5_2.13` are proven to resolve from signed staging as well.
-- `repofyr-server-stu3` was left untouched. There is no published
-  `onfhir-definitions-stu3` artifact, so it keeps its own resources; its
-  uber-JAR also carries the R4 definitions transitively through
-  `repofyr-server-r4`, exactly as it did before this change, and the filenames
-  do not collide.
+- `repofyr-server-stu3` was left untouched at the time, because no published
+  `onfhir-definitions-stu3` artifact existed yet. The maintainer added one
+  immediately afterwards; see the STU3 follow-up below.
+
+#### STU3 library extraction follow-up - completed 2026-08-06
+
+The maintainer added `onfhir-definitions-stu3` and `onfhir-stu3` to the library
+reactor, with the definitions resources already renamed to the release-suffixed
+convention. The server side was then reduced to match, which also closed the
+STU3 startup defect that had been recorded as an open item.
+
+- Deleted the two definitions resources `conformance-statement.json` and
+  `definitions.json.zip`, 7.7 MB byte-identical to the copies now published in
+  `io.onfhir:onfhir-definitions-stu3:4.0.0`, and the two parser sources
+  `STU3Parser.scala` and `STU3StructureDefinitionParser.scala`, which now live
+  in `io.onfhir:onfhir-stu3_2.13` under `io.onfhir.stu3.parsers`. The module
+  keeps only its `Boot`, `STU3AuditCreator`, `FhirSTU3Configurator`, and index
+  configuration.
+- `repofyr-server-stu3` declares both new artifacts, and managed entries were
+  added for `onfhir-stu3_${scala.binary.version}` and the unsuffixed
+  `onfhir-definitions-stu3`. `FhirSTU3Configurator` now imports `STU3Parser`
+  from `io.onfhir.stu3.parsers`; it was the only external reference, since
+  `STU3StructureDefinitionParser` was used solely inside `STU3Parser`. As with
+  R4 and R5, `onfhir-stu3` depends on its definitions artifact at test scope,
+  so the server declares that dependency directly.
+- The STU3 startup defect recorded as open item 7 is fixed. Two thirds of it
+  disappeared with the library rename, because the published artifact supplies
+  `definitions-stu3.json.zip` and `conformance-statement-stu3.json`, the exact
+  names `BaseConfigReader` and `FSConfigReader` derive for a non-R4/R5 release.
+  The remaining third was the server's own `db-index-conf.json`, which
+  `BaseFhirServerConfigurator.readIndexConfigurationsAndConfigureShardKeys`
+  resolves as `db-index-conf-stu3.json`; it was renamed accordingly. All three
+  lookups are `IOUtil.readInnerResource` or `readResourceInZip` calls that throw
+  when the classpath entry is absent, so STU3 could not previously start at
+  default configuration at all.
+- Added `FhirSTU3ConfiguratorTest`, the module's first test. It leaves every
+  path at its default and calls `initializeServerPlatform`, which exercises all
+  three resource lookups in one pass, then asserts the standard definitions,
+  the base capability statement, and the index configuration were each parsed.
+  The absence of any STU3 coverage is why the naming defect survived this long.
+  The suite documents one distinction worth keeping: the configurator's release
+  label is `STU3`, which drives resource-name resolution, while the parsed
+  `FhirServerConfig.fhirVersion` is `3.0.1`, taken from the capability
+  statement.
+- Verification used a clean build throughout, after discovering that an
+  incremental `package` had masked the deletions: Maven does not purge resources
+  that disappear from `src/main/resources`, so stale copies survived in
+  `target/classes` and were shaded into the uber-JAR. After `mvn clean package`
+  each server module's `target/classes` contains only its own
+  `db-index-conf-*.json`, proving the definitions can only come from the
+  dependency artifacts. The reactor runs 253 tests green, including the 4 new
+  STU3 tests, and the STU3 uber-JAR carries exactly
+  `definitions-stu3.json.zip`, `conformance-statement-stu3.json`, and
+  `db-index-conf-stu3.json`, plus the R4 set inherited transitively through
+  `repofyr-server-r4` as before, with no filename collision.
+- `onfhir-stu3_2.13` and `onfhir-definitions-stu3` postdate the Phase 5A signed
+  staging repository, so they are resolvable only from the local Maven cache
+  until a new library staging run publishes them. The signed-staging isolation
+  gate therefore cannot cover STU3 yet; repeat it after the next library
+  staging.

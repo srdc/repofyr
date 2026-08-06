@@ -6,7 +6,7 @@ import io.repofyr.audit.IFhirAuditCreator
 import io.repofyr.config.{AuditConfig, BaseFhirServerConfigurator}
 import io.onfhir.config.{FhirCapabilityDefaults, FhirSearchHandling, FhirServerConfig, FhirSubscriptionSettings}
 import io.repofyr.stu3.audit.STU3AuditCreator
-import io.repofyr.stu3.parsers.STU3Parser
+import io.onfhir.stu3.parsers.STU3Parser
 
 
 class FhirSTU3Configurator extends BaseFhirServerConfigurator {
