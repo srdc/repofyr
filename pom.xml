@@ -397,6 +397,23 @@
                 <version>${onfhir.libs.version}</version>
             </dependency>
             <dependency>
+                <groupId>io.onfhir</groupId>
+                <artifactId>onfhir-r5_${scala.binary.version}</artifactId>
+                <version>${onfhir.libs.version}</version>
+            </dependency>
+            <!-- FHIR standard definitions and base capability statements. Resource-only
+                 artifacts, so they carry no Scala binary-version suffix. -->
+            <dependency>
+                <groupId>io.onfhir</groupId>
+                <artifactId>onfhir-definitions-r4</artifactId>
+                <version>${onfhir.libs.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.onfhir</groupId>
+                <artifactId>onfhir-definitions-r5</artifactId>
+                <version>${onfhir.libs.version}</version>
+            </dependency>
+            <dependency>
                 <groupId>io.repofyr</groupId>
                 <artifactId>repofyr-server-r4_${scala.binary.version}</artifactId>
                 <version>${project.version}</version>

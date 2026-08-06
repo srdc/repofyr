@@ -6,7 +6,7 @@ import io.repofyr.api.util.{SubscriptionUtil, UnsupportedSubscriptionUtil}
 import io.repofyr.audit.IFhirAuditCreator
 import io.repofyr.config.{AuditConfig, BaseFhirServerConfigurator}
 import io.onfhir.config.{FhirCapabilityDefaults, FhirSearchHandling, FhirServerConfig, FhirSubscriptionSettings}
-import io.onfhir.r4.parsers.R4Parser
+import io.onfhir.r5.parsers.R5Parser
 import io.repofyr.r5.audit.R5AuditCreator
 
 class FhirR5Configurator extends BaseFhirServerConfigurator {
@@ -35,5 +35,5 @@ class FhirR5Configurator extends BaseFhirServerConfigurator {
    * @return
    */
   override def getFoundationResourceParser(complexTypes: Set[String], primitiveTypes: Set[String], capabilityDefaults: FhirCapabilityDefaults): IFhirFoundationResourceParser =
-    new R4Parser(complexTypes, primitiveTypes, capabilityDefaults)
+    new R5Parser(complexTypes, primitiveTypes, capabilityDefaults)
 }

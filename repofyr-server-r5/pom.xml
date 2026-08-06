@@ -101,7 +101,13 @@
         </dependency>
         <dependency>
             <groupId>io.onfhir</groupId>
-            <artifactId>onfhir-r4_${scala.binary.version}</artifactId>
+            <artifactId>onfhir-r5_${scala.binary.version}</artifactId>
+        </dependency>
+        <!-- Supplies definitions-r5.json.zip and conformance-statement-r5.json on the
+             classpath; the server no longer ships its own copies. -->
+        <dependency>
+            <groupId>io.onfhir</groupId>
+            <artifactId>onfhir-definitions-r5</artifactId>
         </dependency>
         <dependency>
             <groupId>io.onfhir</groupId>

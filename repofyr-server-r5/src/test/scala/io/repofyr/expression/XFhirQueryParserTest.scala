@@ -6,10 +6,13 @@ import io.onfhir.config.{FSConfigReader, FhirSearchHandling, FhirServerConfig}
 import io.onfhir.path.FhirPathEvaluator
 import io.repofyr.r5.config.FhirR5Configurator
 import org.json4s.JsonAST._
+import org.junit.runner.RunWith
 import org.specs2.mutable.Specification
+import org.specs2.runner.JUnitRunner
 import io.onfhir.expression.XFhirQueryParser
 import io.onfhir.expression.FhirExpressionException
 
+@RunWith(classOf[JUnitRunner])
 class XFhirQueryParserTest extends Specification {
   val fhirConfigurator = new FhirR5Configurator
   val fileSystemConfigReader = new FSConfigReader(fhirVersion = "R5")

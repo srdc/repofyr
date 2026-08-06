@@ -1518,6 +1518,8 @@ including the published `http://onfhir.io/fhir/OperationDefinition/import`.
 | container images `srdc/onfhir:r4` and `srdc/onfhir:r5` | `srdc/repofyr:r4` and `srdc/repofyr:r5`. `ONFHIR_HOME`, the `/usr/local/onfhir` container path, and volume names are deliberately unchanged for operational continuity | 5B - implemented 2026-08-06 |
 | server dependency management naming `io.onfhir:onfhir-template-engine` without a Scala binary-version suffix | `io.onfhir:onfhir-template-engine_2.13`, the coordinate that actually exists in the 4.0.0 library release. Latent defect corrected in passing: the old managed entry named a coordinate that does not exist, and was harmless only because no server module depended on it | 5B - implemented 2026-08-06 |
 | `onfhir.*` runtime configuration keys, `akka.actor.onfhir-blocking-dispatcher`, Kafka topic `onfhir.subscription` and `kafka.client.id = onfhir`, MongoDB names such as `onfhir-test`, `logs/fhir-repository*.log`, the `fhir-repository` default keystore password, and the `io.onfhir.path` / `io.onfhir.validation` Logback logger names | unchanged. Phase 5B renamed Maven coordinates and Scala packages only, so every runtime configuration key, Kafka topic, persistence identifier, and stored-data convention keeps its value and an existing deployment's configuration, database, and Kafka wire traffic continue to work untouched. The two Logback logger names target library loggers; renaming them would silently re-enable debug noise. json4s `ShortTypeHints` emits simple class names, so event payloads carry no package prefix either | 5B - deliberately unchanged 2026-08-06 |
+| `repofyr-server-r4` and `repofyr-server-r5` each embedding `definitions-rX.json.zip` and `conformance-statement-rX.json` in `src/main/resources` | the server modules declare `io.onfhir:onfhir-definitions-r4` / `-r5` at `${onfhir.libs.version}` and compile scope, and ship no definitions of their own; 18.3 MB of duplicated resources removed. The coordinates take no `_2.13` suffix. Both files still resolve by the same bare classpath name, because loading is `ClassLoader.getResourceAsStream` plus a streaming `ZipInputStream`. The dependency must not be `provided` or `test`: those scopes pass every test yet yield a standalone JAR with no definitions. `db-index-conf-rX.json` is server configuration and stays. `repofyr-server-stu3` is unaffected, since no `onfhir-definitions-stu3` artifact exists | 5B follow-up - implemented 2026-08-06 |
+| `repofyr-server-r5` depending on `onfhir-r4_2.13` and parsing foundation resources with `R4Parser` | depends on `onfhir-r5_2.13` and parses with `R5Parser`, which extends `R4Parser` with an identical constructor and no overrides, so behavior is unchanged and R5 gains a real extension point. A managed entry for `onfhir-r5_${scala.binary.version}` was added; `onfhir-r4` stays on the classpath transitively. `repofyr-server-r4` and `repofyr-server-stu3` keep their direct `onfhir-r4` dependency for `StructureDefinitionParser` | 5B follow-up - implemented 2026-08-06 |
 
 ### 7.4 Server construction contracts
 
@@ -1656,11 +1658,83 @@ Open items carried forward. None blocked Phase 5B:
 4. Several test classes are duplicated verbatim between the two repositories,
    including `TerminologyParserTest`, `XFhirQueryParserTest`, and neighbours.
    De-duplicate them and keep each in its owning repository.
-5. `repofyr-server-r5` still compiles against the `onfhir-r4` library parser
-   rather than `onfhir-r5`. Switch it once R5 server behavior is revisited.
+5. Resolved 2026-08-06 in the definitions/R5 follow-up recorded below;
+   `repofyr-server-r5` now depends on `onfhir-r5` and parses with `R5Parser`.
 6. Optional later rebrands remain available and were explicitly out of scope:
    `ONFHIR_HOME` and container paths, log file names, and the `Onfhir*` class
    names. Per the maintainer's 2026-08-06 decision, Phase 5B covered Maven
    coordinates and Scala packages only. Any migration of runtime configuration
    keys, Kafka topics, or persistence identifiers still requires a separate,
    compatibility-focused phase.
+7. `repofyr-server-stu3` cannot resolve its own definitions at default
+   configuration. `FhirSTU3Configurator` reports `fhirVersion = "STU3"`, which
+   falls to the default branch in `BaseConfigReader`, `FSConfigReader`, and
+   `BaseFhirServerConfigurator` and therefore looks for
+   `definitions-stu3.json.zip`, `conformance-statement-stu3.json`, and
+   `db-index-conf-stu3.json`, while the module ships `definitions.json.zip`,
+   `conformance-statement.json`, and `db-index-conf.json`. This predates the
+   split and neither Phase 5B nor the definitions follow-up caused or worsened
+   it; STU3 has no published definitions artifact and keeps its own copies.
+   Fixing it means either renaming those three resources or teaching the
+   default branch the legacy unsuffixed names.
+
+#### Definitions artifacts and R5 parser follow-up - completed 2026-08-06
+
+Requested by the maintainer immediately after Phase 5B and verified with the
+same gates.
+
+- `repofyr-server-r4` and `repofyr-server-r5` no longer ship their own copies
+  of the FHIR standard definitions. The four files deleted -
+  `conformance-statement-r4.json`, `definitions-r4.json.zip`,
+  `conformance-statement-r5.json`, and `definitions-r5.json.zip`, 18.3 MB in
+  total - were byte-identical to the copies published in
+  `io.onfhir:onfhir-definitions-r4:4.0.0` and
+  `io.onfhir:onfhir-definitions-r5:4.0.0`, so each server module now declares
+  the matching definitions artifact at compile scope instead. The
+  release-specific `db-index-conf-r4.json` and `db-index-conf-r5.json` are
+  server configuration, not standard definitions, and stay in the modules.
+- No Scala, configuration, Dockerfile, or test change was needed. Both
+  resources are loaded by `ClassLoader.getResourceAsStream` on a bare name, and
+  `IOUtil.readResourceInZip` wraps the result in a streaming `ZipInputStream`
+  rather than a seekable `java.util.zip.ZipFile`, so a zip nested inside a
+  dependency JAR resolves exactly as a module-local resource did.
+- The definitions coordinates carry no `_2.13` suffix, because they contain
+  resources rather than compiled Scala. They are managed at
+  `${onfhir.libs.version}` like every other library edge. Scope matters here:
+  `onfhir-r4` and `onfhir-r5` already depend on their definitions artifact at
+  test scope, which is not transitive, so the server had to declare it
+  directly, and a `provided` or `test` scope would have passed every test while
+  silently producing a standalone JAR with no definitions in it.
+- `repofyr-server-r5` now depends on `onfhir-r5_2.13` instead of
+  `onfhir-r4_2.13`, and `FhirR5Configurator.getFoundationResourceParser`
+  returns `R5Parser` instead of `R4Parser`. A managed entry for
+  `onfhir-r5_${scala.binary.version}` was added, since none existed.
+  `R5Parser` extends `R4Parser` with an identical constructor and no
+  overrides, and the single call site passes all three arguments positionally,
+  so the swap corrects the dependency direction and gives R5 a real extension
+  point without changing current behavior. `onfhir-r4` remains on the classpath
+  transitively through `onfhir-r5`; `repofyr-server-r4` and
+  `repofyr-server-stu3` keep their direct `onfhir-r4` dependency because
+  `StructureDefinitionParser` lives only there.
+- `repofyr-server-r5`'s only test had been silently dead since it was written:
+  `XFhirQueryParserTest` lacked the `@RunWith(classOf[JUnitRunner])`
+  annotation that every other suite in the reactor carries, so Surefire never
+  discovered it and the module reported zero tests. Adding the annotation
+  revived 21 passing tests, and they are precisely the regression net these two
+  changes needed, because the suite builds a `FhirR5Configurator` and calls
+  `initializeServerPlatform` with an all-default `FSConfigReader`, exercising
+  the classpath lookup of the R5 definitions and the new `R5Parser` together.
+- Verification: full reactor `mvn test` green, `repofyr-server-r4` still at 146
+  tests and `repofyr-server-r5` newly at 21. Because a wrong dependency scope
+  fails only at runtime, the packaged uber-JARs were inspected directly: the
+  r4 and r5 standalone JARs each contain their definitions zip and conformance
+  statement at the original byte sizes plus the `onfhir-definitions-*.properties`
+  marker that only the library artifact supplies, and the r5 JAR now contains
+  `io/onfhir/r5/parsers/R5Parser.class`. The isolated build against the signed
+  Phase 5A staging repository was repeated so the two definitions coordinates
+  and `onfhir-r5_2.13` are proven to resolve from signed staging as well.
+- `repofyr-server-stu3` was left untouched. There is no published
+  `onfhir-definitions-stu3` artifact, so it keeps its own resources; its
+  uber-JAR also carries the R4 definitions transitively through
+  `repofyr-server-r4`, exactly as it did before this change, and the filenames
+  do not collide.

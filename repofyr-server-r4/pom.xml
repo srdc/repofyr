@@ -102,6 +102,12 @@
             <groupId>io.onfhir</groupId>
             <artifactId>onfhir-r4_${scala.binary.version}</artifactId>
         </dependency>
+        <!-- Supplies definitions-r4.json.zip and conformance-statement-r4.json on the
+             classpath; the server no longer ships its own copies. -->
+        <dependency>
+            <groupId>io.onfhir</groupId>
+            <artifactId>onfhir-definitions-r4</artifactId>
+        </dependency>
         <dependency>
             <groupId>io.onfhir</groupId>
             <artifactId>onfhir-validation_${scala.binary.version}</artifactId>
