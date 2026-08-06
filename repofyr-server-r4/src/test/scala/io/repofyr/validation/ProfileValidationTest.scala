@@ -1,11 +1,10 @@
 package io.repofyr.validation
 
 import io.onfhir.api.{DEFAULT_RESOURCE_PATHS, Resource}
-import io.repofyr.operation.DefaultOperationHandlers.DEFAULT_IMPLEMENTED_FHIR_OPERATIONS
 import io.onfhir.api.model.{FhirLiteralReference, FhirReference}
 import io.onfhir.api.util.IOUtil
 import io.onfhir.api.validation.IReferenceResolver
-import io.repofyr.config.{FhirConfigurationManager, OnfhirConfig}
+import io.repofyr.config.OnfhirConfig
 import io.onfhir.config.{FhirServerConfig, ResourceConf}
 import io.repofyr.r4.config.FhirR4Configurator
 import io.onfhir.r4.parsers.StructureDefinitionParser
@@ -266,12 +265,12 @@ class ProfileValidationTest extends Specification {
       issues.exists(i => i.expression.head == "code" && i.severity == "error") mustEqual true //Shpuld not be array error
       issues.exists(i => i.expression.head == "subject" && i.severity == "error" && i.diagnostics.exists(d => d.contains("expected target types"))) mustEqual true //Reference type does not match
       issues.exists(i => i.expression.head == "subject" && i.severity == "error" && i.diagnostics.exists(d => d.contains("version independent"))) mustEqual true // Reference has version although it is stated as independent
-      issues.exists(i => i.expression.head == "encounter" && i.severity == "error" && i.diagnostics.exists(d => d.contains("version specific"))) //Reference should be version specific
-      issues.exists(i => i.expression.head == "encounter" && i.severity == "error" && i.diagnostics.exists(d => d.contains("expected target types"))) //Reference should be version specific
+      issues.exists(i => i.expression.head == "encounter" && i.severity == "error" && i.diagnostics.exists(d => d.contains("version specific"))) mustEqual true //Reference should be version specific
+      issues.exists(i => i.expression.head == "encounter" && i.severity == "error" && i.diagnostics.exists(d => d.contains("expected target types"))) mustEqual true //Reference should be version specific
       issues.exists(i => i.expression.head == "effectiveDateTime" && i.severity == "error") mustEqual true //Invalid date time format
       issues.exists(i => i.expression.head == "issued" && i.severity == "error") mustEqual true //Invalid instant format
       issues.exists(i => i.expression.head == "note[0].authorString" && i.severity == "error") mustEqual true //Exceed max length
-      issues.exists(i => i.expression.head == "note[0].text" && i.severity == "error") //Required field is missing
+      issues.exists(i => i.expression.head == "note[0].text" && i.severity == "error") mustEqual true //Required field is missing
       issues.exists(i => i.expression.head == "component[0].valueSampledData.factor" && i.severity == "error") mustEqual true  //Fixed value error
       issues.exists(i => i.expression.head == "component[0].valueSampledData.upperLimit" && i.severity == "error") mustEqual true //Invalid decimal (given as string)
       issues.exists(i => i.expression.head == "component[0].valueSampledData.lowerLimit" && i.severity == "error") mustEqual true //DataType profile, Missing element
