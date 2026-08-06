@@ -1782,8 +1782,43 @@ STU3 startup defect that had been recorded as an open item.
   `definitions-stu3.json.zip`, `conformance-statement-stu3.json`, and
   `db-index-conf-stu3.json`, plus the R4 set inherited transitively through
   `repofyr-server-r4` as before, with no filename collision.
-- `onfhir-stu3_2.13` and `onfhir-definitions-stu3` postdate the Phase 5A signed
-  staging repository, so they are resolvable only from the local Maven cache
-  until a new library staging run publishes them. The signed-staging isolation
-  gate therefore cannot cover STU3 yet; repeat it after the next library
-  staging.
+- `onfhir-stu3_2.13` and `onfhir-definitions-stu3` postdated the Phase 5A signed
+  staging repository. That was closed the same day by re-cutting staging; see
+  the record below.
+
+#### Signed 4.0.0 staging re-cut - completed 2026-08-06
+
+The Phase 5A staging repository had drifted from the library sources, in more
+places than the STU3 additions alone, so all sixteen coordinates were re-cut
+rather than topped up.
+
+- Four staged coordinates were stale or missing. `onfhir-query_2.13` had
+  changed content, because the x-fhir-query unencoded `|` fix landed after
+  staging; `onfhir-libs-bom` and `onfhir-libs-parent` had changed because the
+  reactor gained two modules; and `onfhir-stu3_2.13` plus
+  `onfhir-definitions-stu3` did not exist. A partial top-up would have left a
+  BOM that does not list the STU3 modules next to a stale query artifact, so
+  the whole set was rebuilt.
+- Re-using `4.0.0` is safe because the version has never been published or left
+  the machine. The new repository is `C:\tmp\onfhir-libs-staging-signed-v2`;
+  the Phase 5A directory was left untouched rather than overwritten, so a
+  known-good set survives until the new one is trusted.
+- `mvn clean deploy -P release` with an `altDeploymentRepository` file URL.
+  Only the `release` profile was activated, which attaches sources and
+  Scaladoc and signs; the library parent keeps Maven Central publishing in a
+  separate `central` profile that was not activated and that sets
+  `autoPublish=false` regardless. The library reactor passed 727 tests, up from
+  703 with the STU3 module's 23.
+- `scripts/check-staged-release.ps1` passed over all sixteen coordinates,
+  confirming POM, binary, sources and Javadoc JARs, packaged `META-INF/LICENSE`
+  and `META-INF/NOTICE`, and a good signature from `SRDC Corp` key `789EC152`
+  on every artifact.
+- The server isolation gate was repeated against the new repository with an
+  empty Maven cache. All eight server modules built and 253 tests passed, and
+  every one of the thirteen `io.onfhir` artifacts the server consumes resolved
+  from the signed staging repository with zero fetches of `io/onfhir` from
+  Maven Central. This is the first run in which `onfhir-stu3_2.13` and
+  `onfhir-definitions-stu3` were covered.
+- Nothing was published externally. The staging repository is a local
+  directory, and pushing either repository or publishing to Maven Central
+  remains a separate, explicitly authorized step.
