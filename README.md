@@ -1,6 +1,6 @@
 # Repofyr (formerly onFHIR)
 
-[![Maven Central](https://img.shields.io/maven-central/v/io.onfhir/onfhir-core_2.13.svg)](https://search.maven.org/search?q=g:io.onfhir)
+[![Maven Central](https://img.shields.io/maven-central/v/io.repofyr/repofyr-core_2.13.svg)](https://search.maven.org/search?q=g:io.repofyr)
 [![Research by SRDC](https://img.shields.io/badge/Research-SRDC-red)](https://srdc.com.tr)
 [![Commercial Support](https://img.shields.io/badge/Commercial%20Support-Pontegra-blue)](https://pontegra.com)
 
@@ -9,7 +9,7 @@
 > 
 > **onFHIR** has been officially rebranded as **Repofyr**. This change reflects our transition from a research-focused repository at [**SRDC**](https://srdc.com.tr) to a commercially supported product line by [**Pontegra**](https://pontegra.com).
 >
-> **Note on Technical Migration:** While the project identity has changed, the internal codebase - including package names (`io.onfhir`), configuration keys (e.g., `onfhir.conf`), and Maven coordinates - still uses the legacy `onfhir` naming. A full technical migration for these components is planned for future major releases.
+> **Note on Technical Migration:** As of version 4.0.0 the server's Maven coordinates (`io.repofyr:repofyr-*`) and Scala packages (`io.repofyr.*`) carry the new identity. Runtime configuration keys (e.g., the `onfhir.*` namespace in `application.conf`), Kafka topic names, and stored-data conventions intentionally keep the legacy `onfhir` naming for operational compatibility. The reusable libraries consumed from [`srdc/onfhir-libs`](https://github.com/srdc/onfhir-libs) keep their `io.onfhir` coordinates and packages.
 
 ## Overview
 **Repofyr** is a FHIR-compliant, secure health data repository designed as a central data service for healthcare applications. It is implemented in **Scala**, built on the **Akka** framework, and utilizes **MongoDB** for high-performance persistence.
@@ -28,9 +28,9 @@ repository contains only the server family and remains GPL-3.0.
 * **Open Source Core:** Maintained by [SRDC](https://srdc.com.tr)
 
 ## Basic Configuration
-You can copy and update the **onfhir-core/src/main/resources/application.conf** file, which is the main entry-point configuration for tailoring the Repofyr repository to your needs.
+You can copy and update the **repofyr-core/src/main/resources/application.conf** file, which is the main entry-point configuration for tailoring the Repofyr repository to your needs.
 
-For logger configurations, check **onfhir-core/src/main/resources/logback.xml**
+For logger configurations, check **repofyr-core/src/main/resources/logback.xml**
 
 To configure the FHIR API to be provided, you need to supply the following:
 * A file providing your **Conformance statement** (FHIR Capability Statement - See http://hl7.org/fhir/capabilitystatement.html) that describes the capabilities of the FHIR server you want to provide
@@ -42,9 +42,9 @@ To configure the FHIR API to be provided, you need to supply the following:
 
 You can also provide the ZIP file for FHIR base definitions (validation package: `validation-min.xml.zip`) that you want to support specifically.
 Repofyr supports all stable and build versions of HL7 FHIR. In this project, we provide modules for the last three main versions, configured automatically with standard definitions and dedicated configurators:
-* R5    >> onfhir-server-r5
-* R4    >> onfhir-server-r4
-* STU3  >> onfhir-server-stu3
+* R5    >> repofyr-server-r5
+* R4    >> repofyr-server-r4
+* STU3  >> repofyr-server-stu3
 
 ## Prerequisites
 Repofyr requires a MongoDB database up and running. If you do not use the provided Docker containers, the MongoDB configuration parameters (host, port, dbname, etc.)
@@ -64,18 +64,18 @@ to the above command to skip the test execution, but it is **not recommended**:
 $ mvn package -DskipTests=true
 ```
 
-Executable standalone JARs (**target/onfhir-server-standalone.jar**) will be created under each `onfhir-server-*` module for
+Executable standalone JARs (**target/repofyr-server-standalone.jar**) will be created under each `repofyr-server-*` module for
 different FHIR versions. Executing the following command will run the Repofyr server for that version with nearly complete FHIR
 capabilities.
 ```
-$ java -jar target/onfhir-server-standalone.jar
+$ java -jar target/repofyr-server-standalone.jar
 ```
 
 You can override in-app configurations by supplying an external application.conf file or JAVA arguments
 using the following commands:
 ```
-$ java -Dconfig.file={path-to-application.conf} -jar target/onfhir-server-standalone.jar
-$ java -Dserver.port=9999 -Dserver.host=172.17.0.1 -jar target/onfhir-server-standalone.jar
+$ java -Dconfig.file={path-to-application.conf} -jar target/repofyr-server-standalone.jar
+$ java -Dserver.port=9999 -Dserver.host=172.17.0.1 -jar target/repofyr-server-standalone.jar
 ```
 
 ### Extensibility
@@ -92,17 +92,17 @@ object Boot extends App {
 }
 ```
 You can extend Repofyr by implementing certain custom mechanisms:
-* Custom Authorizer (implementing **io.onfhir.authz.IAAuthorizer**): By default (if configured), Repofyr
+* Custom Authorizer (implementing **io.repofyr.authz.IAuthorizer**): By default (if configured), Repofyr
 supports the authorization mechanism defined by the [SMART on FHIR](https://docs.smarthealthit.org/authorization/) initiative,
 which is based on OAuth 2.0 Bearer Token authorization. If you need a custom authorization mechanism with a different set of
 scopes (permissions), you can implement an authorizer module and register it with Repofyr.
-* Custom Token Resolver (implementing **io.onfhir.authz.ITokenResolver**): Repofyr supports two default token
+* Custom Token Resolver (implementing **io.repofyr.authz.ITokenResolver**): Repofyr supports two default token
 resolution methods: signed JWT tokens and OAuth 2.0 token introspection. You can use them via configuration or implement a new module.
-* Custom Audit Handler (implementing **io.onfhir.audit.ICustomAuditHandler**): By default, you can configure Repofyr
+* Custom Audit Handler (implementing **io.repofyr.authz.ICustomAuditHandler**): By default, you can configure Repofyr
 to store FHIR AuditEvent records in its own local repository, or in a remote FHIR server running as a separate audit repository.
 If you want to create audit events/logs in a different format and send them to a custom audit repository (Elasticsearch + Kibana, etc.),
 you can extend this interface with your module and register it.
-* Further FHIR Operations: You can implement custom FHIR operations by extending **io.onfhir.api.service.FHIROperationHandlerService** and
+* Further FHIR Operations: You can implement custom FHIR operations by extending **io.repofyr.api.service.FHIROperationHandlerService** and
 preparing an OperationDefinition file describing the input and output parameters of the operation. You then need to provide a Map[String, String]
 of the (operation URL -> the class name of the module) that you implemented by extending FHIROperationHandlerService.
 * External Akka Routes: You can also implement non-FHIR REST services for your server and register them with Repofyr.
@@ -126,11 +126,11 @@ object Boot extends App {
 ### Docker
 We also provide a simple Docker setup for Repofyr under the `docker` folder. It includes a `docker-compose` file with
 two containers: one for MongoDB and one for the Repofyr application. You can run it with our sample Repofyr setup in the `sample-setup` directory.
-You can copy the `onfhir-server-standalone.jar` file to this `sample-setup` directory and run the sample setup as is with the following command:
+You can copy the `repofyr-server-standalone.jar` file to this `sample-setup` directory and run the sample setup as is with the following command:
 
 ```
 $ cd docker
-$ cp ../onfhir-server-r4/target/onfhir-server-standalone.jar ./sample-setup/.
+$ cp ../repofyr-server-r4/target/repofyr-server-standalone.jar ./sample-setup/.
 $ docker-compose -f docker-compose.yml -p onfhir up -d
 ```
 

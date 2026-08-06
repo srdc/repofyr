@@ -1,6 +1,12 @@
 # Library / Server Split Implementation Plan - Version 2
 
-> Status: Phase 5A in progress; physical split and unsigned staging verified; signed staging awaits a usable SRDC GPG key
+> Status: Phase 5B is complete - 2026-08-06. The Repofyr server family now
+> builds as `io.repofyr:repofyr-*:4.0.0-SNAPSHOT` with `io.repofyr.*` packages
+> and a `repofyr-server-standalone.jar`, while the reusable libraries keep
+> their `io.onfhir` coordinates and packages at `4.0.0`. The full reactor is
+> green, and Repofyr resolves every library only from the signed Phase 5A
+> staging repository. Phase 6, consumer migration and the release chain, is
+> next. Nothing has been pushed or published from either repository
 >
 > Supersedes for future implementation:
 > `docs/plans/library-server-split-plan.md`
@@ -10,7 +16,7 @@
 
 ## 1. Goal
 
-Separate the nine reusable onFHIR library modules from the Repofyr server so
+Separate the reusable onFHIR library modules from the Repofyr server so
 that:
 
 - the library family can be released under Apache-2.0 after the contributor
@@ -42,6 +48,9 @@ reactor and `onfhir-server-r4` endpoint suite as a regression net.
 - `onfhir-validation`
 - `onfhir-template-engine`
 - `onfhir-r4`
+- `onfhir-r5` - added 2026-08-05; R5 parser facade and compatibility tests
+- `onfhir-definitions-r4` - added 2026-08-05; resources only, no Scala suffix
+- `onfhir-definitions-r5` - added 2026-08-05; resources only, no Scala suffix
 
 ### Server family - remains in Repofyr
 
@@ -138,7 +147,7 @@ Configure Maven Enforcer in the new/shared library build configuration with
 - `org.apache.pekko:*`
 
 The rule applies transitively. The end-state build must also produce and check
-a resolved dependency tree for all nine library modules. Source cleanliness
+a resolved dependency tree for all twelve library modules. Source cleanliness
 without dependency cleanliness is a failure.
 
 ### Gate D - tests and compilation
@@ -389,7 +398,7 @@ singleton until Phase 1D moves the whole server cluster.
 the known server-only files scheduled to move in Phase 1D:
 
 ```powershell
-rg -n "OnfhirConfig" onfhir-common onfhir-client onfhir-path onfhir-query onfhir-config onfhir-expression onfhir-validation onfhir-template-engine onfhir-r4
+rg -n "OnfhirConfig" onfhir-common onfhir-client onfhir-path onfhir-query onfhir-config onfhir-expression onfhir-validation onfhir-template-engine onfhir-r4 onfhir-r5
 ```
 
 The only permitted matches at this point are:
@@ -1090,20 +1099,94 @@ and signatures; Repofyr server-r4 tests pass against staged artifacts.
   33 external dependencies passed the approved license gate.
 - An unsigned file-based staging rehearsal verified all 11 coordinates,
   flattened POMs, binary JARs, source JARs, Scaladoc/Javadoc JARs, and packaged
-  license files. No artifact was published externally. That rehearsal
-  predates the template-engine suffix correction and must be repeated before
-  Phase 5A can complete.
+  license files. No artifact was published externally. That rehearsal predates
+  the template-engine suffix correction, and was superseded by the signed
+  fourteen-coordinate staging recorded below.
 - Removed all nine library source modules from the Repofyr reactor, pinned
   `onfhir.libs.version` to `4.0.0`, and retained the GPL-3.0
   `io.onfhir:fhir-repository_2.13` server parent.
 - With a fresh Maven cache resolving libraries only from the file-based
   staging repository, the source-free Repofyr reactor validated and all 146
   server-r4 tests passed with zero failures or errors.
-- Signed staging remains pending. Maven's configured key `789EC152` is not
-  present, and the only discovered local secret key is unusable for signing.
-  A usable SRDC release key is required; no replacement key was generated.
-- Neither repository has been pushed, published, or committed for Phase 5A.
-  Fresh-checkout verification follows the approved commits.
+- Signed staging is COMPLETE (2026-08-06). The SRDC release key `789EC152` was
+  imported, and `maven-gpg-plugin` signs headlessly with it through loopback
+  pinentry. The full reactor deployed all fourteen `4.0.0` coordinates to a
+  file-based staging repository with 703 tests green, and
+  `scripts/check-staged-release.ps1` verified every POM, binary, sources and
+  javadoc JAR, their packaged `META-INF/LICENSE` and `META-INF/NOTICE`, and
+  every `.asc` signature as a good signature from `SRDC Corp`. The staged POMs
+  carry the name, description, url, license, developer, scm and
+  issueManagement metadata Maven Central requires, flattened to resolved
+  versions.
+- Added the resources-only `io.onfhir:onfhir-definitions-r4:4.0.0` and
+  `io.onfhir:onfhir-definitions-r5:4.0.0` modules (2026-08-05), so the reactor
+  now builds twelve reusable modules plus the BOM, and the family publishes
+  fourteen coordinates rather than eleven. They package the HL7 FHIR 4.0.1 and
+  5.0.0 definitions ZIPs and base CapabilityStatements, copied byte-for-byte
+  from `onfhir-server-r4` and `onfhir-server-r5`; both are recorded in the
+  Section 7.3 migration table. The staging rehearsal was accordingly repeated
+  for the three new coordinates as well as for the corrected template-engine
+  suffix, and is now signed. Because neither
+  definitions module has Scala sources, their `release` profiles attach a
+  marker sources JAR and an empty javadoc JAR rather than the inherited
+  resource-duplicating sources JAR and no javadoc artifact at all.
+- Gave `onfhir-r4` three R4 integration suites and introduced `onfhir-r5` with
+  two R5 integration suites (2026-08-05). The new `R5Parser` extends
+  `R4Parser`, owns the official R5 datatype defaults, and provides the public
+  R5 extension point. The suites parse the real R4 and R5 standard packages
+  through `BaseFhirConfigurator` and validate resources through
+  `FhirValidator`; definition artifacts and `onfhir-config` remain test-scope
+  only. Details, pinned package counts, and recorded product/package findings
+  are in
+  `docs/plans/onfhir-definitions-r4-integration-test-plan.md`.
+- The fresh-checkout gate found a real defect that the working copy hid
+  (2026-08-06, fixed in `4de05c6`). `core.autocrlf=true`, the Git for Windows
+  default, checks sources out as CRLF, and `R4StandardValidationTest` builds
+  its fixtures from multi-line string literals whose separators therefore come
+  from the source file. The example that strips the narrative line matched a
+  literal LF, so the replace silently matched nothing and the expected `dom-6`
+  warning never appeared. Any contributor cloning the repository on Windows
+  would have hit this. `.gitattributes` now checks every text file out as LF
+  with `* text=auto eol=lf`, which also stops the published `*-sources.jar`
+  bytes depending on the build host, and the existing `-text` entries were
+  confirmed by experiment to still win so the packaged HL7 definitions keep
+  their exact CRLF bytes. The fixtures also normalize to LF so the surgery
+  cannot silently no-op. Verified with full reactor builds from a clone forced
+  to CRLF and from a pristine clone, 703 tests green in both.
+- `onfhir-path` no longer publishes build-time files (2026-08-06, `df69adc`).
+  Its `src/main/resources` held only the ANTLR grammar, the 1.95 MB
+  `antlr-4.7-complete.jar` tool and two generated `.tokens` files, all of which
+  were packaged; the tool JAR alone was 86% of the artifact. Because a JAR
+  vendored into resources is not a declared dependency, the license gate could
+  not see it, so the Apache-2.0 release would have redistributed the ANTLR
+  tool, its runtime and StringTemplate with no NOTICE entry. All four files
+  moved to `onfhir-path/grammar/`, outside `src/`; the artifact fell from
+  2314 KB to 473 KB and now contains only classes plus `META-INF` and the
+  Maven descriptor. Removal closes the attribution gap, so NOTICE needed no new
+  entry. Recorded in the Section 7.3 migration table.
+- Repofyr builds and passes fully against the signed staging artifacts
+  (2026-08-06). With every `io.onfhir` coordinate purged from the local cache so
+  the libraries could only resolve from the signed repository, all eight server
+  modules built and their suites passed, including the 146 `onfhir-server-r4`
+  tests. Reaching that required one fix: `STU3Parser` still called `.toSet` on
+  `components` after Phase 5A changed `FHIRSearchParameter.components` from
+  `Set[String]` to `Seq[String]`, so `onfhir-server-stu3` failed to compile.
+  The earlier rehearsal missed it because it only ran `validate` plus the
+  server-r4 tests, never compiling `stu3` or `r5` against the staged libraries.
+  It was the only stale call site in Repofyr. That one-line fix rode with the
+  Phase 5B commit, as recorded in the Phase 5B implementation record.
+- `scripts/check-binary-compatibility.ps1` now exits 0 on success. It printed
+  its PASS verdict but left `$LASTEXITCODE` at the last MiMa invocation's
+  nonzero value, and `.github/workflows/maven.yml` runs it through
+  `shell: pwsh`, whose steps exit with `$LASTEXITCODE`. The binary-compatibility
+  job would therefore have failed on every run, including passing ones, from
+  the first push after the repository goes public.
+- Verification gate results on the committed tree: full reactor 703 tests,
+  forbidden imports PASS, dependency licenses PASS over 32 external
+  dependencies, MiMa against 3.3 PASS, staged release PASS over 14 coordinates.
+- The library repository is committed through `df69adc` plus the plan update
+  carrying this record. Neither repository has been pushed or published, and no
+  artifact has left the machine.
 
 ### Phase 5B - Repofyr Maven And Package Namespace Migration
 
@@ -1125,6 +1208,10 @@ Approved Maven mapping:
 | `io.onfhir:onfhir-server-r4_2.13` | `io.repofyr:repofyr-server-r4_2.13` |
 | `io.onfhir:onfhir-server-r5_2.13` | `io.repofyr:repofyr-server-r5_2.13` |
 | `io.onfhir:onfhir-server-stu3_2.13` | `io.repofyr:repofyr-server-stu3_2.13` |
+
+All eight rows above - the parent plus the seven server modules - are
+implemented 2026-08-06. They are the authoritative coordinate mapping for
+consumers and are not duplicated in Section 7.
 
 Rename module directories to match the new artifact names. Inventory every
 server-owned type before changing packages, then move it from `io.onfhir.*` to
@@ -1157,6 +1244,149 @@ coordinates and server-owned packages; no reusable library coordinate or
 package changed; reflection/configuration references resolve; migration
 guidance covers every public server move; Repofyr builds only against staged
 `io.onfhir:*:4.0.0` artifacts; all server-r4 tests pass.
+
+#### Phase 5B decision record - approved 2026-08-06
+
+| Decision | Approved outcome |
+|---|---|
+| server revision | `revision` moves `3.4.1-SNAPSHOT` -> `4.0.0-SNAPSHOT`; the `io.onfhir` server artifact line ends at 3.x |
+| jar and container rebrand | shaded jar `repofyr-server-standalone.jar`; container images `srdc/repofyr:*` |
+| parent metadata | name "Repofyr Secure FHIR Repository", url `https://repofyr.io`, scm `https://github.com/srdc/repofyr`; the maintainer confirmed the GitHub repository is being renamed to match |
+| rename scope | Maven coordinates and Scala packages only; class names, including the `Onfhir*` family, are unchanged in Phase 5B |
+
+#### Phase 5B implementation record - completed 2026-08-06
+
+- Pre-work plan sync: this repository's copy of the plan was stale relative to
+  the `onfhir-libs` copy and was overwritten with it, so the Phase 5A
+  completion record is present before this record is appended.
+- Root POM: `io.repofyr:repofyr-parent`, `revision` `3.4.1-SNAPSHOT` ->
+  `4.0.0-SNAPSHOT`, name "Repofyr Secure FHIR Repository", a description
+  rewritten as "Repofyr (formerly onFHIR) ...", url `https://repofyr.io`, and
+  scm pointing at `github.com/srdc/repofyr`. The GPL-3.0 license block and the
+  developer list are unchanged per invariant 1. All seven `<module>` entries
+  were renamed.
+- Root dependency management: the six existing server entries became
+  `io.repofyr:repofyr-*_2.13` and a previously missing
+  `repofyr-server-r5_2.13` entry was added for symmetry, giving seven managed
+  server coordinates. The nine library entries stay on `io.onfhir`; eight are
+  untouched and `onfhir-template-engine` was corrected as noted below.
+- Two latent build-configuration defects were corrected in passing. The managed
+  `onfhir-template-engine` entry lacked the `_2.13` suffix and therefore named
+  a coordinate that does not exist in the 4.0.0 library release; it was
+  harmless only because no server module depended on it, and is now
+  `onfhir-template-engine_2.13`. The dead
+  `ban-actor-frameworks-from-library-modules` enforcer execution and its
+  `library.gates.skip` and `maven.enforcer.plugin.version` properties were
+  removed, because this reactor no longer contains library modules and those
+  gates live in `onfhir-libs`.
+- Module POMs: artifact IDs `repofyr-X_2.13`, parent
+  `io.repofyr:repofyr-parent`, sibling-server dependency coordinates updated,
+  library dependency coordinates untouched, six `<mainClass>` entries pointing
+  at `io.repofyr.{r4,r5,stu3}.Boot`, and three shade `<finalName>` values
+  changed to `repofyr-server-standalone`.
+- All seven module directories were renamed with `git mv`
+  (`onfhir-event` -> `repofyr-event` and so on), so file history is preserved.
+- All 165 Scala sources - 141 main and 24 test, the reactor has no Java
+  sources - were moved with `git mv` of the package trees from
+  `.../scala/io/onfhir/...` to `.../scala/io/repofyr/...` and then rewritten.
+  The scripted pass made 165 package-declaration rewrites, 78 server-only
+  package-prefix rewrites, 218 per-type fully qualified rewrites inside
+  packages shared with the libraries, 65 brace-import partitions splitting one
+  `import io.onfhir.pkg.{A, B}` into a server line and a library line, and 15
+  wildcard-import dualizations.
+- The rewrite was driven by a declared-type inventory of both repositories
+  rather than by blind prefix replacement, because 16 of the 33 server packages
+  are split packages whose names also exist in the libraries. The remaining 17
+  packages were server-only and were renamed wholesale. Both lists are recorded
+  in Section 7.5.
+  `repofyr-core/src/main/scala/io/repofyr/audit/package.scala` needed special
+  handling because it carries a two-line package declaration.
+- Residual work was driven off actual compiler errors rather than guesswork.
+  Roughly 25 files needed explicit `import io.onfhir...` lines for library
+  types they had previously resolved through same-package visibility or a
+  shared wildcard import. The concentrations were the authorization runtime
+  (`AuthzManager`, `IAuthorizer`, `ITokenResolver`, `ICustomAuditHandler`,
+  `JWTResolver`, `SmartAuthorizer`, `BasicAuthorizer`, and
+  `ResolverWithTokenIntrospection`, needing `AuthzContext`, `AuthzResult`,
+  `AuthzConstraints`, or `AuthContext`), the configuration cluster
+  (`OnfhirConfig` alone needed 11 library settings/ADT imports,
+  `BaseFhirServerConfigurator` 9, and `IFhirServerConfigurator` 4), the Akka
+  boundary adapters (`AkkaHttpModelAdapter` 8 neutral HTTP model imports and
+  `FHIRMarshallers` 3), and the relocated client, query, and validation call
+  sites. `InternalJsonMarshallers` in `repofyr-event` needed
+  `io.onfhir.util.DateTimeUtil` for the same reason.
+- Operation dispatch was the one boot blocker.
+  `DEFAULT_IMPLEMENTED_FHIR_OPERATIONS` is declared in the library
+  (`onfhir-libs`, `onfhir-common`, `io/onfhir/api/api.scala`), but its nine map
+  entries name seven server implementation classes as `io.onfhir.operation.*`
+  strings that `FhirOperationHandlerFactory` loads reflectively through
+  `ClassLoader.loadClass`. `FhirConfigurationManager` eagerly instantiates a
+  handler for every supported operation during initialization and throws
+  `InternalServerException` if any fails, so after the package rename all three
+  servers would have failed to boot.
+- The fix is server-side only. A new server-owned
+  `io.repofyr.operation.DefaultOperationHandlers` object in `repofyr-core`
+  carries the same nine entries with `io.repofyr.operation.*` class names and
+  unchanged operation URLs; `FhirConfigurationManager` (two uses) and
+  `ProfileValidationTest` now read it instead of the library constant. The
+  library constant and the already-signed 4.0.0 staging were left untouched, so
+  no re-staging was required. The operation URL
+  `http://onfhir.io/fhir/OperationDefinition/import` is a published identifier
+  and deliberately keeps its value.
+- Resources: three `application.conf` files (`repofyr-core` main,
+  `repofyr-server-r4` test, and the docker sample setup) had their
+  extension-point comments corrected to `io.repofyr.authz.IAuthorizer` and
+  `io.repofyr.authz.ICustomAuditHandler`. That also fixes a long-standing
+  `IAAuthorizer` typo naming a trait that never existed, and puts
+  `ICustomAuditHandler` in the authz package where it actually lives rather
+  than in audit. No configuration key changed.
+- Docker: `Dockerfile-addJar` and `Dockerfile-buildJar` COPY paths became
+  `repofyr-server-$FHIR_VERSION/target/repofyr-server-standalone.jar`,
+  `docker-entrypoint.sh` uses the new jar name, and `build.sh` plus
+  `docker-compose.yml` tag `srdc/repofyr:r4` and `srdc/repofyr:r5`.
+  `ONFHIR_HOME`, container paths, and volume names were deliberately kept for
+  operational continuity.
+- Documentation: README - Maven Central badge ->
+  `io.repofyr/repofyr-core_2.13`, module table, jar paths, docker copy command,
+  the four extension-point FQCNs, and a rewritten rebranding note clarifying
+  that coordinates and packages have migrated while `onfhir.*` runtime
+  configuration keys have not. `AGENTS.md` - module list, a rewritten
+  invariant 2 stating the `io.repofyr`/`io.onfhir` boundary and forbidding
+  library renames, and the regression-net command. `CLAUDE.md` - corrected a
+  stale pointer to the superseded v1 plan and a stale instruction to run
+  `scripts\check-forbidden-imports.ps1`, which no longer exists in this
+  repository. ADR 0002 - module and package names updated, with a dated naming
+  note recording the pre-5B names so the historical decision stays legible.
+- Deliberately unchanged under invariant 4 and for wire compatibility:
+  `onfhir.*` runtime configuration keys,
+  `akka.actor.onfhir-blocking-dispatcher`, Kafka topic `onfhir.subscription`
+  and `kafka.client.id = onfhir`, MongoDB names such as `onfhir-test`,
+  `logs/fhir-repository*.log`, the SSL default keystore password
+  `fhir-repository`, and the `logback.xml` logger names `io.onfhir.path` and
+  `io.onfhir.validation`, which target library loggers and whose renaming would
+  silently re-enable debug noise. json4s `ShortTypeHints` emits simple class
+  names, so Kafka and internal HTTP payloads are unaffected by the rename.
+- `mvn -B test` over the full eight-unit reactor: BUILD SUCCESS.
+  `repofyr-server-r4` ran all 146 tests with zero failures or errors, including
+  28 `io.repofyr.client.OnFhirLocalClientTest`, 16
+  `io.repofyr.authz.SmartAuthorizerTest`, 17
+  `io.repofyr.validation.ProfileValidationTest`, and 3
+  `io.repofyr.r4.subscription.R4SubscriptionUtilCharacterizationTest` cases.
+  The server-r4 endpoint suites boot the server, so they exercise the relocated
+  operation dispatch map end to end.
+- Isolation gate PASS. A build with a fresh empty Maven local repository and a
+  settings file whose only non-central repository is the signed Phase 5A
+  staging tree at `C:/tmp/onfhir-libs-phase5a-staging-signed` reported BUILD
+  SUCCESS for all eight reactor units in 4 min 33 s. Every `io.onfhir` artifact
+  the server needs - `onfhir-common`, `onfhir-config`, `onfhir-client`,
+  `onfhir-path`, `onfhir-query`, `onfhir-expression`, `onfhir-validation`, and
+  `onfhir-r4`, all `_2.13:4.0.0` - resolved from that staging tree and none
+  from Maven Central. 228 tests ran with zero failures or errors:
+  `repofyr-event` 4, `repofyr-core` 78, and `repofyr-server-r4` 146.
+- The uncommitted Phase 5A `STU3Parser` `.toSet` fix rode with this work as
+  planned. The entire Phase 5B change set is present in the working copy but
+  not committed; committing, pushing, and publishing each remain separately
+  authorized steps.
 
 ### Phase 6 - Consumer Migration And Release Chain
 
@@ -1192,9 +1422,31 @@ These rows are planned contracts. Each implementation phase replaces
 | `io.onfhir.api.util.SubscriptionUtil` contract | `onfhir-common_2.13` | `onfhir-core_2.13` | none | 3.5 | implemented 2026-08-03 |
 | `io.onfhir.api.util.ImMemorySearchUtil` | `onfhir-common_2.13` | `onfhir-query_2.13` | none | 3.6 | implemented 2026-08-03 |
 | `io.onfhir.api.util.InMemoryPrefixModifierHandler` | `onfhir-common_2.13` | `onfhir-query_2.13` | none | 3.6 | implemented 2026-08-03 |
+| `io.onfhir.validation.BaseFhirProfileHandler` | `onfhir-validation_2.13` | `onfhir-config_2.13` | none | 5A | implemented 2026-08-05 |
+| every server-owned type in the 17 server-only packages listed in Section 7.5 | `io.onfhir:onfhir-*_2.13` | `io.repofyr:repofyr-*_2.13` | whole package renamed `io.onfhir.X` -> `io.repofyr.X` | 5B | implemented 2026-08-06 |
+| the server-owned types in the 16 split packages listed in Section 7.5 | `io.onfhir:onfhir-*_2.13` | `io.repofyr:repofyr-*_2.13` | server-owned types move to `io.repofyr.*`; the library types of the same package stay in `io.onfhir.*` | 5B | implemented 2026-08-06 |
+| `DEFAULT_IMPLEMENTED_FHIR_OPERATIONS` default operation dispatch map | `onfhir-common_2.13`, package `io.onfhir.api` | `repofyr-core_2.13`, object `io.repofyr.operation.DefaultOperationHandlers` | `io.onfhir.api` -> `io.repofyr.operation` | 5B | implemented 2026-08-06 |
 
 Consumers relying on transitive availability from `onfhir-common` must add a
-direct dependency on the new owning artifact where applicable.
+direct dependency on the new owning artifact where applicable. Consumers of
+`BaseFhirProfileHandler` must declare a direct `onfhir-config_2.13`
+dependency; the class keeps its `io.onfhir.validation` package.
+
+The Phase 5B rule is mechanical but not a global text replacement: server-owned
+Scala types move from `io.onfhir.*` to the identical path under `io.repofyr.*`,
+and every reusable library type keeps `io.onfhir.*`. A consumer must therefore
+rewrite only the imports whose type is server-owned. Section 7.5 lists the 17
+packages that moved wholesale and the 16 packages a consumer must now split
+across two import lines. The Maven coordinate mapping is the table in the
+Phase 5B section; it is implemented as of 2026-08-06.
+
+`DEFAULT_IMPLEMENTED_FHIR_OPERATIONS` changes owner as well as package.
+Consumers that read the library constant to discover the default operations
+must read `io.repofyr.operation.DefaultOperationHandlers` from
+`repofyr-core_2.13` instead, and anyone whose `OperationDefinition` or server
+configuration names `io.onfhir.operation.*` handler classes must update those
+strings to `io.repofyr.operation.*`. The operation URLs are unchanged,
+including the published `http://onfhir.io/fhir/OperationDefinition/import`.
 
 ### 7.2 Public HTTP and client signatures
 
@@ -1231,6 +1483,7 @@ direct dependency on the new owning artifact where applicable.
 | Invalid numeric strings throwing from FHIRPath `toInteger`/`toDecimal`; Boolean `toString` values containing apostrophe delimiters | N1 behavior: invalid numeric strings return empty and Boolean strings contain `true`/`false` without embedded delimiters | 5A - implemented 2026-08-04 |
 | Missing FHIRPath N1 `toChars` function | additive annotated `FhirPathFunctionEvaluator.toChars`, splitting strings by Unicode code point | 5A - implemented 2026-08-04 |
 | Missing FHIRPath N1 `union(other)` and `timeOfDay()` functions; clock functions sampled independently | additive annotated functions plus one package-private lazy clock shared across one expression evaluation without changing the public `FhirPathEnvironment` constructor | 5A - implemented 2026-08-04 |
+| Low-level `FhirContentValidator` construction for resource validation | additive `FhirValidator(BaseFhirConfig, external terminology services, optional IExternalFhirReferenceResolver)` SDK facade with resource-type/profile selection, terminology composition, recursive resource validation, and library-owned contained/Bundle reference resolution | 5A - implemented 2026-08-04 |
 | `OnFhirNetworkClient(...)(implicit ActorSystem)` | constructor/factory with caller-owned implicit `ExecutionContext` | 3 - implemented 2026-08-03 |
 | `FhirClientUtil(...)(implicit ActorSystem)` | factory with caller-owned implicit `ExecutionContext` | 3 - implemented 2026-08-03 |
 | interceptor using Akka `HttpRequest` | interceptor using approved `ClientHttpRequest` | 3 - implemented 2026-08-03 |
@@ -1244,6 +1497,9 @@ direct dependency on the new owning artifact where applicable.
 | `BaseFhirClient` missing resource type/id throwing `BadRequestException` | `FhirClientException` | 3.5 - implemented 2026-08-03 |
 | Common impossible states throwing `InternalServerException` | `IllegalStateException`; HTTP 500 exception remains in Core | 3.5 - implemented 2026-08-03 |
 | concrete `new SubscriptionUtil(config, settings, handling)` | release-specific `SubscriptionUtil` obtained from `IFhirServerConfigurator.getSubscriptionUtil(...)` | 3.5 - implemented 2026-08-03 |
+| `new BaseFhirProfileHandler(FhirServerConfig)` | `new BaseFhirProfileHandler(BaseFhirConfig)`; existing callers pass the subtype unchanged | 5A - implemented 2026-08-05 |
+| `FHIRSearchParameter.components: Set[String]` | `components: Seq[String]`, carrying the declared component order; a composite search statement binds its `$` separated value parts to the components positionally, which an unordered set cannot express | 5A - implemented 2026-08-05 |
+| `FhirExpressionEvaluator.evaluateExpression`/`satisfies` throwing `FhirExpressionException` synchronously for an unregistered language | the same exception reported through the returned `Future`, so callers of these `Future`-returning methods need only `recover`; `validateExpression` still throws because it returns `Unit`. Deliberate behavioral change: a caller that only wrapped the call site in `try`/`catch` must handle the failed `Future` instead | 5A - implemented 2026-08-05 |
 
 ### 7.3 Build and version contracts
 
@@ -1254,6 +1510,14 @@ direct dependency on the new owning artifact where applicable.
 | reusable libraries exporting Logback as the SLF4J provider | modules declare only `slf4j-api`; consuming applications select and configure their provider | 5A - implemented 2026-08-04 |
 | all internal dependencies use `${project.version}` | library-family edges use `${onfhir.libs.version}`; server-family edges retain `${project.version}` | 4 - implemented 2026-08-03 |
 | one monorepo revision | independently versioned library and server releases | 5 |
+| each server repository embedding its own copy of the FHIR definitions ZIP and base CapabilityStatement | one resources-only artifact per FHIR release, first released in 4.0.0: `io.onfhir:onfhir-definitions-r4` packaging `definitions-r4.json.zip` plus `conformance-statement-r4.json`, and `io.onfhir:onfhir-definitions-r5` packaging `definitions-r5.json.zip` plus `conformance-statement-r5.json`, all at the default classpath locations. NO Scala binary-version suffix, because invariant 3's suffix rule applies to Scala artifacts and these contain no compiled code. Versions track the reactor; the FHIR package versions 4.0.1 and 5.0.0 are recorded in per-release `onfhir-definitions-r4.properties` / `onfhir-definitions-r5.properties`, whose names carry the release so both artifacts can share a classpath. Packaged HL7 content is CC0 1.0 and every resource is marked `-text` in `.gitattributes` so published bytes do not vary by build host | 5A - implemented 2026-08-05 |
+| `onfhir-path` packaging its ANTLR grammar, the `antlr-4.7-complete.jar` build tool, and the generated `.tokens` files as classpath resources, because all four sat in `src/main/resources` | the same four files live in `onfhir-path/grammar/`, outside `src/`, so none of them are published. The artifact drops from 2314 KB to 473 KB and carries only classes plus `META-INF` manifest/LICENSE/NOTICE and the Maven descriptor. Nothing in the library loaded them at runtime; the compiled parser is the generated Java under `src/main/java/io/onfhir/path/grammar`. A consumer that read `/FhirPathExpr.g4`, `/FhirPathExpr.tokens`, or `/FhirPathExprLexer.tokens` off the `onfhir-path` classpath must vendor its own copy. Removing the tool JAR also closes an Apache-2.0 attribution gap that the dependency license gate could not see, since a JAR inside resources is not a declared dependency | 5A - implemented 2026-08-06 |
+| R5 consumers directly constructing `R4Parser`; R4 and R5 suites co-located in `onfhir-r4` | new `io.onfhir:onfhir-r5_2.13` with `R5Parser extends R4Parser`, R5 5.0.0 primitive/complex defaults, and the relocated R5 standard-package suites. `onfhir-r4` now tests only R4 and no longer test-depends on `onfhir-definitions-r5`; `onfhir-r5` compile-depends on `onfhir-r4` and keeps definitions/config dependencies test-only | 5A - implemented 2026-08-05 |
+| server reactor `revision` `3.4.1-SNAPSHOT` under `io.onfhir` coordinates | `revision` `4.0.0-SNAPSHOT` under `io.repofyr` coordinates. The `io.onfhir` server artifact line ends at 3.x; there is no `io.onfhir:onfhir-server-*:4.x`. Library and server versions start at the same number but are not coupled after 4.0.0, and Repofyr keeps `onfhir.libs.version` for the library edges | 5B - implemented 2026-08-06 |
+| shaded server jar `onfhir-server-standalone.jar` | `repofyr-server-standalone.jar`, produced by all three release modules. Deployment scripts, Dockerfiles, and `docker-entrypoint.sh` must use the new name; the `<mainClass>` entries are now `io.repofyr.{r4,r5,stu3}.Boot` | 5B - implemented 2026-08-06 |
+| container images `srdc/onfhir:r4` and `srdc/onfhir:r5` | `srdc/repofyr:r4` and `srdc/repofyr:r5`. `ONFHIR_HOME`, the `/usr/local/onfhir` container path, and volume names are deliberately unchanged for operational continuity | 5B - implemented 2026-08-06 |
+| server dependency management naming `io.onfhir:onfhir-template-engine` without a Scala binary-version suffix | `io.onfhir:onfhir-template-engine_2.13`, the coordinate that actually exists in the 4.0.0 library release. Latent defect corrected in passing: the old managed entry named a coordinate that does not exist, and was harmless only because no server module depended on it | 5B - implemented 2026-08-06 |
+| `onfhir.*` runtime configuration keys, `akka.actor.onfhir-blocking-dispatcher`, Kafka topic `onfhir.subscription` and `kafka.client.id = onfhir`, MongoDB names such as `onfhir-test`, `logs/fhir-repository*.log`, the `fhir-repository` default keystore password, and the `io.onfhir.path` / `io.onfhir.validation` Logback logger names | unchanged. Phase 5B renamed Maven coordinates and Scala packages only, so every runtime configuration key, Kafka topic, persistence identifier, and stored-data convention keeps its value and an existing deployment's configuration, database, and Kafka wire traffic continue to work untouched. The two Logback logger names target library loggers; renaming them would silently re-enable debug noise. json4s `ShortTypeHints` emits simple class names, so event payloads carry no package prefix either | 5B - deliberately unchanged 2026-08-06 |
 
 ### 7.4 Server construction contracts
 
@@ -1264,6 +1528,63 @@ direct dependency on the new owning artifact where applicable.
 | Phase 1B `KafkaEventProducer(..., Boolean)` subscription flag | `KafkaEventProducer(..., FhirSubscriptionSettings, FhirSearchHandling)` | 1C | implemented 2026-08-03 |
 | `new ResourceChecker(FhirServerConfig)` | `new ResourceChecker(FhirServerConfig, FhirEndpointSettings)` | 1C | implemented 2026-08-03 |
 | common-owned `SubscriptionUtil` instantiated directly by core and Kafka | core-owned contract selected by `IFhirServerConfigurator`; R4 implementation supplied by `onfhir-server-r4`; Kafka receives an injected neutral parser function | 3.5 | implemented 2026-08-03 |
+
+### 7.5 Phase 5B server package migration
+
+Implemented 2026-08-06. The rule: a server-owned Scala type moves from
+`io.onfhir.X` to `io.repofyr.X`, keeping its simple name and the rest of its
+package path; every reusable library type keeps `io.onfhir.*`. The 165
+migrated server sources are not enumerated, because the package is sufficient
+to derive the new name of any type. The server tree has 33 packages: 17 are
+server-only and moved wholesale, 16 are split and require a consumer to divide
+one import into two.
+
+The 17 server-only packages, renamed wholesale. No `io.onfhir` type of the same
+package name remains, so a consumer may rewrite these imports by prefix:
+
+| Old package | New package |
+|---|---|
+| `io.onfhir.api.endpoint` | `io.repofyr.api.endpoint` |
+| `io.onfhir.async` | `io.repofyr.async` |
+| `io.onfhir.audit` | `io.repofyr.audit` |
+| `io.onfhir.db` | `io.repofyr.db` |
+| `io.onfhir.event` | `io.repofyr.event` |
+| `io.onfhir.event.kafka` | `io.repofyr.event.kafka` |
+| `io.onfhir.operation` | `io.repofyr.operation` |
+| `io.onfhir.server` | `io.repofyr.server` |
+| `io.onfhir.r4.audit` | `io.repofyr.r4.audit` |
+| `io.onfhir.r4.config` | `io.repofyr.r4.config` |
+| `io.onfhir.r4.subscription` | `io.repofyr.r4.subscription` |
+| `io.onfhir.r5.audit` | `io.repofyr.r5.audit` |
+| `io.onfhir.r5.config` | `io.repofyr.r5.config` |
+| `io.onfhir.stu3` | `io.repofyr.stu3` |
+| `io.onfhir.stu3.audit` | `io.repofyr.stu3.audit` |
+| `io.onfhir.stu3.config` | `io.repofyr.stu3.config` |
+| `io.onfhir.stu3.parsers` | `io.repofyr.stu3.parsers` |
+
+The 16 split packages. The package name exists in both repositories after
+Phase 5B, so a prefix rewrite is wrong: the server-owned types move to
+`io.repofyr` and the library types keep `io.onfhir`. A consumer that imported
+both from one package now needs two import lines.
+
+| Shared package | Server-owned types, now `io.repofyr.*` | Library types, still `io.onfhir.*` |
+|---|---|---|
+| `io.onfhir` (top level) | the `Onfhir` server bootstrap, in `repofyr-core_2.13` | the whole remaining `io.onfhir.*` library namespace, including the `io.onfhir.api` package object and its constants |
+| `io.onfhir.api.client` | `OnFhirLocalClient`, `OnFhirBulkRequestBuilder` | the client API in `onfhir-client_2.13`: `IOnFhirClient`, `BaseFhirClient`, `FHIRBundle`, `FhirClientException`, and the request builders |
+| `io.onfhir.api.model` | the Akka boundary adapters `AkkaHttpModelAdapter`, `FHIRMarshallers`, `JsonToXmlConvertor`, `XmlToJsonConvertor` | the neutral models in `onfhir-common_2.13`: `FHIRRequest`, `FHIRResponse`, `FHIROperationRequest`/`Response`, `NeutralHttpModels`, `FhirSubscription`, `Parameter`, `OutcomeIssue`, and neighbours |
+| `io.onfhir.api.parsers` | `FHIRSearchParameterValueParserDirectives` | `BundleRequestParser`, `FHIRSearchParameterValueParser`, `IFhirFoundationResourceParser`, `ISearchParamPlaceholderResolver`, and the query-owned `FhirQueryParser` and `FHIRResultParameterResolver` |
+| `io.onfhir.api.service` | the 19 server services: `FHIRCreateService`, `FHIRReadService`, `FHIRSearchService`, `FHIRUpdateService`, `FHIRPatchService`, `FHIRDeleteService`, `FHIRHistoryService`, `FHIRBatchTransactionService`, `FHIRBulkService`, `FHIRInteractionService`, `FHIROperationHandler`, `FHIROperationHandlerService`, `FHIRServiceFactory`, `FHIRSubscriptionBusinessValidator`, `FhirPathPatchHandler`, `JsonPatchHandler`, `IFHIRPatchHandler`, `OnFhirInternalApiService`, `TargetResourceResolver` | the external service contracts `IFhirTerminologyService` and `IFhirIdentityService` |
+| `io.onfhir.api.util` | `FHIRServerUtil`, `ResourceChecker`, the core-owned `SubscriptionUtil` contract | `FHIRUtil`, `FhirPatchUtil`, `IOUtil`, `ImMemorySearchUtil`, `InMemoryPrefixModifierHandler` |
+| `io.onfhir.api.validation` | `FHIRApiValidator`, `FHIRResourceValidator`, `IResourceSpecificValidator`, `ReferenceResolver` | `AbstractFhirContentValidator`, `IFhirResourceValidator`, `IFhirTerminologyValidator`, `ProfileRestrictions`, the reference-resolver contracts and default implementations |
+| `io.onfhir.authz` | the 14 server authorization runtime types: `AuthManager`, `AuthzManager`, `AuthzConfigurationManager`, `IAuthorizer`, `BaseAuthorizer`, `BasicAuthorizer`, `SmartAuthorizer`, `ITokenResolver`, `JWTResolver`, `ResolverWithTokenIntrospection`, `ICustomAuditHandler`, `TokenClient`, `AuthorizationServerMetadata`, `FhirAuthzConstraintRule` | the request/decision metadata kept in Common by Phase 1D: `AuthContext`, `AuthzContext`, `AuthzResult` |
+| `io.onfhir.client` | test fixtures only (`OnFhirLocalClientTest`) | `OnFhirNetworkClient`, `JdkHttpTransport`, `IHttpRequestInterceptor`, `TerminologyServiceClient`, `IdentityServiceClient`, and the `client.intrcp`, `client.model`, `client.parsers`, `client.util` subpackages |
+| `io.onfhir.config` | the server configuration cluster: `OnfhirConfig`, `AuthzConfig`, `AuditConfig`, `SSLConfig`, `IndexConfigurator`, `IFhirServerConfigurator`, `BaseFhirServerConfigurator`, `FhirConfigurationManager`, `IFhirConfigurationManager` | the FHIR configuration models and readers: `BaseFhirConfig`, `FhirServerConfig`, `FhirRuntimeSettings`, `FHIRSearchParameter`, `OperationConf`, `ResourceConf`, `IFhirConfigReader`, `IFhirVersionConfigurator`, `BaseFhirConfigurator`, `FSConfigReader`, `FhirApiConfigReader`, `SearchParameterConfigurator`, and neighbours |
+| `io.onfhir.exception` | the ten HTTP response exceptions moved in Phase 3.5 plus `AuthorizationFailedRejection` and `TransientRejection` | `InitializationException`, `InvalidParameterException`, `UnsupportedParameterException` |
+| `io.onfhir.expression` | test fixtures only (`XFhirQueryParserTest`) | `FhirExpression`, `FhirExpressionEvaluator`, `FhirExpressionException`, `IFhirExpressionLanguageHandler`, `XFhirQueryParser`, and the placeholder resolvers |
+| `io.onfhir.r4` | `Boot` and the `r4.audit`, `r4.config`, `r4.subscription` subpackages | `io.onfhir.r4.parsers`: `R4Parser` and `StructureDefinitionParser` |
+| `io.onfhir.r5` | `Boot` and the `r5.audit`, `r5.config` subpackages | `io.onfhir.r5.parsers`: `R5Parser` |
+| `io.onfhir.util` | `InternalJsonMarshallers`, in `repofyr-event_2.13` | `DateTimeUtil`, `JsonFormatter`, `OnFhirZipInputStream` |
+| `io.onfhir.validation` | test fixtures only (`ProfileValidationTest`, `StructureDefinitionParserTest`, `TerminologyParserTest`) | `FhirValidator`, `FhirContentValidator`, `FhirTerminologyValidator`, `TerminologyParser`, `AbstractStructureDefinitionParser`, the restriction types, and `BaseFhirProfileHandler`, which Phase 5A moved to `onfhir-config_2.13` |
 
 ## 8. Risks And Mitigations
 
@@ -1293,11 +1614,13 @@ direct dependency on the new owning artifact where applicable.
 
 The split is complete only when all of the following are true:
 
-- the nine library modules build from a fresh standalone checkout;
+- the twelve library modules build from a fresh standalone checkout;
 - their production sources, resources, and complete dependency graphs contain
   no Akka or Pekko;
 - the library artifacts have the approved coordinates, including
-  `io.onfhir:onfhir-template-engine_2.13`, and an independent parent/version;
+  `io.onfhir:onfhir-template-engine_2.13` and the deliberately unsuffixed
+  resources-only `io.onfhir:onfhir-definitions-r4` and
+  `io.onfhir:onfhir-definitions-r5`, and an independent parent/version;
 - Apache-2.0 relicensing approval is recorded and published artifacts contain
   correct `LICENSE` and `NOTICE` metadata;
 - Repofyr retains its server modules, GPL metadata, and existing server parent;
@@ -1310,7 +1633,34 @@ The split is complete only when all of the following are true:
 
 ## 10. Next Action
 
-Finish Phase 5A by configuring a usable SRDC release-signing key, producing
-and verifying signed `4.0.0` staging artifacts, committing both repositories
-when authorized, and repeating the independent builds from fresh checkouts.
-Do not begin Phase 5B until those Phase 5A exit gates are green.
+Phase 5B is complete: its exit gates are green as recorded in the
+implementation record above. The server family is `io.repofyr:repofyr-*` with
+`io.repofyr.*` packages, the libraries are unchanged at `io.onfhir:*:4.0.0`,
+the full reactor passes, and the isolated build proves the server resolves the
+libraries only from signed staging. Begin Phase 6, consumer migration and the
+release chain.
+
+Open items carried forward. None blocked Phase 5B:
+
+1. Phase 5B is committed to the local `repository-split` branch only. Nothing
+   has been pushed or published. Pushing either repository and publishing
+   `4.0.0` to Maven Central remain separate, explicitly authorized steps; the
+   staging repository is local only.
+2. Because `io.onfhir:*:4.0.0` is not on Maven Central yet, the GitHub Actions
+   `mvn -B test` job cannot resolve the libraries from a clean cache. It stays
+   red until that authorized publish happens; the local isolated gate against
+   signed staging is the substitute until then.
+3. The libs repository should deprecate or remove
+   `DEFAULT_IMPLEMENTED_FHIR_OPERATIONS`, now irrelevant to the server, and the
+   dead `OperationConf.classPath` field in a later library release.
+4. Several test classes are duplicated verbatim between the two repositories,
+   including `TerminologyParserTest`, `XFhirQueryParserTest`, and neighbours.
+   De-duplicate them and keep each in its owning repository.
+5. `repofyr-server-r5` still compiles against the `onfhir-r4` library parser
+   rather than `onfhir-r5`. Switch it once R5 server behavior is revisited.
+6. Optional later rebrands remain available and were explicitly out of scope:
+   `ONFHIR_HOME` and container paths, log file names, and the `Onfhir*` class
+   names. Per the maintainer's 2026-08-06 decision, Phase 5B covered Maven
+   coordinates and Scala packages only. Any migration of runtime configuration
+   keys, Kafka topics, or persistence identifiers still requires a separate,
+   compatibility-focused phase.

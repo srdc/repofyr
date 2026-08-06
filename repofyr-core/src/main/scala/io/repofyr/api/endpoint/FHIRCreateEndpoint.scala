@@ -1,0 +1,48 @@
+package io.repofyr.api.endpoint
+
+import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Route
+import io.onfhir.api.{FHIR_HTTP_OPTIONS, RESOURCE_TYPE_REGEX, Resource}
+import io.onfhir.api.model.FHIRRequest
+import io.repofyr.api.model.FHIRMarshallers._
+import io.repofyr.api.service.FHIRCreateService
+import io.repofyr.authz.AuthzManager
+import io.onfhir.authz.{AuthContext, AuthzContext}
+import io.repofyr.config.FhirConfigurationManager.authzManager
+
+
+trait FHIRCreateEndpoint {
+  /**
+    * Path for HL7 FHIR create service
+    * POST [base]/[type] {?_format=[mime-type]}
+    *
+    * @param fhirRequest FHIR Request object
+    * @param authContext Authentication and Authorization context
+    * @return FHIR response
+    */
+  def createRoute(fhirRequest: FHIRRequest, authContext: (AuthContext, Option[AuthzContext])): Route = {
+    post {
+      pathPrefix(RESOURCE_TYPE_REGEX) { _type =>
+        pathEndOrSingleSlash {
+          optionalHeaderValueByName(FHIR_HTTP_OPTIONS.IF_NONE_EXIST) { ifNoneExist => //for version-aware updates
+            optionalHeaderValueByName(FHIR_HTTP_OPTIONS.PREFER) { prefer =>
+              //Initialize the FHIR request object
+              fhirRequest.initializeCreateRequest(_type, ifNoneExist, prefer)
+              entity(as[Resource]) { resource =>
+                //Put the content into the FHIR Request
+                fhirRequest.resource = Some(resource)
+                //Authorize the interaction
+                authzManager.authorize(authContext._2, fhirRequest) {
+                  //Complete the request
+                  complete {
+                    new FHIRCreateService().executeInteraction(fhirRequest)
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -19,13 +19,13 @@ keep its Status header current.
 
 This reactor owns only the Repofyr server family:
 
-- `onfhir-event`
-- `onfhir-core`
-- `onfhir-operations`
-- `onfhir-kafka`
-- `onfhir-server-r4`
-- `onfhir-server-r5`
-- `onfhir-server-stu3`
+- `repofyr-event`
+- `repofyr-core`
+- `repofyr-operations`
+- `repofyr-kafka`
+- `repofyr-server-r4`
+- `repofyr-server-r5`
+- `repofyr-server-stu3`
 
 Reusable models, clients, FHIRPath, query, configuration, expression,
 validation, template-engine, and R4 parser code belong to `srdc/onfhir-libs`.
@@ -34,8 +34,10 @@ Do not copy their sources back into this reactor.
 ## Non-negotiable invariants
 
 1. Repofyr retains GPL-3.0 metadata until a separate license decision.
-2. During Phase 5A, server coordinates remain under `io.onfhir`; the approved
-   `io.repofyr` Maven and package migration is Phase 5B only.
+2. Since Phase 5B, server artifacts use `io.repofyr:repofyr-*` coordinates and
+   server-owned code lives in `io.repofyr.*` packages; the reusable libraries
+   keep `io.onfhir` coordinates and `io.onfhir.*` packages. Never rename a
+   library coordinate, package, or import from this reactor.
 3. Every reusable-library dependency uses `onfhir.libs.version`, never the
    server `${project.version}`.
 4. Runtime configuration keys, persistence identifiers, and stored-data
@@ -46,9 +48,9 @@ Do not copy their sources back into this reactor.
 
 - Reactor compile: `mvn -DskipTests compile`
 - Targeted server tests: `mvn -pl <module> -am test`
-- Main regression net: `mvn -pl onfhir-server-r4 -am test`
-- Phase 5A verification must use a fresh Maven cache configured to resolve
-  `io.onfhir:*` libraries from the staged library repository.
+- Main regression net: `mvn -pl repofyr-server-r4 -am test`
+- Release verification must use a fresh Maven cache configured to resolve
+  `io.onfhir:*` libraries only from the staged library repository.
 
 Keep scripts ASCII-only for Windows PowerShell 5.1 compatibility. Do not push,
 publish, sign with a replacement identity, or alter credentials without

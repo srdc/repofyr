@@ -14,7 +14,7 @@ services:
     volumes:
       - onfhirdata:/data/db
   onfhir:
-    image: srdc/onfhir:r5
+    image: srdc/repofyr:r5
     container_name: onfhir
     restart: always
     depends_on:

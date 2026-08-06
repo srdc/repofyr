@@ -8,11 +8,12 @@ rules there, not duplicated here, so Codex and Claude Code stay in sync.
 
 ## Claude-specific notes
 
-- Where to start: `docs/plans/library-server-split-plan.md` for the current
+- Where to start: `docs/plans/library-server-split-plan-v2.md` for the current
   restructuring work; execute one phase at a time.
 - Build/test: Maven, Scala 2.13, from repo root (PowerShell). Prefer targeted
   module runs (`mvn -pl <module> -am test`) while iterating; end each phase
-  with the `onfhir-server-r4` suite.
-- Deterministic check: `powershell -File scripts\check-forbidden-imports.ps1`
-  reports Akka/Pekko imports in library modules. Run it after any change to a
-  library module; the count must never increase.
+  with the `repofyr-server-r4` suite.
+- Library boundary gates (forbidden-import, license, binary-compatibility
+  scripts) live in the sibling `onfhir-libs` repository, not here. This
+  reactor has no library modules; keep `io.onfhir` limited to library
+  dependencies and imports.

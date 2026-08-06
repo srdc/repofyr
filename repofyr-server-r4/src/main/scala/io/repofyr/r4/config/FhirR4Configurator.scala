@@ -1,0 +1,41 @@
+package io.repofyr.r4.config
+
+import io.onfhir.api.parsers.IFhirFoundationResourceParser
+import io.repofyr.api.util.SubscriptionUtil
+import io.repofyr.audit.IFhirAuditCreator
+import io.repofyr.config._
+import io.onfhir.config._
+import io.repofyr.r4.audit.R4AuditCreator
+import io.onfhir.r4.parsers.R4Parser
+import io.repofyr.r4.subscription.R4SubscriptionUtil
+
+
+
+/**
+ * Configurator for FHIR R4 standard (parsing R4 foundation resources, etc)
+ */
+class FhirR4Configurator extends BaseFhirServerConfigurator {
+  /**
+   * Return the Audit creator for R4
+   *  @return
+   */
+
+  def getAuditCreator(auditConfig: AuditConfig):IFhirAuditCreator = new R4AuditCreator()
+
+  override def getSubscriptionUtil(
+      fhirConfig: FhirServerConfig,
+      subscriptionSettings: FhirSubscriptionSettings,
+      defaultSearchHandling: FhirSearchHandling
+  ): SubscriptionUtil =
+    new R4SubscriptionUtil(fhirConfig, subscriptionSettings, defaultSearchHandling)
+
+
+  /**
+   * Return the parser for R4
+   * @param complexTypes    List of FHIR complex types defined in the standard
+   * @param primitiveTypes  List of FHIR primitive types defined in the standard
+   *  @return
+   */
+  def getFoundationResourceParser(complexTypes:Set[String], primitiveTypes:Set[String], capabilityDefaults: FhirCapabilityDefaults):IFhirFoundationResourceParser =
+    new R4Parser(complexTypes, primitiveTypes, capabilityDefaults)
+}

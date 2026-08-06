@@ -4,17 +4,17 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>io.onfhir</groupId>
-    <artifactId>fhir-repository_2.13</artifactId>
+    <groupId>io.repofyr</groupId>
+    <artifactId>repofyr-parent</artifactId>
     <version>${revision}</version>
 
     <packaging>pom</packaging>
 
-    <name>onFHIR Secure FHIR Repository</name>
-    <description>onFHIR is an HL7 FHIR compliant secure, high-performance and scalable health data repository that can
-        be used as the central data service for HL7 FHIR compliant healthcare applications.
+    <name>Repofyr Secure FHIR Repository</name>
+    <description>Repofyr (formerly onFHIR) is an HL7 FHIR compliant secure, high-performance and scalable health data
+        repository that can be used as the central data service for HL7 FHIR compliant healthcare applications.
     </description>
-    <url>https://onfhir.io</url>
+    <url>https://repofyr.io</url>
 
     <licenses>
         <license>
@@ -67,19 +67,19 @@
     </developers>
 
     <scm>
-        <connection>scm:git:git://github.com/srdc/onfhir.git</connection>
-        <developerConnection>scm:git:ssh://github.com:srdc/onfhir.git</developerConnection>
-        <url>https://github.com/srdc/onfhir/tree/master</url>
+        <connection>scm:git:git://github.com/srdc/repofyr.git</connection>
+        <developerConnection>scm:git:ssh://github.com:srdc/repofyr.git</developerConnection>
+        <url>https://github.com/srdc/repofyr/tree/master</url>
     </scm>
 
     <modules>
-        <module>onfhir-event</module>
-        <module>onfhir-core</module>
-        <module>onfhir-operations</module>
-        <module>onfhir-kafka</module>
-        <module>onfhir-server-r4</module>
-        <module>onfhir-server-stu3</module>
-        <module>onfhir-server-r5</module>
+        <module>repofyr-event</module>
+        <module>repofyr-core</module>
+        <module>repofyr-operations</module>
+        <module>repofyr-kafka</module>
+        <module>repofyr-server-r4</module>
+        <module>repofyr-server-stu3</module>
+        <module>repofyr-server-r5</module>
     </modules>
 
     <properties>
@@ -89,11 +89,10 @@
 
         <!-- This is a special placeholder to manage the version from a single property throughout the parent and child modules. No other property name can be used. -->
         <!-- https://maven.apache.org/maven-ci-friendly.html -->
-        <revision>3.4.1-SNAPSHOT</revision>
+        <revision>4.0.0-SNAPSHOT</revision>
         <!-- Kept distinct now so the server reactor can consume independently
              versioned library artifacts after the physical split. -->
         <onfhir.libs.version>4.0.0</onfhir.libs.version>
-        <library.gates.skip>true</library.gates.skip>
 
         <!-- plugin versions -->
         <scala.maven.plugin.version>4.8.1</scala.maven.plugin.version>
@@ -102,7 +101,6 @@
         <surefire.plugin.version>3.2.5</surefire.plugin.version>
         <maven-compiler.plugin.version>3.12.1</maven-compiler.plugin.version>
         <flatten.plugin.version>1.6.0</flatten.plugin.version>
-        <maven.enforcer.plugin.version>3.6.3</maven.enforcer.plugin.version>
 
         <!-- dependency versions -->
         <scala.version>2.13.16</scala.version>
@@ -218,33 +216,6 @@
         </pluginManagement>
 
         <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-enforcer-plugin</artifactId>
-                <version>${maven.enforcer.plugin.version}</version>
-                <executions>
-                    <execution>
-                        <id>ban-actor-frameworks-from-library-modules</id>
-                        <phase>validate</phase>
-                        <goals>
-                            <goal>enforce</goal>
-                        </goals>
-                        <configuration>
-                            <skip>${library.gates.skip}</skip>
-                            <rules>
-                                <bannedDependencies>
-                                    <searchTransitive>true</searchTransitive>
-                                    <excludes>
-                                        <exclude>com.typesafe.akka:*</exclude>
-                                        <exclude>org.apache.pekko:*</exclude>
-                                    </excludes>
-                                    <message>Library modules must not resolve Akka or Pekko dependencies.</message>
-                                </bannedDependencies>
-                            </rules>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>flatten-maven-plugin</artifactId>
@@ -396,8 +367,8 @@
                 <version>${onfhir.libs.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.onfhir</groupId>
-                <artifactId>onfhir-event_${scala.binary.version}</artifactId>
+                <groupId>io.repofyr</groupId>
+                <artifactId>repofyr-event_${scala.binary.version}</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -406,18 +377,18 @@
                 <version>${onfhir.libs.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.onfhir</groupId>
-                <artifactId>onfhir-core_${scala.binary.version}</artifactId>
+                <groupId>io.repofyr</groupId>
+                <artifactId>repofyr-core_${scala.binary.version}</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.onfhir</groupId>
-                <artifactId>onfhir-operations_${scala.binary.version}</artifactId>
+                <groupId>io.repofyr</groupId>
+                <artifactId>repofyr-operations_${scala.binary.version}</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.onfhir</groupId>
-                <artifactId>onfhir-kafka_${scala.binary.version}</artifactId>
+                <groupId>io.repofyr</groupId>
+                <artifactId>repofyr-kafka_${scala.binary.version}</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -426,13 +397,18 @@
                 <version>${onfhir.libs.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.onfhir</groupId>
-                <artifactId>onfhir-server-r4_${scala.binary.version}</artifactId>
+                <groupId>io.repofyr</groupId>
+                <artifactId>repofyr-server-r4_${scala.binary.version}</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.onfhir</groupId>
-                <artifactId>onfhir-server-stu3_${scala.binary.version}</artifactId>
+                <groupId>io.repofyr</groupId>
+                <artifactId>repofyr-server-stu3_${scala.binary.version}</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.repofyr</groupId>
+                <artifactId>repofyr-server-r5_${scala.binary.version}</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -462,7 +438,7 @@
             </dependency>
             <dependency>
                 <groupId>io.onfhir</groupId>
-                <artifactId>onfhir-template-engine</artifactId>
+                <artifactId>onfhir-template-engine_${scala.binary.version}</artifactId>
                 <version>${onfhir.libs.version}</version>
             </dependency>
 
