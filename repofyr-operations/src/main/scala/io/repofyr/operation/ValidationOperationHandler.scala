@@ -122,7 +122,7 @@ class ValidationOperationHandler(fhirConfigurationManager:IFhirConfigurationMana
                     OutcomeIssue(FHIRResponse.SEVERITY_CODES.ERROR,
                       FHIRResponse.OUTCOME_CODES.NOT_SUPPORTED,
                       None,
-                      Some(s"Given profile is not supported in this server. See our Conformance statement from ${OnfhirConfig.fhirRootUrl}/metadata for all supported profiles ..."),
+                      Some(s"Given profile is not supported in this server. See our Conformance statement from ${OnfhirConfig.fhirEndpointSettings.rootUrl}/metadata for all supported profiles ..."),
                       Nil)))
                 case Some(_) =>
                   //else Set the profile into the resource

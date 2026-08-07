@@ -52,7 +52,7 @@ class R4AuditCreator extends IFhirAuditCreator {
         ("outcome" -> resolveAuditEventOutcomeCode(statusCode)) ~
         ("outcomeDesc" -> resolveAuditEventOutcomeDescription(statusCode)) ~
         ("agent" -> Seq(Some(receiverAgent), anonymousAgent, userAgent, clientAgent).flatten) ~
-        ("source" ->  ("site" -> OnfhirConfig.fhirRootUrl ) ~ ("observer" -> ("display" -> "onFhir.io")))
+        ("source" ->  ("site" -> OnfhirConfig.fhirEndpointSettings.rootUrl ) ~ ("observer" -> ("display" -> "onFhir.io")))
 
     if(allEntities.nonEmpty)
       auditRecord = auditRecord ~ ("entity" -> allEntities)
@@ -124,7 +124,7 @@ class R4AuditCreator extends IFhirAuditCreator {
   private def createReceiverAgent(agentsInfo:AgentsInfo):JObject = {
       ("name" -> OnfhirConfig.serverName) ~
       ("requestor" -> false) ~
-      ("network" -> ("address" -> OnfhirConfig.fhirRootUrl) ~ ("type" -> "2")) ~
+      ("network" -> ("address" -> OnfhirConfig.fhirEndpointSettings.rootUrl) ~ ("type" -> "2")) ~
       ("role" -> Seq("coding" -> Seq(createCodingElement("http://nema.org/dicom/dicm", "110152"))))
   }
 

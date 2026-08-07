@@ -25,11 +25,10 @@ import scala.io.StdIn
 import scala.util.{Failure, Success}
 
 /**
-  * Created by tuncay on 10/16/2017.
   * Instance of an OnFhir server
   *
   * @param fhirConfigurator      Module that will configure the FHIR capabilities of the server based on the base FHIR version
-  * @param fhirOperationLibraries Libaries (factories) that provides the FHIR operation implementations configured within the onfhir
+  * @param fhirOperationLibraries Libraries (factories) that provide the FHIR operation implementations configured within the onfhir
   * @param customAuthorizer      Module to handle authorization with a custom protocol
   * @param customTokenResolver   Module to handle access token resolution with a custom way
   * @param customAuditHandler    Module to handle auditing with a custom strategy
@@ -72,7 +71,7 @@ class Onfhir(
 
   //Create db conflict manager actor, if transaction is not enabled
   val dbConflictManager =
-    if(!OnfhirConfig.mongoUseTransaction)
+    if(!OnfhirConfig.mongoDbSettings.useTransaction)
       Some(Onfhir.actorSystem.actorOf(DBConflictManager.props(), DBConflictManager.ACTOR_NAME))
     else
       None
@@ -82,21 +81,23 @@ class Onfhir(
   private val kafkaConfig = new KafkaConfig(OnfhirConfig.config)
 
   val kafkaEventProducer =
-    if(kafkaConfig.kafkaEnabled || OnfhirConfig.fhirSubscriptionActive) {
+    if(kafkaConfig.kafkaEnabled || OnfhirConfig.fhirSubscriptionSettings.active) {
       val actorRef = Onfhir.actorSystem.actorOf(
         KafkaEventProducer.props(
           kafkaConfig,
-          OnfhirConfig.fhirSubscriptionActive,
+          OnfhirConfig.fhirSubscriptionSettings.active,
           FhirConfigurationManager.subscriptionUtil.parseFhirSubscription
         ),
         KafkaEventProducer.ACTOR_NAME
       )
 
-      val fhirSubscriptionAllowedResources = if(OnfhirConfig.fhirSubscriptionActive) OnfhirConfig.fhirSubscriptionAllowedResources else Some(Nil)
+      val fhirSubscriptionAllowedResources =
+        if(OnfhirConfig.fhirSubscriptionSettings.active) OnfhirConfig.fhirSubscriptionSettings.allowedResources.map(_.toSeq)
+        else Some(Nil)
       val kafkaEnabledResources = kafkaConfig.kafkaEnabledResources
       val resourcesToSendToKafka = (fhirSubscriptionAllowedResources, kafkaEnabledResources) match {
         case (Some(l1), Some(l2)) =>
-          if(OnfhirConfig.fhirSubscriptionActive)
+          if(OnfhirConfig.fhirSubscriptionSettings.active)
             Some(l1 ++ l2 :+ "Subscription")
           else
             Some(l1 ++ l2)
@@ -115,13 +116,13 @@ class Onfhir(
     // FHIR server definition
     var fhirServer =
       Http()
-        .newServerAt(OnfhirConfig.serverHost, OnfhirConfig.serverPort)
+        .newServerAt(OnfhirConfig.serverSettings.host, OnfhirConfig.serverSettings.port)
         .withSettings(
           ServerSettings(OnfhirConfig.config)
             .withVerboseErrorMessages(true)
         )
 
-    if(OnfhirConfig.serverSsl) {
+    if(OnfhirConfig.serverSettings.ssl.enabled) {
       logger.info("Configuring SSL context...")
       fhirServer = fhirServer.enableHttps(https)
     }
@@ -140,14 +141,14 @@ class Onfhir(
           fhirServerBinding.whenTerminated onComplete {
             case Success(t) =>
               logger.info("Closing OnFhir server...")
-              if (OnfhirConfig.mongoEmbedded) {
+              if (OnfhirConfig.mongoDbSettings.embedded) {
                 EmbeddedMongo.stop()
               }
               actorSystem.terminate()
               logger.info("OnFhir server is gracefully terminated...")
             case Failure(exception) => logger.error("Problem while gracefully terminating OnFhir server!", exception)
           }
-          logger.info("onFHIR FHIR server started on host {} and port {}", OnfhirConfig.serverHost, OnfhirConfig.serverPort)
+          logger.info("onFHIR FHIR server started on host {} and port {}", OnfhirConfig.serverSettings.host, OnfhirConfig.serverSettings.port)
           //Wait for a shutdown signal
           Await.ready(waitForShutdownSignal(), Duration.Inf)
           fhirServerBinding.terminate(FiniteDuration.apply(60L, TimeUnit.SECONDS))
@@ -156,9 +157,9 @@ class Onfhir(
     }
 
     //If we have internal onFhir api active
-    if(OnfhirConfig.internalApiActive){
+    if(OnfhirConfig.serverSettings.internalApi.active){
       val onFhirInternalServer = Http()
-        .newServerAt(OnfhirConfig.serverHost, OnfhirConfig.internalApiPort)
+        .newServerAt(OnfhirConfig.serverSettings.host, OnfhirConfig.serverSettings.internalApi.port)
         .withSettings(
           ServerSettings(OnfhirConfig.config)
             .withVerboseErrorMessages(true)
@@ -167,7 +168,7 @@ class Onfhir(
       onFhirInternalServer
         .bind(onFhirInternalRoutes) onComplete {
           case Success(binding) =>
-            logger.info("OnFhir internal server is started on host {} and port {}...", OnfhirConfig.serverHost, OnfhirConfig.internalApiPort)
+            logger.info("OnFhir internal server is started on host {} and port {}...", OnfhirConfig.serverSettings.host, OnfhirConfig.serverSettings.internalApi.port)
             internalOnFhirServerBinding = binding
             internalOnFhirServerBinding.addToCoordinatedShutdown(FiniteDuration.apply(60L, TimeUnit.SECONDS))
             internalOnFhirServerBinding.whenTerminated onComplete {
@@ -219,7 +220,7 @@ object Onfhir {
   /**
     * Initialize OnFhir
     * @param fhirConfigurator     Module that will configure the FHIR capabilities of the server based on the version
-    * @param fhirOperationImplms  Map of own FHIR Operation implementation configurations: (operation url -> operation implementation class name)
+    * @param fhirOperationLibraries Libraries (factories) that provide the FHIR operation implementations configured within the onfhir
     * @param customAuthorizer     Module to handle authorization with a custom protocol, if not supplied decided based on configurations
     * @param customTokenResolver  Module to handle access token resolution with a custom way, if not supplied decided based on configurations
     * @param customAuditHandler   Module to handle auditing with a custom strategy, if not supplied decided based on configurations

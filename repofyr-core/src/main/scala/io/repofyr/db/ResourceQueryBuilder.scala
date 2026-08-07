@@ -337,7 +337,7 @@ class ResourceQueryBuilder(resourceConf: ResourceConf) extends IFhirQueryBuilder
     * @return
     */
   def constructShardingQuery(resource: Resource):Option[Bson] = {
-    if(!OnfhirConfig.mongoShardingEnabled)
+    if(!OnfhirConfig.mongoDbSettings.shardingEnabled)
       None
     else
       fhirConfig.shardKeys

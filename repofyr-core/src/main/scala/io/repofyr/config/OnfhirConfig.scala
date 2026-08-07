@@ -3,258 +3,158 @@ package io.repofyr.config
 import java.time.Duration
 import com.typesafe.config.{Config, ConfigFactory}
 import io.onfhir.api.util.FHIRUtil
-import io.onfhir.api.{DEFAULT_FHIR_VERSION, FHIR_HTTP_OPTIONS, FHIR_VALIDATION_ALTERNATIVES}
+import io.onfhir.api.FHIR_VALIDATION_ALTERNATIVES
 
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.DurationConverters._
 import scala.jdk.CollectionConverters._
-import scala.util.{Failure, Success, Try}
+import scala.util.Try
+import io.onfhir.config.FhirCapabilityDefaults
 import io.onfhir.config.FhirEndpointSettings
 import io.onfhir.config.FhirRequestDefaults
 import io.onfhir.config.FhirResultDefaults
-import io.onfhir.config.FhirCapabilityDefaults
-import io.onfhir.config.FhirConditionalDeleteSupport
-import io.onfhir.config.FhirConditionalReadSupport
-import io.onfhir.config.FhirPaginationMode
-import io.onfhir.config.FhirReturnPreference
-import io.onfhir.config.FhirSearchHandling
-import io.onfhir.config.FhirSearchTotalHandling
 import io.onfhir.config.FhirSubscriptionSettings
-import io.onfhir.config.FhirVersioningPolicy
 import io.onfhir.config.TerminologyServiceConf
+import org.slf4j.{Logger, LoggerFactory}
 
 /**
-  * OnFhir application configurations
-  */
+ * Repofyr application configuration.
+ *
+ * This object is the composition root for configuration: it loads the application `Config` once
+ * and slices it into typed setting groups. Two families of groups exist.
+ *
+ *  - Library-owned groups from `io.onfhir.config` ([[fhirRequestDefaults]],
+ *    [[fhirResultDefaults]], [[fhirCapabilityDefaults]], [[fhirSubscriptionSettings]]) are built
+ *    with the `fromConfig` companions in `onfhir-common`, so any consumer of the reusable
+ *    libraries can construct them the same way.
+ *  - Server-owned groups from `io.repofyr.config` ([[serverSettings]], [[mongoDbSettings]],
+ *    [[fhirInitializationSettings]], [[bulkSettings]]) describe server infrastructure and stay
+ *    here, following the same shape.
+ *
+ * Every grouped setting is reached through its group - there are no flat per-key accessors for
+ * them. What remains flat below is only what belongs to no section: values whose keys live in
+ * foreign namespaces (`spray.can.*`, `akka.http.*`) and settings whose own shape is already a
+ * group, such as [[authzConfig]] and [[fhirAuditingConfig]].
+ */
 object OnfhirConfig {
 
+  private val logger: Logger = LoggerFactory.getLogger(getClass)
+
   /** Application config object. */
-  val config:com.typesafe.config.Config = ConfigFactory.load()
+  val config: com.typesafe.config.Config = ConfigFactory.load()
 
-  /** Name of the server */
-  lazy val serverName:String = Try(config.getString("spray.can.server.server-header")).getOrElse("onFHIR Repository")
-  /** Host name/address to start service on. */
-  lazy val serverHost:String = Try(config.getString("server.host")).getOrElse("localhost")
+  private def subtree(path: String): Config =
+    Try(config.getConfig(path)).getOrElse(ConfigFactory.empty())
 
-  /** Port to start service on. */
-  lazy val serverPort:Int = Try(config.getInt("server.port")).getOrElse(8080)
-
-  /** SSL settings if server will be server over SSL */
-  lazy val serverSsl:Boolean = Try(config.getConfig("server.ssl").isEmpty || config.getString("server.ssl.keystore") != null).getOrElse(false)
-  lazy val sslKeystorePath: Option[String] = Try(config.getString("server.ssl.keystore")).toOption
-  lazy val sslKeystorePasword: Option[String] = Try(config.getString("server.ssl.password")).toOption
-
-  /** Protocol of the server. Either http or https and the value is determined from spray properties */
-  lazy val serverProtocol:String = if(serverSsl) "https" else "http"
-
-  /** Full address of the server */
-  lazy val serverLocation:String =  serverProtocol + "://" + serverHost + ":" + serverPort
-
-  /** Base URI for FHIR Services to be served from */
-  lazy val baseUri:String = Try(config.getString("server.base-uri")).getOrElse("fhir")
-
-  /** Default return preference when Prefer HTTP header not set */
-  lazy val fhirDefaultReturnPreference:String = "return=" + Try(config.getString("fhir.default.return-preference")).getOrElse("representation")
-
-  /** Default page count when count parameter not set  */
-  lazy val fhirDefaultPageCount:Int = Try(config.getInt("fhir.default.page-count")).getOrElse(50)
-
-  /** Default value for [CapabilityStatement|Conformance].rest.resource.versioning when not present */
-  lazy val fhirDefaultVersioning:String = Try(config.getString("fhir.default.versioning")).getOrElse("versioned")
+  private lazy val serverConfig: Config = subtree("server")
+  private lazy val fhirConfig: Config = subtree("fhir")
+  private lazy val mongoConfig: Config = subtree("mongodb")
 
   /**
-   * Default mechanism for SearchParameter _total handling
+   * The `fhir.default` subtree, with the deprecated top-level `fhir.search-handling` folded in
+   * when the new `fhir.default.search-handling` is absent.
+   *
+   * `search-handling` is the default value of the `Prefer: handling=` header, which makes it the
+   * sibling of `return-preference` rather than a top-level FHIR setting; it moved into
+   * `fhir.default` in 4.0.0. The fallback keeps pre-4.0.0 configuration working: without it, a
+   * deployment configured for lenient handling would silently revert to strict and start
+   * rejecting requests carrying unknown search parameters.
    */
-  lazy val fhirDefaultSearchTotalHandling:String = Try(config.getString("fhir.default.search-total")).getOrElse("accurate")
-
-  /**
-   * Default pagination mechanism for search
-   * page --> Page based pagination e.g. _count=50&_page=4
-   * offset --> Offset based pagination e.g. _count=500&_searchafter=65156168498
-   */
-  lazy val fhirDefaultPagination:String = Try(config.getString("fhir.default.pagination")).getOrElse("page")
-
-  /** Default value for [CapabilityStatement|Conformance].rest.resource.readHistory when not present */
-  lazy val fhirDefaultReadHistory:Boolean = Try(config.getBoolean("fhir.default.read-history")).getOrElse(false)
-
-  /** Default value for [CapabilityStatement|Conformance].rest.resource.updateCreate when not present */
-  lazy val fhirDefaultUpdateCreate:Boolean = Try(config.getBoolean("fhir.default.update-create")).getOrElse(false)
-
-  /** Default value for [CapabilityStatement|Conformance].rest.resource.conditionalCreate when not present */
-  lazy val fhirDefaultConditionalCreate:Boolean = Try(config.getBoolean("fhir.default.conditional-create")).getOrElse(false)
-
-  /** Default value for [CapabilityStatement|Conformance].rest.resource.conditionalRead when not present */
-  lazy val fhirDefaultConditionalRead:String = Try(config.getString("fhir.default.conditional-read")).getOrElse("full-support")
-
-  /** Default value for [CapabilityStatement|Conformance].rest.resource.conditionalUpdate when not present */
-  lazy val fhirDefaultConditionalUpdate:Boolean = Try(config.getBoolean("fhir.default.conditional-update")).getOrElse(false)
-
-  /** Default value for [CapabilityStatement|Conformance].rest.resource.conditionalDelete when not present */
-  lazy val fhirDefaultConditionalDelete:String = Try(config.getString("fhir.default.conditional-delete")).getOrElse("not-supported")
-
-  /** Allowed mime-types for FHIR Binary resources */
-  lazy val fhirBinaryAllowedMimeTypes:Seq[String] = Try(config.getStringList("fhir.binary.allowed-mime-types").asScala.toSeq).toOption.getOrElse(Nil)
-
-  /** Whether to start an embedded MongoDB instance */
-  lazy val mongoEmbedded: Boolean = Try(config.getBoolean("mongodb.embedded")).getOrElse(false)
-
-  /** Database host name/address and ports. */
-  lazy val mongodbHosts:Seq[String] = {
-    Try(config.getStringList("mongodb.host").asScala) match {
-      case Success(list) => list.toSeq
-      case Failure(_) => {
-        Try(config.getString("mongodb.host").split(',').toSeq).getOrElse(Seq("localhost"))
-      }
-    }
+  private[config] def fhirDefaultsWithLegacyFallback(root: Config): Config = {
+    val defaults = Try(root.getConfig("fhir.default")).getOrElse(ConfigFactory.empty())
+    if (!defaults.hasPath("search-handling") && root.hasPath("fhir.search-handling")) {
+      logger.warn(
+        "Configuration key 'fhir.search-handling' is deprecated and will be removed in a future " +
+          "major release. Move it to 'fhir.default.search-handling'.")
+      defaults.withValue("search-handling", root.getValue("fhir.search-handling"))
+    } else defaults
   }
 
-  /** Database host port number. */
-  //lazy val mongodbPort = Try(config.getInt("mongodb.port")).getOrElse(27017)
+  private lazy val fhirDefaultsConfig: Config = fhirDefaultsWithLegacyFallback(config)
 
-  /** Service database name. */
-  lazy val mongodbName:String = Try(config.getString("mongodb.db")).getOrElse("fhir")
+  /* ---------------------------------------------------------------------------------------- */
+  /* Typed setting groups                                                                      */
+  /* ---------------------------------------------------------------------------------------- */
 
-  /** Service database name. */
-  lazy val mongoAuthDbName:Option[String] = Try(config.getString("mongodb.authdb")).toOption
+  /** Where the FHIR endpoint is served, and how. */
+  lazy val serverSettings: ServerSettings = ServerSettings.fromConfig(serverConfig)
 
-  /** User name used to access database. */
-  lazy val mongodbUser:Option[String] = Try(config.getString("mongodb.username")).toOption
+  /** MongoDB connection and persistence behavior. */
+  lazy val mongoDbSettings: MongoDbSettings = MongoDbSettings.fromConfig(mongoConfig)
 
-  /** Password for specified user and database. */
-  lazy val mongodbPassword:Option[String] = Try(config.getString("mongodb.password")).toOption
+  /** Which FHIR infrastructure definitions to load on startup, and from where. */
+  lazy val fhirInitializationSettings: FhirInitializationSettings =
+    FhirInitializationSettings.fromConfig(fhirConfig)
 
-  /** Pooling parameters */
-  lazy val mongodbPooling:Option[com.typesafe.config.Config] = Try(config.getConfig("mongodb.pooling")).toOption
-  lazy val mongodbPoolingMinSize:Option[Int] = mongodbPooling.flatMap(p => Try(p.getInt("minSize")).toOption)
-  lazy val mongodbPoolingMaxSize:Option[Int] = mongodbPooling.flatMap(p => Try(p.getInt("maxSize")).toOption)
-  lazy val mongodbPoolingMaxWaitTime:Option[Long] = mongodbPooling.flatMap(p => Try(p.getLong("maxWaitTime")).toOption)
-  lazy val mongodbPoolingMaxConnectionLifeTime:Option[Long] = mongodbPooling.flatMap(p => Try(p.getLong("maxConnectionLifeTime")).toOption)
+  /** Settings for the bulk import operation. */
+  lazy val bulkSettings: BulkSettings = BulkSettings.fromConfig(fhirConfig)
 
-  /** If sharding to be enabled for mongodb **/
-  lazy val mongoShardingEnabled:Boolean = Try(config.getBoolean("mongodb.sharding")).toOption.getOrElse(false)
+  /** Library-owned: the FHIR service root URL. */
+  lazy val fhirEndpointSettings: FhirEndpointSettings = FhirEndpointSettings(fhirRootUrl)
 
-  /** If true, onfhir will use MongoDB Transaction which requires Mongo to be a replication set or sharded cluster */
-  lazy val mongoUseTransaction:Boolean = Try(config.getBoolean("mongodb.transaction")).toOption.getOrElse(false)
+  /** Library-owned: defaults applied to a request when the client sends no `Prefer` header. */
+  lazy val fhirRequestDefaults: FhirRequestDefaults = FhirRequestDefaults.fromConfig(fhirDefaultsConfig)
+
+  /** Library-owned: defaults governing search result paging and totals. */
+  lazy val fhirResultDefaults: FhirResultDefaults = FhirResultDefaults.fromConfig(fhirDefaultsConfig)
+
+  /** Library-owned: CapabilityStatement defaults for interactions not stated by a profile. */
+  lazy val fhirCapabilityDefaults: FhirCapabilityDefaults =
+    FhirCapabilityDefaults.fromConfig(fhirDefaultsConfig)
+
+  /** Library-owned: FHIR Subscription handling. */
+  lazy val fhirSubscriptionSettings: FhirSubscriptionSettings =
+    FhirSubscriptionSettings.fromConfig(subtree("fhir.subscription"))
+
+  /* ---------------------------------------------------------------------------------------- */
+  /* Settings with no group                                                                    */
+  /*                                                                                           */
+  /* These belong to no section: their keys live in foreign namespaces Repofyr does not own,   */
+  /* so grouping them would force a companion to read absolute paths.                          */
+  /* ---------------------------------------------------------------------------------------- */
+
+  /** Name of the server, from the legacy Spray key `spray.can.server.server-header`. */
+  lazy val serverName: String =
+    Try(config.getString("spray.can.server.server-header")).getOrElse("onFHIR Repository")
+
+  /** Request timeout, from the Akka HTTP key `akka.http.server.request-timeout`. */
+  lazy val fhirRequestTimeout: Duration =
+    Try(config.getDuration("akka.http.server.request-timeout")).toOption.getOrElse(Duration.ofSeconds(30))
+
+  /* ---------------------------------------------------------------------------------------- */
+  /* Settings whose shape is their own group                                                   */
+  /* ---------------------------------------------------------------------------------------- */
+
+  /** Allowed mime-types for FHIR Binary resources */
+  lazy val fhirBinaryAllowedMimeTypes: Seq[String] =
+    Try(config.getStringList("fhir.binary.allowed-mime-types").asScala.toSeq).toOption.getOrElse(Nil)
 
   /**
-   * MongoDB write concern (ACKNOWLEDGED, MAJORITY, 1, 2, ...)
+   * The FHIR service root URL, defaulting to the server's own location and base URI.
+   *
+   * Private because [[fhirEndpointSettings]] is the public form; this exists only to compute it.
    */
-  lazy val mongoWriteConcern:String = Try(config.getString("mongodb.write-concern")).toOption.getOrElse("1")
-  
-  /** Path to the zip file of definitions for validation(Default DSTU2 within resources) */
-  lazy val baseDefinitions:Option[String] = Try(config.getString("fhir.initialization.base-definitions-path")).toOption
+  private lazy val fhirRootUrl: String =
+    Try(config.getString("fhir.root-url")).toOption
+      .getOrElse(s"${serverSettings.location}/${serverSettings.baseUri}")
 
-  /** File path to the conformance statement */
-  lazy val conformancePath:Option[String] = Try(config.getString("fhir.initialization.conformance-path")).toOption
-
-  /** Directory path to the definitions of supported structures */
-  lazy val profilesPath:Option[String] = Try(config.getString("fhir.initialization.profiles-path")).toOption
-
-  /** Directory path to the definitions of supported search parameters */
-  lazy val searchParametersPath:Option[String] = Try(config.getString("fhir.initialization.parameters-path")).toOption
-
-  lazy val valueSetsPath:Option[String] = Try(config.getString("fhir.initialization.valuesets-path")).toOption
-
-  lazy val codeSystemsPath:Option[String] = Try(config.getString("fhir.initialization.codesystems-path")).toOption
-
-  lazy val compartmentDefinitionsPath:Option[String] = Try(config.getString("fhir.initialization.compartments-path")).toOption
-
-  lazy val operationDefinitionsPath:Option[String] = Try(config.getString("fhir.initialization.operations-path")).toOption
-
-  lazy val dbIndexConfigurationPath:Option[String] = Try(config.getString("fhir.initialization.index-conf-path")).toOption
-
-
-  lazy val fhirInitialize:Boolean = Try(config.getBoolean("fhir.initialize")).toOption.getOrElse(false)
-
-  lazy val fhirRootUrl:String = Try(config.getString("fhir.root-url")).toOption.getOrElse(s"$serverLocation/$baseUri")
-
-  //lazy val fhirDefinitionsUrl:String = Try(config.getString("fhir.definitions-url")).toOption.getOrElse(fhirRootUrl)
-
-  lazy val fhirValidation:String = Try(config.getString("fhir.validation")).toOption.getOrElse(FHIR_VALIDATION_ALTERNATIVES.PROFILE)
-
-  /** Indicates how to handle erroneous search requests*/
-  lazy val fhirSearchHandling:String = Try(config.getString("fhir.search-handling")).toOption.getOrElse(FHIR_HTTP_OPTIONS.FHIR_SEARCH_STRICT)
-
-  /** Which Foundation resource types we should persist into database from base standard */
-  lazy val fhirPersistBaseDefinitions:Set[String] = Try(config.getStringList("fhir.persisted-base-definitions")).toOption.map(_.asScala.toSet).getOrElse(Set.empty[String])
+  lazy val fhirValidation: String =
+    Try(config.getString("fhir.validation")).toOption.getOrElse(FHIR_VALIDATION_ALTERNATIVES.PROFILE)
 
   /** Auditing related configurations */
-  lazy val fhirAuditingConfig:Option[AuditConfig] = Try(config.getConfig("fhir.auditing")).toOption.map(c => new AuditConfig(c))
+  lazy val fhirAuditingConfig: Option[AuditConfig] =
+    Try(config.getConfig("fhir.auditing")).toOption.map(c => new AuditConfig(c))
 
+  /** Authorization configurations */
+  lazy val authzConfig: AuthzConfig = new AuthzConfig(OnfhirConfig.config.getConfig("fhir.authorization"))
 
-  lazy val fhirRequestTimeout:Duration = Try(config.getDuration("akka.http.server.request-timeout")).toOption.getOrElse(Duration.ofSeconds(30))
+  /** Whether to log failed requests and issues related with them */
+  lazy val logFailedRequests: Boolean =
+    Try(config.getBoolean("fhir.failed-request-logging")).toOption.getOrElse(false)
 
-  /**
-    * Authorization configurations
-    */
-  lazy val authzConfig:AuthzConfig = new AuthzConfig(OnfhirConfig.config.getConfig("fhir.authorization"))
-
-  /**
-   * Whether to log failed requests and issues related with them
-   */
-  lazy val logFailedRequests:Boolean = Try(config.getBoolean("fhir.failed-request-logging")).toOption.getOrElse(false)
-
-  /**
-   * FHIR Subscription related configuration
-   */
-  //Enables sending FHIR subscription events to kafka so onfhir-subscription module can work
-  lazy val fhirSubscriptionActive = Try(config.getBoolean("fhir.subscription.active")).toOption.getOrElse(false)
-  lazy val fhirSubscriptionAllowedResources = Try(config.getStringList("fhir.subscription.allowed-resources")).toOption.map(_.asScala.toSeq)
-
-  /** Typed, library-safe views of the legacy application configuration. */
-  lazy val fhirEndpointSettings: FhirEndpointSettings =
-    FhirEndpointSettings(fhirRootUrl)
-
-  lazy val fhirRequestDefaults: FhirRequestDefaults =
-    FhirRequestDefaults(
-      FhirSearchHandling.fromCode(fhirSearchHandling),
-      FhirReturnPreference.fromCode(fhirDefaultReturnPreference)
-    )
-
-  lazy val fhirResultDefaults: FhirResultDefaults =
-    FhirResultDefaults(
-      fhirDefaultPageCount,
-      FhirPaginationMode.fromCode(fhirDefaultPagination),
-      FhirSearchTotalHandling.fromCode(fhirDefaultSearchTotalHandling)
-    )
-
-  lazy val fhirSubscriptionSettings: FhirSubscriptionSettings =
-    FhirSubscriptionSettings(
-      fhirSubscriptionActive,
-      fhirSubscriptionAllowedResources.map(_.toSet)
-    )
-
-  lazy val fhirCapabilityDefaults: FhirCapabilityDefaults =
-    FhirCapabilityDefaults(
-      FhirVersioningPolicy.fromCode(fhirDefaultVersioning),
-      fhirDefaultReadHistory,
-      fhirDefaultUpdateCreate,
-      fhirDefaultConditionalCreate,
-      FhirConditionalReadSupport.fromCode(fhirDefaultConditionalRead),
-      fhirDefaultConditionalUpdate,
-      FhirConditionalDeleteSupport.fromCode(fhirDefaultConditionalDelete)
-    )
-  /**
-   * Internal API configurations
-   */
-  lazy val internalApiActive:Boolean = Try(config.getBoolean("server.internal.active")).toOption.getOrElse(false)
-  lazy val internalApiPort:Int = Try(config.getInt("server.internal.port")).toOption.getOrElse(8081)
-  lazy val internalApiAuthenticate:Boolean = Try(config.getBoolean("server.internal.authenticate")).toOption.getOrElse(false)
-
-  /**
-   * Configuration for bulk operations
-   */
-  //Number of resource per group
-  lazy val bulkNumResourcesPerGroup: Int = Try(config.getInt("fhir.bulk.num-resources-per-group")).toOption.getOrElse(200)
-  //If upsert is true, we use Mongo upsert (replace the current version of resource or create) for FHIR bulk import operations. IMPORTANT This is not a version aware interaction.
-  //Otherwise normal FHIR batch operation is used for grouped resources
-  lazy val bulkUpsertMode:Boolean = Try(config.getBoolean("fhir.bulk.upsert")).toOption.getOrElse(false)
-
-  /**
-   * Configurations for integrated terminology services
-   */
-  lazy val integratedTerminologyServices:Option[Seq[(TerminologyServiceConf, Config)]] =
+  /** Configurations for integrated terminology services */
+  lazy val integratedTerminologyServices: Option[Seq[(TerminologyServiceConf, Config)]] =
     Try(config.getObject("fhir.integrated-terminology-services").asScala)
       .toOption
       .map(cnf =>

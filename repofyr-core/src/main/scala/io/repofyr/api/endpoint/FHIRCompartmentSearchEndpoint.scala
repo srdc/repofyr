@@ -51,7 +51,7 @@ trait FHIRCompartmentSearchEndpoint {
       }
     } ~ post {
       //POST [base]/[CompartmentType]/[CompartmentId]/[ResourceType]/_search{?[parameters]{&_format=[mime-type]}} => power2dm.compartment Search(link problem with type)
-      pathPrefix(OnfhirConfig.baseUri / RESOURCE_TYPE_REGEX / RESOURCE_ID_REGEX / RESOURCE_TYPE_REGEX / FHIR_HTTP_OPTIONS.SEARCH) { (compartmentName, compartmentId, _type) =>
+      pathPrefix(OnfhirConfig.serverSettings.baseUri / RESOURCE_TYPE_REGEX / RESOURCE_ID_REGEX / RESOURCE_TYPE_REGEX / FHIR_HTTP_OPTIONS.SEARCH) { (compartmentName, compartmentId, _type) =>
         pathEndOrSingleSlash {
           optionalHeaderValueByName(FHIR_HTTP_OPTIONS.PREFER) { prefer =>
             //Create the FHIR request object

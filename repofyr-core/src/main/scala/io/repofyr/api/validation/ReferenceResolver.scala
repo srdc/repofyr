@@ -32,7 +32,7 @@ class ReferenceResolver(fhirConfigurationManager: IFhirConfigurationManager,
    */
   override protected def getResource(serverUrl: Option[String], rtype: String, rid: String, version: Option[String]): Future[Option[Resource]] = {
     serverUrl match {
-      case None | Some(OnfhirConfig.fhirRootUrl) => resourceManager.getResource(rtype, rid, version)
+      case None | Some(OnfhirConfig.fhirEndpointSettings.rootUrl) => resourceManager.getResource(rtype, rid, version)
       case Some(_) =>
         //TODO Resolving references from a Remote FHIR server is not implemented yet
         Future.apply(None)
@@ -93,7 +93,7 @@ class ReferenceResolver(fhirConfigurationManager: IFhirConfigurationManager,
    */
   override protected def isResourceExist(serverUrl: Option[String], rtype: String, rid: String): Future[Boolean] = {
     serverUrl match {
-      case None | Some(OnfhirConfig.fhirRootUrl) =>
+      case None | Some(OnfhirConfig.fhirEndpointSettings.rootUrl) =>
         val query = Map(
           "_id" -> List(rid)
         )

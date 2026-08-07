@@ -60,14 +60,14 @@ object FhirConfigurationManager extends IFhirConfigurationManager {
   def initialize(fhirConfigurator: IFhirServerConfigurator, fhirOperationFactories: Seq[IFhirOperationLibrary]): Unit = {
     val fsConfigReader = new FSConfigReader(
       fhirVersion = fhirConfigurator.fhirVersion,
-      fhirStandardZipFilePath = OnfhirConfig.baseDefinitions,
-      conformancePath = OnfhirConfig.conformancePath,
-      profilesPath = OnfhirConfig.profilesPath,
-      valueSetsPath = OnfhirConfig.valueSetsPath,
-      codeSystemsPath = OnfhirConfig.codeSystemsPath,
-      searchParametersPath = OnfhirConfig.searchParametersPath,
-      operationDefinitionsPath = OnfhirConfig.operationDefinitionsPath,
-      compartmentDefinitionsPath = OnfhirConfig.compartmentDefinitionsPath
+      fhirStandardZipFilePath = OnfhirConfig.fhirInitializationSettings.baseDefinitionsPath,
+      conformancePath = OnfhirConfig.fhirInitializationSettings.conformancePath,
+      profilesPath = OnfhirConfig.fhirInitializationSettings.profilesPath,
+      valueSetsPath = OnfhirConfig.fhirInitializationSettings.valueSetsPath,
+      codeSystemsPath = OnfhirConfig.fhirInitializationSettings.codeSystemsPath,
+      searchParametersPath = OnfhirConfig.fhirInitializationSettings.parametersPath,
+      operationDefinitionsPath = OnfhirConfig.fhirInitializationSettings.operationsPath,
+      compartmentDefinitionsPath = OnfhirConfig.fhirInitializationSettings.compartmentsPath
     )
     //Initialize platform, and save the configuration
     fhirConfig =
@@ -106,7 +106,7 @@ object FhirConfigurationManager extends IFhirConfigurationManager {
     eventManager = new FhirEventBus(fhirConfig)
     resourceManager = new ResourceManager(fhirConfig,eventManager)
     //If it is the first setup or update of the platform (definition of new profile, etc), apply the setups
-    if (OnfhirConfig.fhirInitialize) {
+    if (OnfhirConfig.fhirInitializationSettings.initialize) {
       //Read the Value sets
       fhirConfigurator.setupPlatform(fsConfigReader, new MongoDBInitializer(resourceManager), fhirConfig)
     }

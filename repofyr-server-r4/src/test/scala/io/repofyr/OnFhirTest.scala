@@ -30,8 +30,8 @@ object OnfhirSetup {
 trait OnFhirTest extends Specification with Specs2RouteTest with BeforeAll {
 
   override def beforeAll(): Unit = {
-    if (OnfhirConfig.mongoEmbedded) {
-      val firstHostConfig = OnfhirConfig.mongodbHosts.head.split(':')
+    if (OnfhirConfig.mongoDbSettings.embedded) {
+      val firstHostConfig = OnfhirConfig.mongoDbSettings.hosts.head.split(':')
       EmbeddedMongo.start(OnfhirConfig.serverName, firstHostConfig(0), firstHostConfig(1).toInt, withTemporaryDatabaseDir = true)
     }
     OnfhirSetup.environment
@@ -39,7 +39,7 @@ trait OnFhirTest extends Specification with Specs2RouteTest with BeforeAll {
 
   override def afterAll(): Unit = {
     Await.result(MongoDB.getDatabase.drop().head(), Duration.apply(5, TimeUnit.SECONDS))
-    if (OnfhirConfig.mongoEmbedded) {
+    if (OnfhirConfig.mongoDbSettings.embedded) {
       EmbeddedMongo.stop()
     }
   }
@@ -89,27 +89,27 @@ trait OnFhirTest extends Specification with Specs2RouteTest with BeforeAll {
 
     val selfLink = getLink(bundle, "self")
     matchers.append(selfLink must beSome)
-    //matchers.append((selfLink.get \ "url").extractOpt[String] must beSome(OnfhirConfig.fhirRootUrl + "/" + resourceType + query.getOrElse("?") + count.map("&_count="+ _).getOrElse("") + "&_page=" + page.getOrElse(1)))
+    //matchers.append((selfLink.get \ "url").extractOpt[String] must beSome(OnfhirConfig.fhirEndpointSettings.rootUrl + "/" + resourceType + query.getOrElse("?") + count.map("&_count="+ _).getOrElse("") + "&_page=" + page.getOrElse(1)))
 
-    if (expectedTotal > count.getOrElse(OnfhirConfig.fhirDefaultPageCount) * page.getOrElse(1)) {
+    if (expectedTotal > count.getOrElse(OnfhirConfig.fhirResultDefaults.defaultPageSize) * page.getOrElse(1)) {
       val nextlink = getLink(bundle, "next")
       matchers.append(nextlink must beSome)
-      //matchers.append((nextlink.get \ "url").extractOpt[String] must beSome(OnfhirConfig.fhirRootUrl + "/" + resourceType + query.getOrElse("?") + count.map("&_count="+ _).getOrElse("") + "&_page="+ (page.getOrElse(1) + 1)))
+      //matchers.append((nextlink.get \ "url").extractOpt[String] must beSome(OnfhirConfig.fhirEndpointSettings.rootUrl + "/" + resourceType + query.getOrElse("?") + count.map("&_count="+ _).getOrElse("") + "&_page="+ (page.getOrElse(1) + 1)))
     }
 
     if (expectedTotal > 0 && page.getOrElse(1) > 1) {
       val previouslink = getLink(bundle, "previous")
       matchers.append(previouslink must beSome)
-      //matchers.append((previouslink.get \ "url").extractOpt[String] must beSome(OnfhirConfig.fhirRootUrl + "/" + resourceType + query.getOrElse("?") + count.map("&_count="+ _).getOrElse("") + "&_page="+ (page.getOrElse(1) - 1)))
+      //matchers.append((previouslink.get \ "url").extractOpt[String] must beSome(OnfhirConfig.fhirEndpointSettings.rootUrl + "/" + resourceType + query.getOrElse("?") + count.map("&_count="+ _).getOrElse("") + "&_page="+ (page.getOrElse(1) - 1)))
 
       val firstLink = getLink(bundle, "first")
       matchers.append(firstLink must beSome)
-      //matchers.append((previouslink.get \ "url").extractOpt[String] must beSome(OnfhirConfig.fhirRootUrl + "/" + resourceType + query.getOrElse("?") + count.map("&_count="+ _).getOrElse("") + "&_page=1"))
+      //matchers.append((previouslink.get \ "url").extractOpt[String] must beSome(OnfhirConfig.fhirEndpointSettings.rootUrl + "/" + resourceType + query.getOrElse("?") + count.map("&_count="+ _).getOrElse("") + "&_page=1"))
 
 
       val lastLink = getLink(bundle, "last")
       matchers.append(lastLink must beSome)
-      //matchers.append((lastLink.get \ "url").extractOpt[String] must beSome(OnfhirConfig.fhirRootUrl + "/" + resourceType + query.getOrElse("?") + count.map("&_count="+ _).getOrElse("") +"&_page="+ Math.ceil(expectedTotal / count.getOrElse(OnfhirConfig.fhirDefaultPageCount))))
+      //matchers.append((lastLink.get \ "url").extractOpt[String] must beSome(OnfhirConfig.fhirEndpointSettings.rootUrl + "/" + resourceType + query.getOrElse("?") + count.map("&_count="+ _).getOrElse("") +"&_page="+ Math.ceil(expectedTotal / count.getOrElse(OnfhirConfig.fhirResultDefaults.defaultPageSize))))
     }
     matchers.reduce((m1, m2) => m1 and m2)
   }

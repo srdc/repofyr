@@ -212,7 +212,7 @@ object AuthzConfigurationManager {
       }
 
       //Set the JWKS URI where we will be serving it
-      prInformation.put(PARAM_JWKS_URI, OnfhirConfig.fhirRootUrl + "/jwks")
+      prInformation.put(PARAM_JWKS_URI, OnfhirConfig.fhirEndpointSettings.rootUrl + "/jwks")
 
       //If dynamic registration and not registered yet, register ourselves and retrieve the parameters like clientId, etc
       val clientInformation = if (authzConfig.isAuthorizationServerRegistrationDynamic && !isResourceServerDynamicallyRegistered)
@@ -244,7 +244,7 @@ object AuthzConfigurationManager {
     */
   private def registerResourceServerToAuthzServer(registrationUri:URI, prInformation: JSONObject):ClientInformation = {
     val clientMetadata = ClientMetadata.parse(prInformation)
-    clientMetadata.setRedirectionURI(new URI(OnfhirConfig.fhirRootUrl))
+    clientMetadata.setRedirectionURI(new URI(OnfhirConfig.fhirEndpointSettings.rootUrl))
     clientMetadata.setGrantTypes(Set(GrantType.CLIENT_CREDENTIALS).asJava)
     val scope = new Scope()
     scope.add("patient")

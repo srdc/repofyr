@@ -48,7 +48,7 @@ class FHIRCreateEndpointTest extends OnFhirTest with FHIREndpoint {
     }
     //Create a new resource given in JSON and XML formats
     "create a new resource" in {
-      Post("/" + OnfhirConfig.baseUri + "/" + resourceType, HttpEntity(patientWithoutId)) ~> fhirRoute ~> check {
+      Post("/" + OnfhirConfig.serverSettings.baseUri + "/" + resourceType, HttpEntity(patientWithoutId)) ~> fhirRoute ~> check {
         eventually(status === Created)
 
         val response = responseAs[Resource]
@@ -56,7 +56,7 @@ class FHIRCreateEndpointTest extends OnFhirTest with FHIREndpoint {
         checkHeaders(response, resourceType, FHIRUtil.extractValue[String](response, "id"), "1")
       }
 
-      Post("/" + OnfhirConfig.baseUri + "/" + resourceType,
+      Post("/" + OnfhirConfig.serverSettings.baseUri + "/" + resourceType,
           HttpEntity.apply(ContentType.apply(MediaTypes.`application/xml`, () => HttpCharsets.`UTF-8`), patientXml.getBytes(StandardCharsets.UTF_8)))
         .addHeader(Accept.apply(MediaRange.apply(MediaTypes.`application/xml`))) ~> fhirRoute ~> check {
         eventually(status === Created)
@@ -69,15 +69,15 @@ class FHIRCreateEndpointTest extends OnFhirTest with FHIREndpoint {
 
     //Create with a given id, skip it
     "accept create operation for existing id in resource" in{
-      Post("/" + OnfhirConfig.baseUri + "/" + resourceType, HttpEntity(patient)) ~> fhirRoute ~> check {
+      Post("/" + OnfhirConfig.serverSettings.baseUri + "/" + resourceType, HttpEntity(patient)) ~> fhirRoute ~> check {
         status === Created
       }
     }
     "reject create operation for non parsable content" in{
-      Post("/" + OnfhirConfig.baseUri + "/" + resourceType, HttpEntity(patientNotParsable)) ~> fhirRoute ~> check {
+      Post("/" + OnfhirConfig.serverSettings.baseUri + "/" + resourceType, HttpEntity(patientNotParsable)) ~> fhirRoute ~> check {
         status === BadRequest
       }
-      Post("/" + OnfhirConfig.baseUri + "/" + resourceType,
+      Post("/" + OnfhirConfig.serverSettings.baseUri + "/" + resourceType,
         HttpEntity.apply(ContentType.apply(MediaTypes.`application/xml`, () => HttpCharsets.`UTF-8`), patientNotParsableXml.getBytes(StandardCharsets.UTF_8)))
         .addHeader(Accept.apply(MediaRange.apply(MediaTypes.`application/xml`))) ~> fhirRoute ~> check {
         status === BadRequest
@@ -85,19 +85,19 @@ class FHIRCreateEndpointTest extends OnFhirTest with FHIREndpoint {
     }
 
     "reject create operation for non matched resource type" in{
-      Post("/" + OnfhirConfig.baseUri + "/Observation"  , HttpEntity(patient)) ~> fhirRoute ~> check {
+      Post("/" + OnfhirConfig.serverSettings.baseUri + "/Observation"  , HttpEntity(patient)) ~> fhirRoute ~> check {
         status === BadRequest
       }
     }
 
     "reject create operation for invalid resource type" in{
-      Post("/" + OnfhirConfig.baseUri + "/" + "Patient2", HttpEntity(patientWithoutId)) ~> fhirRoute ~> check {
+      Post("/" + OnfhirConfig.serverSettings.baseUri + "/" + "Patient2", HttpEntity(patientWithoutId)) ~> fhirRoute ~> check {
         status === NotFound
       }
     }
 
     "handle existing metadata" in {
-      Post("/" + OnfhirConfig.baseUri + "/" + resourceType, HttpEntity(patientWithMeta)) ~> fhirRoute ~> check {
+      Post("/" + OnfhirConfig.serverSettings.baseUri + "/" + resourceType, HttpEntity(patientWithMeta)) ~> fhirRoute ~> check {
         eventually(status === Created)
         val response = responseAs[Resource]
 
@@ -113,7 +113,7 @@ class FHIRCreateEndpointTest extends OnFhirTest with FHIREndpoint {
 
     "honor Prefer header" in {
       //Should return whole resource
-      Post("/" + OnfhirConfig.baseUri + "/" + resourceType , HttpEntity(patientWithoutId))
+      Post("/" + OnfhirConfig.serverSettings.baseUri + "/" + resourceType , HttpEntity(patientWithoutId))
         .withHeaders(List(RawHeader("Prefer", "return=representation"))) ~> fhirRoute ~> check {
         status === Created
         val response:JObject = responseAs[Resource]
@@ -121,12 +121,12 @@ class FHIRCreateEndpointTest extends OnFhirTest with FHIREndpoint {
         response.obj.length === 15
       }
       //Should return empty body
-      Post("/" + OnfhirConfig.baseUri + "/" + resourceType , HttpEntity(patientWithoutId))
+      Post("/" + OnfhirConfig.serverSettings.baseUri + "/" + resourceType , HttpEntity(patientWithoutId))
         .withHeaders(List(RawHeader("Prefer", "return=minimal"))) ~> fhirRoute ~> check {
         status === Created
         responseEntity.getContentLengthOption().getAsLong === 0
       }
-      Post("/" + OnfhirConfig.baseUri + "/" + resourceType , HttpEntity(patientWithoutId))
+      Post("/" + OnfhirConfig.serverSettings.baseUri + "/" + resourceType , HttpEntity(patientWithoutId))
         .withHeaders(List(RawHeader("Prefer", "return=OperationOutcome"))) ~> fhirRoute ~> check {
         status === Created
         val response:JObject = responseAs[Resource]

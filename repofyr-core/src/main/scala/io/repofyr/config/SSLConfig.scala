@@ -23,7 +23,7 @@ trait SSLConfig {
     */
   lazy val https: HttpsConnectionContext = {
     val keyStore = getKeystore()
-    val password =  OnfhirConfig.sslKeystorePasword.getOrElse(DEFAULT_KEYSTORE_PASSWORD)
+    val password =  OnfhirConfig.serverSettings.ssl.keystorePassword.getOrElse(DEFAULT_KEYSTORE_PASSWORD)
 
     val keyManagerFactory = KeyManagerFactory.getInstance("SunX509")
     keyManagerFactory.init(keyStore, password.toCharArray)
@@ -43,12 +43,12 @@ trait SSLConfig {
     * @return
     */
   def getKeystore():KeyStore = {
-    val ksInputStream = OnfhirConfig.sslKeystorePath match {
+    val ksInputStream = OnfhirConfig.serverSettings.ssl.keystorePath match {
       case None => getClass.getResourceAsStream(DEFAULT_KEYSTORE_PATH)
       case Some(path) =>  new FileInputStream(new File(path))
     }
     val keyStore = KeyStore.getInstance("jks")
-    keyStore.load(ksInputStream, OnfhirConfig.sslKeystorePasword.getOrElse(DEFAULT_KEYSTORE_PASSWORD).toCharArray)
+    keyStore.load(ksInputStream, OnfhirConfig.serverSettings.ssl.keystorePassword.getOrElse(DEFAULT_KEYSTORE_PASSWORD).toCharArray)
     keyStore
   }
 

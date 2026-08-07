@@ -176,7 +176,7 @@ class FHIRServerUtil(fhirConfig:FhirServerConfig) {
       FHIR_SEARCH_RESULT_PARAMETERS.AT,
       FHIR_SEARCH_RESULT_PARAMETERS.PAGE)
     //allowed parameters for url
-    val url = OnfhirConfig.fhirRootUrl +
+    val url = OnfhirConfig.fhirEndpointSettings.rootUrl +
       _type.map("/" + _).getOrElse("") + //Resource type if exist
       _id.map("/" + _).getOrElse("") //Resource id if exist
 
@@ -202,7 +202,7 @@ class FHIRServerUtil(fhirConfig:FhirServerConfig) {
    * @return url
    */
   private def constructSearchLocation(path: Option[String], parameters: List[Parameter], typeParameter: Option[Seq[String]] = None): String = {
-    val url = OnfhirConfig.fhirRootUrl + path.map(p => "/" + p).getOrElse("")
+    val url = OnfhirConfig.fhirEndpointSettings.rootUrl + path.map(p => "/" + p).getOrElse("")
 
     val typeParamString = typeParameter match {
       case Some(Nil) | None => Nil
@@ -429,7 +429,7 @@ class FHIRServerUtil(fhirConfig:FhirServerConfig) {
   private def isBinaryReadOrVRead(requestUri:Uri):Boolean = {
     val isMatching =
       requestUri
-      .path.toString().replace("/"+OnfhirConfig.baseUri + "/", "")
+      .path.toString().replace("/"+OnfhirConfig.serverSettings.baseUri + "/", "")
       .split('/') match {
         case  Array("Binary", _) => true
         case Array("Binary", _, "_history", _) => true

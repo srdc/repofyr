@@ -263,7 +263,7 @@ abstract class BaseFhirServerConfigurator extends BaseFhirConfigurator with IFhi
     baseDBInitializer.storeInfrastructureResources(FHIR_CODE_SYSTEM,  codeSystemResources)
 
     //If we need to persist the base FHIR standard definitions
-    OnfhirConfig.fhirPersistBaseDefinitions.foreach {
+    OnfhirConfig.fhirInitializationSettings.persistedBaseDefinitions.foreach {
       case FHIR_STRUCTURE_DEFINITION =>
         val baseStructureDefinitions =
           //Base resource definitions
@@ -498,8 +498,8 @@ abstract class BaseFhirServerConfigurator extends BaseFhirConfigurator with IFhi
         FHIRUtil.mergeFilePath(DEFAULT_ROOT_FOLDER,s"db-index-conf-${oth.toLowerCase}.json")
     }
     //Parse Index configurations, and set configured shard keys
-    indexConfigurations = IndexConfigurator.parseIndexConfigurationFile(OnfhirConfig.dbIndexConfigurationPath, dbIndexFileDefaultPath, fhirConfig.compartmentRelations)
-    if(OnfhirConfig.mongoShardingEnabled)
+    indexConfigurations = IndexConfigurator.parseIndexConfigurationFile(OnfhirConfig.fhirInitializationSettings.indexConfPath, dbIndexFileDefaultPath, fhirConfig.compartmentRelations)
+    if(OnfhirConfig.mongoDbSettings.shardingEnabled)
       fhirConfig.shardKeys = indexConfigurations.map(c => c._1 -> c._2.shardKey.getOrElse(Nil).toSet)
     fhirConfig
   }

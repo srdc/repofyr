@@ -51,7 +51,7 @@ trait FHIREndpoint
   val fhirRoute =
     // logging requests and responses; enabled when necessary for debugging
     //logRequestResponse("REST API", Logging.InfoLevel) {
-    pathPrefix(OnfhirConfig.baseUri) {
+    pathPrefix(OnfhirConfig.serverSettings.baseUri) {
       corsHandler {
         parameters(FHIR_HTTP_OPTIONS.FORMAT.?) { format: Option[String] =>
           optionalHeaderValueByType(Accept) { acceptHeader: Option[Accept] =>

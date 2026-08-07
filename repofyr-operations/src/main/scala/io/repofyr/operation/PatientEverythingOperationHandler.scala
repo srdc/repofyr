@@ -197,8 +197,8 @@ class PatientEverythingOperationHandler (fhirConfigurationManager:IFhirConfigura
                               searchResult:FHIRSearchResult):Resource = {
     val rootUrl =
       pid match {
-        case Some(pid) => s"${OnfhirConfig.fhirRootUrl}/Patient/$pid/" + "$everything"
-        case None => s"${OnfhirConfig.fhirRootUrl}/Patient/" + "$everything"
+        case Some(pid) => s"${OnfhirConfig.fhirEndpointSettings.rootUrl}/Patient/$pid/" + "$everything"
+        case None => s"${OnfhirConfig.fhirEndpointSettings.rootUrl}/Patient/" + "$everything"
       }
 
     val params =

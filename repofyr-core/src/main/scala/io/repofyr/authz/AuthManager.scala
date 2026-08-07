@@ -51,7 +51,7 @@ object AuthManager {
    * @return
    */
  def authenticateForInternalApi(credentials: Credentials):Option[Done] = {
-   if(OnfhirConfig.internalApiAuthenticate) {
+   if(OnfhirConfig.serverSettings.internalApi.authenticate) {
      credentials match {
        case p@Credentials.Provided(token) =>
          None //TODO implement

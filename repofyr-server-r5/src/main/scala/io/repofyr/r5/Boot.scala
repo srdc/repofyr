@@ -8,9 +8,9 @@ import io.repofyr.r5.config.FhirR5Configurator
 object Boot extends App {
 
   // Start an embedded mongo if it is configured before any other processing.
-  if (OnfhirConfig.mongoEmbedded) {
+  if (OnfhirConfig.mongoDbSettings.embedded) {
     // If it is configured to use an embedded Mongo instance
-    val firstHostConfig = OnfhirConfig.mongodbHosts.head.split(':')
+    val firstHostConfig = OnfhirConfig.mongoDbSettings.hosts.head.split(':')
     EmbeddedMongo.start(OnfhirConfig.serverName, firstHostConfig(0), firstHostConfig(1).toInt, withTemporaryDatabaseDir = false)
   }
 

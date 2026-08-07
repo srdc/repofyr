@@ -22,6 +22,26 @@ import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.Future
 
+/**
+ * Handles the FHIR `\$document` operation on Composition; see
+ * https://www.hl7.org/fhir/composition-operation-document.html
+ *
+ * The operation is instance level only: it searches the Composition by id with
+ * `_include=*`, turns the resulting searchset Bundle into a `document` Bundle
+ * by keeping only `resourceType`, `id`, and `entry` and dropping the per-entry
+ * `search` element, and stamps the document with a `timestamp` and an
+ * `identifier` whose system is the server's FHIR root URL.
+ *
+ * The `persist` input parameter decides what happens next. When true the
+ * generated Bundle is stored as a resource and returned as stored; otherwise it
+ * is returned populated with version 1 metadata but never written.
+ *
+ * Calling the operation without a resource id raises an
+ * `InternalServerException`, because the type-level form is not implemented.
+ *
+ * @param fhirConfigurationManager FHIR configuration manager supplying search
+ *                                 parameter parsing and the resource manager
+ */
 class DocumentOperationHandler(fhirConfigurationManager:IFhirConfigurationManager) extends FHIROperationHandlerService(fhirConfigurationManager) {
   private val logger: Logger = LoggerFactory.getLogger("DocumentOperationHandler")
 
@@ -73,7 +93,7 @@ class DocumentOperationHandler(fhirConfigurationManager:IFhirConfigurationManage
       result = result merge JObject(
           "timestamp" -> JString(DateTimeUtil.serializeInstant(Instant.now())),
           "identifier" -> JObject(
-            "system" -> JString(OnfhirConfig.fhirRootUrl),
+            "system" -> JString(OnfhirConfig.fhirEndpointSettings.rootUrl),
             "value" -> JString(FHIRUtil.generateResourceId())
           )
         )

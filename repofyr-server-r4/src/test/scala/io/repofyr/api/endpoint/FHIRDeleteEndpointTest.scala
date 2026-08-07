@@ -27,43 +27,43 @@ class FHIRDeleteEndpointTest extends OnFhirTest with FHIREndpoint {
 
   "FHIR Delete Endpoint" should {
     "delete (mark as deleted) an existing resource in the database" in {
-      Put("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + resourceId, HttpEntity(patient)) ~> fhirRoute ~> check {
+      Put("/" + OnfhirConfig.serverSettings.baseUri + "/" + resourceType + "/" + resourceId, HttpEntity(patient)) ~> fhirRoute ~> check {
         status === Created
       }
-      Delete("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + resourceId) ~> fhirRoute ~> check {
+      Delete("/" + OnfhirConfig.serverSettings.baseUri + "/" + resourceType + "/" + resourceId) ~> fhirRoute ~> check {
         status === NoContent
         responseEntity.getContentLengthOption().getAsLong === 0
         checkHeaders(null, "2")
       }
     }
     "do nothing if resource is already deleted" in {
-      Delete("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + resourceId) ~> fhirRoute ~> check {
+      Delete("/" + OnfhirConfig.serverSettings.baseUri + "/" + resourceType + "/" + resourceId) ~> fhirRoute ~> check {
         status === NoContent
         responseEntity.getContentLengthOption().getAsLong === 0
         checkHeaders(null, "2")
       }
     }
     "do nothing if resource does not exist" in {
-      Delete("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + "UnknownResource") ~> fhirRoute ~> check {
+      Delete("/" + OnfhirConfig.serverSettings.baseUri + "/" + resourceType + "/" + "UnknownResource") ~> fhirRoute ~> check {
         status === NoContent
         responseEntity.getContentLengthOption().getAsLong === 0
         header("ETag").isDefined must beFalse
       }
     }
     "reject delete operation for invalid id" in {
-      Delete("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + resourceId + "+") ~> fhirRoute ~> check {
+      Delete("/" + OnfhirConfig.serverSettings.baseUri + "/" + resourceType + "/" + resourceId + "+") ~> fhirRoute ~> check {
         status === NotFound
       }
     }
 
     "allow resources to be brought back to life" in {
-      Put("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + resourceId, HttpEntity(patient)) ~> fhirRoute ~> check {
+      Put("/" + OnfhirConfig.serverSettings.baseUri + "/" + resourceType + "/" + resourceId, HttpEntity(patient)) ~> fhirRoute ~> check {
         status === Created
         val response = responseAs[Resource]
         checkIdAndMeta(response, resourceId, "3")
         checkHeaders(response, resourceType, resourceId, "3")
       }
-      Put("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + resourceId, HttpEntity(patient)) ~> fhirRoute ~> check {
+      Put("/" + OnfhirConfig.serverSettings.baseUri + "/" + resourceType + "/" + resourceId, HttpEntity(patient)) ~> fhirRoute ~> check {
         status === OK
         val response = responseAs[Resource]
         checkIdAndMeta(response, resourceId, "4")

@@ -54,7 +54,7 @@ class BulkImportJobHandler(job:BulkImportJob) extends Actor {
             Path.of(job.sourceDetails.rootUri.getPath, url).toUri
 
       val bufferedSource = Source.fromFile(finalUri, "UTF-8")
-      groupCount = if(rtype == "Bundle") 10 else OnfhirConfig.bulkNumResourcesPerGroup
+      groupCount = if(rtype == "Bundle") 10 else OnfhirConfig.bulkSettings.numResourcesPerGroup
       sourceItr =
         bufferedSource
           .getLines() //Read the lines one by one
@@ -81,7 +81,7 @@ class BulkImportJobHandler(job:BulkImportJob) extends Actor {
                   )
             case rtype =>
               //Special upsert without checking previous versions (for performance)
-              if(OnfhirConfig.bulkUpsertMode)
+              if(OnfhirConfig.bulkSettings.upsertMode)
                 Seq(resources.foldLeft(OnFhirLocalClient.bulkUpsert(rtype))((rb, r) => rb.upsert(r)).execute())
               else
                 Seq(resources.foldLeft(OnFhirLocalClient.batch())((rb, r) => rb.entry(_.update(r))).execute())

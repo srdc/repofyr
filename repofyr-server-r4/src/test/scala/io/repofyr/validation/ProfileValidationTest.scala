@@ -23,8 +23,8 @@ import io.onfhir.validation.TerminologyParser
 
 @RunWith(classOf[JUnitRunner])
 class ProfileValidationTest extends Specification {
-  var dataTypeProfileResources = IOUtil.readStandardBundleFile(OnfhirConfig.baseDefinitions, DEFAULT_RESOURCE_PATHS.BASE_DEFINITONS_R4, "profiles-types.json", Set("StructureDefinition"))
-  var resourceProfileResources = IOUtil.readStandardBundleFile(OnfhirConfig.baseDefinitions, DEFAULT_RESOURCE_PATHS.BASE_DEFINITONS_R4, "profiles-resources.json", Set("StructureDefinition"))
+  var dataTypeProfileResources = IOUtil.readStandardBundleFile(OnfhirConfig.fhirInitializationSettings.baseDefinitionsPath, DEFAULT_RESOURCE_PATHS.BASE_DEFINITONS_R4, "profiles-types.json", Set("StructureDefinition"))
+  var resourceProfileResources = IOUtil.readStandardBundleFile(OnfhirConfig.fhirInitializationSettings.baseDefinitionsPath, DEFAULT_RESOURCE_PATHS.BASE_DEFINITONS_R4, "profiles-resources.json", Set("StructureDefinition"))
 
   var r4Configurator = new FhirR4Configurator()
 
@@ -39,13 +39,13 @@ class ProfileValidationTest extends Specification {
   //Initialize the environment
   val resourceProfiles = resourceProfileResources.map(sdParser.parseProfile)
   val dataTypeProfiles = dataTypeProfileResources.map(sdParser.parseProfile)
-  val otherProfiles = IOUtil.readStandardBundleFile(OnfhirConfig.baseDefinitions, DEFAULT_RESOURCE_PATHS.BASE_DEFINITONS_R4, "profiles-others.json", Set("StructureDefinition")).map(sdParser.parseProfile)
-  val extensions = IOUtil.readStandardBundleFile(OnfhirConfig.baseDefinitions, DEFAULT_RESOURCE_PATHS.BASE_DEFINITONS_R4, "extension-definitions.json", Set("StructureDefinition")).map(sdParser.parseProfile)
+  val otherProfiles = IOUtil.readStandardBundleFile(OnfhirConfig.fhirInitializationSettings.baseDefinitionsPath, DEFAULT_RESOURCE_PATHS.BASE_DEFINITONS_R4, "profiles-others.json", Set("StructureDefinition")).map(sdParser.parseProfile)
+  val extensions = IOUtil.readStandardBundleFile(OnfhirConfig.fhirInitializationSettings.baseDefinitionsPath, DEFAULT_RESOURCE_PATHS.BASE_DEFINITONS_R4, "extension-definitions.json", Set("StructureDefinition")).map(sdParser.parseProfile)
 
   val valueSetsOrCodeSystems =
-    IOUtil.readStandardBundleFile(OnfhirConfig.baseDefinitions, DEFAULT_RESOURCE_PATHS.BASE_DEFINITONS_R4,"valuesets.json", Set("ValueSet", "CodeSystem")) ++
-      IOUtil.readStandardBundleFile(OnfhirConfig.baseDefinitions, DEFAULT_RESOURCE_PATHS.BASE_DEFINITONS_R4,"v3-codesystems.json", Set("ValueSet", "CodeSystem")) ++
-      IOUtil.readStandardBundleFile(OnfhirConfig.baseDefinitions, DEFAULT_RESOURCE_PATHS.BASE_DEFINITONS_R4,"v2-tables.json", Set("ValueSet", "CodeSystem"))
+    IOUtil.readStandardBundleFile(OnfhirConfig.fhirInitializationSettings.baseDefinitionsPath, DEFAULT_RESOURCE_PATHS.BASE_DEFINITONS_R4,"valuesets.json", Set("ValueSet", "CodeSystem")) ++
+      IOUtil.readStandardBundleFile(OnfhirConfig.fhirInitializationSettings.baseDefinitionsPath, DEFAULT_RESOURCE_PATHS.BASE_DEFINITONS_R4,"v3-codesystems.json", Set("ValueSet", "CodeSystem")) ++
+      IOUtil.readStandardBundleFile(OnfhirConfig.fhirInitializationSettings.baseDefinitionsPath, DEFAULT_RESOURCE_PATHS.BASE_DEFINITONS_R4,"v2-tables.json", Set("ValueSet", "CodeSystem"))
 
   val extraProfiles = Seq(
     IOUtil.readModuleResource("/fhir/validation/profiles/MyObservation.StructureDefinition.json"),

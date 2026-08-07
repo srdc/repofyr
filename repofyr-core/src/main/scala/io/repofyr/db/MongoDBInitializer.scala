@@ -30,7 +30,7 @@ import scala.util.Try
   * ii) and store the infrastructure resources into the database
   * The class is also used to retrieve infrastructure resources from database during initialization (for other runs)
   */
-class MongoDBInitializer(resourceManager: ResourceManager) extends BaseDBInitializer(OnfhirConfig.mongoShardingEnabled){
+class MongoDBInitializer(resourceManager: ResourceManager) extends BaseDBInitializer(OnfhirConfig.mongoDbSettings.shardingEnabled){
   implicit val executionContext: ExecutionContextExecutor = Onfhir.actorSystem.dispatcher
   private val logger:Logger = LoggerFactory.getLogger(this.getClass)
 

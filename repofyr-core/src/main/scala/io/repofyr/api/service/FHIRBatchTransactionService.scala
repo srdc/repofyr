@@ -302,7 +302,7 @@ class FHIRBatchTransactionService extends FHIRInteractionService {
         })
 
       //If MongoDB database is suitable, use Mongo transaction
-      if (OnfhirConfig.mongoUseTransaction)
+      if (OnfhirConfig.mongoDbSettings.useTransaction)
         performTransactionRequestByActual(fhirRequest, authzContext)
       else
       //Otherwise, simulate transaction
@@ -414,7 +414,7 @@ class FHIRBatchTransactionService extends FHIRInteractionService {
           //Otherwise we try to construct the url from the request
           val rtype: String = requestResponse.resourceType.map(rt => "/" + rt).getOrElse("")
           val rid: String = requestResponse.resourceId.map(r => "/" + r).getOrElse("")
-          Some(OnfhirConfig.fhirRootUrl + rtype + rid)
+          Some(OnfhirConfig.fhirEndpointSettings.rootUrl + rtype + rid)
         } else {
           None
         }

@@ -38,7 +38,7 @@ class FHIRUpdateEndpointTest extends OnFhirTest with FHIREndpoint {
   "FHIR Update Endpoint" should {
     //Test creating with update
    "create a new resource with a given id if not exists" in {
-      Put("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + resourceId, HttpEntity(patient)) ~> fhirRoute ~> check {
+      Put("/" + OnfhirConfig.serverSettings.baseUri + "/" + resourceType + "/" + resourceId, HttpEntity(patient)) ~> fhirRoute ~> check {
         status === Created
         val response = responseAs[Resource]
         checkIdAndMeta(response, resourceId, "1")
@@ -47,14 +47,14 @@ class FHIRUpdateEndpointTest extends OnFhirTest with FHIREndpoint {
     }
     //Testing an update
     "create a new version for given resource in database if it already exists" in {
-      Put("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + resourceId, HttpEntity(patient)) ~> fhirRoute ~> check {
+      Put("/" + OnfhirConfig.serverSettings.baseUri + "/" + resourceType + "/" + resourceId, HttpEntity(patient)) ~> fhirRoute ~> check {
         status === OK
         val response = responseAs[Resource]
         checkIdAndMeta(response, resourceId, "2")
         checkHeaders(response, resourceType, resourceId, "2")
       }
 
-      Put("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + resourceId, HttpEntity(patient)) ~> fhirRoute ~> check {
+      Put("/" + OnfhirConfig.serverSettings.baseUri + "/" + resourceType + "/" + resourceId, HttpEntity(patient)) ~> fhirRoute ~> check {
         status === OK
         val response = responseAs[Resource]
         checkIdAndMeta(response, resourceId, "3")
@@ -63,7 +63,7 @@ class FHIRUpdateEndpointTest extends OnFhirTest with FHIREndpoint {
     }
 
     "create a new version for given resource in database for correct mime type" in {
-      Put("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + resourceId + "?_format=application/fhir+json", HttpEntity(patient)) ~> fhirRoute ~> check {
+      Put("/" + OnfhirConfig.serverSettings.baseUri + "/" + resourceType + "/" + resourceId + "?_format=application/fhir+json", HttpEntity(patient)) ~> fhirRoute ~> check {
         status === OK
         responseEntity.contentType.value === "application/fhir+json; charset=UTF-8"
 
@@ -72,7 +72,7 @@ class FHIRUpdateEndpointTest extends OnFhirTest with FHIREndpoint {
         checkHeaders(response, resourceType, resourceId, "4")
       }
 
-      Put("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + resourceId + "?_format=application/fhir+xml", HttpEntity(patient)) ~> fhirRoute ~> check {
+      Put("/" + OnfhirConfig.serverSettings.baseUri + "/" + resourceType + "/" + resourceId + "?_format=application/fhir+xml", HttpEntity(patient)) ~> fhirRoute ~> check {
         status === OK
         responseEntity.contentType.value === "application/fhir+xml; charset=UTF-8"
 
@@ -83,36 +83,36 @@ class FHIRUpdateEndpointTest extends OnFhirTest with FHIREndpoint {
     }
 
     "reject update operation for bad json" in{
-      Put("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + resourceId, HttpEntity(patientNotParsable)) ~> fhirRoute ~> check {
+      Put("/" + OnfhirConfig.serverSettings.baseUri + "/" + resourceType + "/" + resourceId, HttpEntity(patientNotParsable)) ~> fhirRoute ~> check {
         status === BadRequest
       }
     }
     "reject update operation for missing id" in{
-      Put("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + resourceId, HttpEntity(patientWithoutId)) ~> fhirRoute ~> check {
+      Put("/" + OnfhirConfig.serverSettings.baseUri + "/" + resourceType + "/" + resourceId, HttpEntity(patientWithoutId)) ~> fhirRoute ~> check {
         status === BadRequest
         responseAs[String] must contain("Missing 'id' field in given resource")
       }
     }
     "reject update operation for wrong id" in{
-      Put("/" + OnfhirConfig.baseUri + "/" + resourceType + "/123456789", HttpEntity(patient)) ~> fhirRoute ~> check {
+      Put("/" + OnfhirConfig.serverSettings.baseUri + "/" + resourceType + "/123456789", HttpEntity(patient)) ~> fhirRoute ~> check {
         status === BadRequest
         responseAs[String] must contain("does not match with the id field in request")
       }
     }
     "reject update operation for invalid id" in{
-      Put("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + resourceId + "+", HttpEntity(patientWithInvalidId)) ~> fhirRoute ~> check {
+      Put("/" + OnfhirConfig.serverSettings.baseUri + "/" + resourceType + "/" + resourceId + "+", HttpEntity(patientWithInvalidId)) ~> fhirRoute ~> check {
         status === NotFound
       }
     }
 
     "manage resource contention for wrong versions" in {
-      Put("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + resourceId, HttpEntity(patient))
+      Put("/" + OnfhirConfig.serverSettings.baseUri + "/" + resourceType + "/" + resourceId, HttpEntity(patient))
         .withHeaders(List(`If-Match`(EntityTag("3", weak = false)))) ~> fhirRoute ~> check {
         status === PreconditionFailed
       }
     }
     "manage resource contention for correct versions" in {
-      Put("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + resourceId, HttpEntity(patient))
+      Put("/" + OnfhirConfig.serverSettings.baseUri + "/" + resourceType + "/" + resourceId, HttpEntity(patient))
         .withHeaders(List(`If-Match`(EntityTag("5", weak = false)))) ~> fhirRoute ~> check {
         status === OK
 
@@ -121,7 +121,7 @@ class FHIRUpdateEndpointTest extends OnFhirTest with FHIREndpoint {
         checkHeaders(response, resourceType, resourceId, "6")
 
       }
-      Put("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + resourceId, HttpEntity(patient))
+      Put("/" + OnfhirConfig.serverSettings.baseUri + "/" + resourceType + "/" + resourceId, HttpEntity(patient))
         .withHeaders(List(RawHeader("If-Match", "\"6\""))) ~> fhirRoute ~> check {
         status === OK
         val response = responseAs[Resource]
@@ -133,14 +133,14 @@ class FHIRUpdateEndpointTest extends OnFhirTest with FHIREndpoint {
 
     "reject normal update when 'versioned-update' is set for the resource type" in {
        //Create the practitioner
-      Put("/" + OnfhirConfig.baseUri + "/" + "Practitioner" + "/" + "pr1", HttpEntity(practitioner)) ~> fhirRoute ~> check {
+      Put("/" + OnfhirConfig.serverSettings.baseUri + "/" + "Practitioner" + "/" + "pr1", HttpEntity(practitioner)) ~> fhirRoute ~> check {
         status === BadRequest
         responseAs[String] must contain("only versioned updates are supported")
       }
     }
 
     "honor Prefer header" in {
-      Put("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + resourceId, HttpEntity(patient))
+      Put("/" + OnfhirConfig.serverSettings.baseUri + "/" + resourceType + "/" + resourceId, HttpEntity(patient))
         .withHeaders(List(RawHeader("Prefer", "return=representation"))) ~> fhirRoute ~> check {
         status === OK
         val response = responseAs[Resource]
@@ -150,13 +150,13 @@ class FHIRUpdateEndpointTest extends OnFhirTest with FHIREndpoint {
       }
 
       //Should return empty body
-      Put("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + resourceId, HttpEntity(patient))
+      Put("/" + OnfhirConfig.serverSettings.baseUri + "/" + resourceType + "/" + resourceId, HttpEntity(patient))
         .withHeaders(List(RawHeader("Prefer", "return=minimal"))) ~> fhirRoute ~> check {
         status === OK
         checkHeaders(null, resourceType, resourceId, "9")
         responseEntity.getContentLengthOption().getAsLong === 0
       }
-      Put("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + resourceId, HttpEntity(patient))
+      Put("/" + OnfhirConfig.serverSettings.baseUri + "/" + resourceType + "/" + resourceId, HttpEntity(patient))
         .withHeaders(List(RawHeader("Prefer", "return=OperationOutcome"))) ~> fhirRoute ~> check {
         status === OK
         checkHeaders(null, resourceType, resourceId, "10")

@@ -89,7 +89,7 @@ trait IFhirAuditCreator {
     val queryPart = fhirRequest.ifNoneExist match {
       case None =>
         if(fhirRequest.interaction == FHIR_INTERACTIONS.SEARCH || fhirRequest.interaction == FHIR_INTERACTIONS.SEARCH_SYSTEM || fhirRequest.queryParams.nonEmpty) {
-          fhirRequest.requestUri.replaceFirst(OnfhirConfig.fhirRootUrl, "") match {
+          fhirRequest.requestUri.replaceFirst(OnfhirConfig.fhirEndpointSettings.rootUrl, "") match {
             case "" => Some("/")
             case other => Some(other)
           }
@@ -202,7 +202,7 @@ trait IFhirAuditCreator {
   }
 
   private def getRelatedResourceRefFromLocation(response: FHIRResponse):Option[String] = {
-    response.location.map(_.toString().replace(OnfhirConfig.fhirRootUrl+"/", ""))
+    response.location.map(_.toString().replace(OnfhirConfig.fhirEndpointSettings.rootUrl+"/", ""))
   }
 
   private def getRelatedResourceRefFromResolvedTargetResource(fhirRequest: FHIRRequest): Option[String] = {

@@ -53,7 +53,7 @@ class STU3AuditCreator extends IFhirAuditCreator {
       ("outcome" -> resolveAuditEventOutcomeCode(statusCode)) ~
       ("outcomeDesc" -> resolveAuditEventOutcomeDescription(statusCode)) ~
       ("agent" -> Seq(Some(receiverAgent), anonymousAgent, userAgent, clientAgent).flatten) ~
-      ("source" -> ("site" -> OnfhirConfig.fhirRootUrl))
+      ("source" -> ("site" -> OnfhirConfig.fhirEndpointSettings.rootUrl))
 
     if(allEntities.nonEmpty)
       auditRecord ~ ("entity" -> allEntities)
@@ -117,7 +117,7 @@ class STU3AuditCreator extends IFhirAuditCreator {
   private def createReceiverAgent(agentsInfo:AgentsInfo):JObject = {
     ("name" -> OnfhirConfig.serverName) ~
       ("requestor" -> false) ~
-      ("network" -> ("address" -> OnfhirConfig.fhirRootUrl) ~ ("type" -> "2")) ~
+      ("network" -> ("address" -> OnfhirConfig.fhirEndpointSettings.rootUrl) ~ ("type" -> "2")) ~
       ("role" -> Seq(createCodingElement("http://nema.org/dicom/dicm", "110152")))
   }
 

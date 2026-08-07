@@ -153,7 +153,7 @@ class ReferenceQueryBuilder(onlyLocalReferences:Boolean) extends IFhirQueryBuild
       values
         .map(reference => FHIRUtil.resolveReferenceValue(reference, "", targetReferenceTypes))
         .map {
-          case (Some(OnfhirConfig.fhirRootUrl), rtype, rid, version) => (None, rtype, rid, version) //If root url of server is given just ignore it
+          case (Some(OnfhirConfig.fhirEndpointSettings.rootUrl), rtype, rid, version) => (None, rtype, rid, version) //If root url of server is given just ignore it
           case (Some(url), rtype, rid, version) => (Some(url), rtype, rid, version)
           case oth => oth
         }
@@ -175,7 +175,7 @@ class ReferenceQueryBuilder(onlyLocalReferences:Boolean) extends IFhirQueryBuild
               Filters.and(
                 ReferenceQueryBuilder.getQueryForReferenceMatch(queryPath, rtype, references),
                 Filters.or(
-                  Filters.eq(FHIRUtil.mergeElementPath(queryPath, s"${FHIR_COMMON_FIELDS.REFERENCE}.${FHIR_EXTRA_FIELDS.REFERENCE_URL}"), OnfhirConfig.fhirRootUrl), //Either it should equal to our root URL
+                  Filters.eq(FHIRUtil.mergeElementPath(queryPath, s"${FHIR_COMMON_FIELDS.REFERENCE}.${FHIR_EXTRA_FIELDS.REFERENCE_URL}"), OnfhirConfig.fhirEndpointSettings.rootUrl), //Either it should equal to our root URL
                   Filters.exists(FHIRUtil.mergeElementPath(queryPath, s"${FHIR_COMMON_FIELDS.REFERENCE}.${FHIR_EXTRA_FIELDS.REFERENCE_URL}"), exists= false) //Or url part does not exist
                 )
               )
@@ -200,7 +200,7 @@ class ReferenceQueryBuilder(onlyLocalReferences:Boolean) extends IFhirQueryBuild
             Filters.and(
               ReferenceQueryBuilder.getQueryForReferenceMatch(queryPath, rtype, Seq(rid)),
               Filters.or(
-                Filters.eq(FHIRUtil.mergeElementPath(queryPath, s"${FHIR_COMMON_FIELDS.REFERENCE}.${FHIR_EXTRA_FIELDS.REFERENCE_URL}"), OnfhirConfig.fhirRootUrl), //Either it should equal to our root URL
+                Filters.eq(FHIRUtil.mergeElementPath(queryPath, s"${FHIR_COMMON_FIELDS.REFERENCE}.${FHIR_EXTRA_FIELDS.REFERENCE_URL}"), OnfhirConfig.fhirEndpointSettings.rootUrl), //Either it should equal to our root URL
                 Filters.exists(FHIRUtil.mergeElementPath(queryPath, s"${FHIR_COMMON_FIELDS.REFERENCE}.${FHIR_EXTRA_FIELDS.REFERENCE_URL}"), exists = false) //Or url part does not exist
               ),
               Filters.eq(FHIRUtil.mergeElementPath(queryPath, s"${FHIR_COMMON_FIELDS.REFERENCE}.${FHIR_EXTRA_FIELDS.REFERENCE_RESOURCE_VERSION}"), version)

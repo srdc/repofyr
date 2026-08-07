@@ -25,7 +25,38 @@ import org.slf4j.{Logger, LoggerFactory}
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
- * FHIR Resource Persistency Manager (Mapping FHIR operations to Mongo queries/commands)
+ * FHIR Resource Persistency Manager (Mapping FHIR operations to Mongo queries/commands).
+ *
+ * This is the FHIR-level persistence API, and the layer the interaction
+ * services and operation handlers use. It translates FHIR concepts into the
+ * BSON that [[DocumentManager]] executes, and translates the results back.
+ *
+ * What it adds over `DocumentManager`:
+ *
+ *  - Search. `searchResources` resolves the result parameters (`_count`,
+ *    `_page`, `_summary`, `_elements`, `_sort`, `_total`) through
+ *    `FHIRResultParameterResolver`, builds the query from the remaining
+ *    parameters, and then resolves `_include` and `_revinclude` against the
+ *    matched set. `searchResourcesFromMultipleResourceTypes` does the same
+ *    across resource types, and `searchLastOrFirstNResources` backs the
+ *    `\$lastn` operation.
+ *  - Instance access. `getResource`, `getResourcesWithIds`, `isResourceExist`,
+ *    `getResourceStatus`, and `getResourceHistory`.
+ *  - Mutation with FHIR semantics. `createResource`, `updateResource`,
+ *    `bulkUpsertResources`, `deleteResource`, and `replaceResource` maintain
+ *    `meta.versionId` and `meta.lastUpdated`, attach the onFHIR extra fields,
+ *    and move superseded content to the history collection. `upsertResource`
+ *    is the in-place path for resource types configured as no-version.
+ *  - Events. Successful create, update, and delete publish `ResourceCreated`,
+ *    `ResourceUpdated`, and `ResourceDeleted` on the injected
+ *    `io.repofyr.event.IFhirEventBus`. The bus is optional: it is `null` when
+ *    a caller constructs a manager for persistence only, and `updateResource`
+ *    accepts a `silentEvent` flag to suppress publication.
+ *
+ * Methods that participate in a transaction take an implicit
+ * `Option[TransactionSession]`. Work runs on the dedicated
+ * `akka.actor.onfhir-blocking-dispatcher`.
+ *
  * //TODO Handle resolution of Logical references for chaining and includes (also reverse)
  */
 class ResourceManager(fhirConfig: FhirServerConfig, fhirEventBus: IFhirEventBus = null) {
@@ -858,7 +889,7 @@ class ResourceManager(fhirConfig: FhirServerConfig, fhirEventBus: IFhirEventBus 
                     .filter(_.isInstanceOf[FhirLiteralReference])
                     .map(_.asInstanceOf[FhirLiteralReference])
                 )
-                .filter(flr => flr.url.forall(_ == OnfhirConfig.fhirRootUrl)) //Only get the ones that are persistent inside our repository for now
+                .filter(flr => flr.url.forall(_ == OnfhirConfig.fhirEndpointSettings.rootUrl)) //Only get the ones that are persistent inside our repository for now
                 .map(_.copy(url = None)) //clear url so that when converted to Set we really have unique references
                 .toSet
                 .filter(flr => targetResourceType.forall(_ == flr.rtype)) //Only get the ones that are compliant with expected target type
@@ -933,7 +964,7 @@ class ResourceManager(fhirConfig: FhirServerConfig, fhirEventBus: IFhirEventBus 
           .map(_.map(_.map(FHIRUtil.parseReferenceValue))) //Parse the references
           .map(_.map(parsedRefs =>
             parsedRefs
-              .filter(_._1.forall(_ == OnfhirConfig.fhirRootUrl)) //Only the references in our server
+              .filter(_._1.forall(_ == OnfhirConfig.fhirEndpointSettings.rootUrl)) //Only the references in our server
               .filter(_._2 == rtype) //Only the ones refering the given resource type)
               .map(_._3) //Get resource id
               .toSet
@@ -1048,7 +1079,7 @@ class ResourceManager(fhirConfig: FhirServerConfig, fhirEventBus: IFhirEventBus 
             .map(_.map(_.map(FHIRUtil.parseReferenceValue))) //Parse the references
             .map(_.map(parsedRefs =>
               parsedRefs
-                .filter(_._1.forall(_ == OnfhirConfig.fhirRootUrl)) //Only the references in our server
+                .filter(_._1.forall(_ == OnfhirConfig.fhirEndpointSettings.rootUrl)) //Only the references in our server
                 .filter(_._2 == rtype) //Only the ones refering the given resource type)
                 .map(_._3) //Get resource id
                 .toSet
@@ -1194,7 +1225,7 @@ class ResourceManager(fhirConfig: FhirServerConfig, fhirEventBus: IFhirEventBus 
         case references =>
           val rids = references
             .map(FHIRUtil.parseReferenceValue) //Parse the reference value
-            .filter(_._1.forall(_ == OnfhirConfig.fhirRootUrl)) //Only the references in our server
+            .filter(_._1.forall(_ == OnfhirConfig.fhirEndpointSettings.rootUrl)) //Only the references in our server
             .filter(_._2 == rtype) //Only the ones refering the given resource type
             .map(_._3)
             .toSet
@@ -1216,7 +1247,7 @@ class ResourceManager(fhirConfig: FhirServerConfig, fhirEventBus: IFhirEventBus 
         val rids =
           references
             .map(FHIRUtil.parseReferenceValue) //Parse the reference value
-            .filter(_._1.forall(_ == OnfhirConfig.fhirRootUrl)) //Only the references in our server
+            .filter(_._1.forall(_ == OnfhirConfig.fhirEndpointSettings.rootUrl)) //Only the references in our server
             .filter(_._2 == rtypeAndChainParamName._1) //Only the ones refering the given resource type
             .map(_._3)
             .toSet

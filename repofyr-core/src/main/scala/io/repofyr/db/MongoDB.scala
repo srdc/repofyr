@@ -19,10 +19,10 @@ object MongoDB {
 
   private val SYSTEM_INDEXES = "system.indexes"
 
-  private val dbHosts = OnfhirConfig.mongodbHosts
+  private val dbHosts = OnfhirConfig.mongoDbSettings.hosts
 
-  private val writeConcern:WriteConcern = OnfhirConfig.mongoWriteConcern match {
-    case "1" | "2" | "3" => WriteConcern.apply(OnfhirConfig.mongoWriteConcern.toInt)
+  private val writeConcern:WriteConcern = OnfhirConfig.mongoDbSettings.writeConcern match {
+    case "1" | "2" | "3" => WriteConcern.apply(OnfhirConfig.mongoDbSettings.writeConcern.toInt)
     case oth => WriteConcern.apply(oth)
   }
 
@@ -50,30 +50,31 @@ object MongoDB {
       ))
 
     //If database is secure
-    if (OnfhirConfig.mongodbUser.isDefined && OnfhirConfig.mongodbPassword.isDefined && OnfhirConfig.mongoAuthDbName.isDefined){
-      clientSettingsBuilder = clientSettingsBuilder.credential(MongoCredential.createCredential(OnfhirConfig.mongodbUser.get, OnfhirConfig.mongoAuthDbName.get, OnfhirConfig.mongodbPassword.get.toCharArray))
+    if (OnfhirConfig.mongoDbSettings.username.isDefined && OnfhirConfig.mongoDbSettings.password.isDefined && OnfhirConfig.mongoDbSettings.authDbName.isDefined){
+      clientSettingsBuilder = clientSettingsBuilder.credential(MongoCredential.createCredential(OnfhirConfig.mongoDbSettings.username.get, OnfhirConfig.mongoDbSettings.authDbName.get, OnfhirConfig.mongoDbSettings.password.get.toCharArray))
     }
 
     //If pooling is configured
-    if(OnfhirConfig.mongodbPooling.isDefined)
+    OnfhirConfig.mongoDbSettings.pooling.foreach { pooling =>
       clientSettingsBuilder = clientSettingsBuilder.applyToConnectionPoolSettings( b => b.applySettings(
           ConnectionPoolSettings
             .builder()
-            .minSize(OnfhirConfig.mongodbPoolingMinSize.getOrElse(5))
-            .maxSize(OnfhirConfig.mongodbPoolingMaxSize.getOrElse(200))
-            .maxWaitTime(OnfhirConfig.mongodbPoolingMaxWaitTime.getOrElse(180), TimeUnit.SECONDS) //3 minutes default
-            .maxConnectionLifeTime(OnfhirConfig.mongodbPoolingMaxConnectionLifeTime.getOrElse(1200), TimeUnit.SECONDS) // 20 minutes default
+            .minSize(pooling.minSize.getOrElse(5))
+            .maxSize(pooling.maxSize.getOrElse(200))
+            .maxWaitTime(pooling.maxWaitTime.getOrElse(180L), TimeUnit.SECONDS) //3 minutes default
+            .maxConnectionLifeTime(pooling.maxConnectionLifeTime.getOrElse(1200L), TimeUnit.SECONDS) // 20 minutes default
             .build()
           )
         )
+    }
 
     MongoClient(clientSettingsBuilder.build())
   }
 
-  /*if (OnfhirConfig.mongodbUser.isDefined && OnfhirConfig.mongodbPassword.isDefined && OnfhirConfig.mongoAuthDbName.isDefined) {
-    val username = OnfhirConfig.mongodbUser.get
-    val password = OnfhirConfig.mongodbPassword.get
-    val authdb = OnfhirConfig.mongoAuthDbName.get
+  /*if (OnfhirConfig.mongoDbSettings.username.isDefined && OnfhirConfig.mongoDbSettings.password.isDefined && OnfhirConfig.mongoDbSettings.authDbName.isDefined) {
+    val username = OnfhirConfig.mongoDbSettings.username.get
+    val password = OnfhirConfig.mongoDbSettings.password.get
+    val authdb = OnfhirConfig.mongoDbSettings.authDbName.get
     MongoClient(s"mongodb://$username:$password@${dbHosts.mkString(",")}/?authSource=$authdb")
   } else {
     MongoClient(s"mongodb://${dbHosts.mkString(",")}")
@@ -81,7 +82,7 @@ object MongoDB {
 
 
   //FHIR database
-  private val database: MongoDatabase = mongoClient.getDatabase(OnfhirConfig.mongodbName)
+  private val database: MongoDatabase = mongoClient.getDatabase(OnfhirConfig.mongoDbSettings.dbName)
 
 
   /**
@@ -109,8 +110,8 @@ object MongoDB {
     */
   def enableSharding():Future[Document] = {
     mongoClient
-      .getDatabase(OnfhirConfig.mongoAuthDbName.getOrElse("admin")) //This should run on admin database
-      .runCommand(Document("enableSharding" -> OnfhirConfig.mongodbName)).toFuture()
+      .getDatabase(OnfhirConfig.mongoDbSettings.authDbName.getOrElse("admin")) //This should run on admin database
+      .runCommand(Document("enableSharding" -> OnfhirConfig.mongoDbSettings.dbName)).toFuture()
   }
 
   /**
@@ -121,8 +122,8 @@ object MongoDB {
     */
   def shardCollection(collectionName:String, key:String):Future[Document] = {
     mongoClient
-      .getDatabase(OnfhirConfig.mongoAuthDbName.getOrElse("admin")) //This should run on admin database
-      .runCommand(Document("shardCollection" -> s"${OnfhirConfig.mongodbName}.$collectionName", "key" -> Document(key -> "hashed"))).toFuture()
+      .getDatabase(OnfhirConfig.mongoDbSettings.authDbName.getOrElse("admin")) //This should run on admin database
+      .runCommand(Document("shardCollection" -> s"${OnfhirConfig.mongoDbSettings.dbName}.$collectionName", "key" -> Document(key -> "hashed"))).toFuture()
   }
 
   /**
@@ -131,10 +132,10 @@ object MongoDB {
     */
   def refreshDBConfig():Future[Unit] ={
     Future.sequence(
-      OnfhirConfig.mongodbHosts.map( _ =>
+      OnfhirConfig.mongoDbSettings.hosts.map( _ =>
         mongoClient
-          .getDatabase(OnfhirConfig.mongoAuthDbName.getOrElse("admin"))
-          .runCommand(Document("flushRouterConfig" -> OnfhirConfig.mongodbName))
+          .getDatabase(OnfhirConfig.mongoDbSettings.authDbName.getOrElse("admin"))
+          .runCommand(Document("flushRouterConfig" -> OnfhirConfig.mongoDbSettings.dbName))
           .toFuture()
       )
     ).map(docs =>

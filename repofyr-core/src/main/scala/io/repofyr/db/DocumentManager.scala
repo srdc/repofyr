@@ -38,7 +38,39 @@ import scala.collection.mutable.ListBuffer
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
-  * Persistency manager for FHIR resources on MongoDB
+  * Persistency manager for FHIR resources on MongoDB.
+  *
+  * This is the lower of the two persistence layers. It speaks MongoDB: BSON
+  * filters, projections, sort specifications, and aggregation pipelines. The
+  * layer above it, [[ResourceManager]], speaks FHIR - search parameters,
+  * versions, references, and events - and delegates every actual read and write
+  * here. Callers outside `io.repofyr.db` should normally go through
+  * `ResourceManager`; reach for this object directly only when you already hold
+  * a `Bson` query.
+  *
+  * Responsibilities:
+  *
+  *  - Reads: single document by id and optional version id, count, page- and
+  *    offset-based queries, cross-collection queries, aggregation-based queries
+  *    including last-N and first-N, and history across the current and history
+  *    collections.
+  *  - Writes: insert, replace, bulk upsert, and the delete that moves the
+  *    previous version into the history collection.
+  *  - Query assembly helpers shared by the query builders, such as `ridsQuery`
+  *    and `andQueries`.
+  *
+  * Two conventions run through the whole object. Every resource carries the
+  * onFHIR extra fields (`FHIR_EXTRA_FIELDS`) alongside its FHIR content, and
+  * most read methods therefore take an `excludeExtraFields` flag deciding
+  * whether the caller sees them. And the current collection holds only live
+  * versions: since the deleted-version change, a delete moves content to the
+  * history collection rather than tombstoning it in place.
+  *
+  * Every method returns a `Future`, evaluated on the dedicated
+  * `akka.actor.onfhir-blocking-dispatcher` so that driver work stays off the
+  * request-handling dispatcher. Methods that participate in a MongoDB
+  * transaction take an implicit `Option[TransactionSession]`; passing `None`
+  * runs them outside any session.
   */
 object DocumentManager {
   //Execution context
@@ -1126,7 +1158,7 @@ object DocumentManager {
     * @return
     */
   def insertNewVersion(rtype:String, rid:String, newDocument:Document, oldDocument:(Long, Document), shardQuery:Option[Bson] = None)(implicit transactionSession: Option[TransactionSession] = None):Future[Unit] = {
-    val needTransaction = transactionSession.isEmpty && OnfhirConfig.mongoUseTransaction
+    val needTransaction = transactionSession.isEmpty && OnfhirConfig.mongoDbSettings.useTransaction
     //Create a transaction session if we support it but it is not part of a transaction
     val tempTransaction =
       if(needTransaction) Some(new TransactionSession(UUID.randomUUID().toString)) else transactionSession
@@ -1142,7 +1174,7 @@ object DocumentManager {
                 Future.apply(())
             transactionFinalize.map(_ => {
               //Schedule a check on persistency in case there is a invalid state, and we don't support Mongo transactions
-              if(!OnfhirConfig.mongoUseTransaction)
+              if(!OnfhirConfig.mongoDbSettings.useTransaction)
                 DBConflictManager.scheduleCheckAndCleanupForHistory(rtype, rid, "" + oldDocument._1)
               //Throw 409 Conflict exception
               throw new ConflictException(
@@ -1178,7 +1210,7 @@ object DocumentManager {
    * @return
    */
   def deleteCurrentAndMoveToHistory(rtype:String, rid:String, deletedVersion:Long, currentVersion:Document, withDeletionMetadata:Document,  shardQuery:Option[Bson] = None)(implicit transactionSession: Option[TransactionSession] = None):Future[Unit] = {
-    val needTransaction = transactionSession.isEmpty && OnfhirConfig.mongoUseTransaction
+    val needTransaction = transactionSession.isEmpty && OnfhirConfig.mongoDbSettings.useTransaction
     //Create a transaction session if we support it but it is not part of a transaction
     val tempTransaction =
       if (needTransaction) Some(new TransactionSession(UUID.randomUUID().toString)) else transactionSession
@@ -1221,7 +1253,7 @@ object DocumentManager {
         Future.apply(())
     transactionFinalize.map(_ => {
       //Schedule a check on persistency in case there is a invalid state, and we don't support Mongo transactions
-      if (!OnfhirConfig.mongoUseTransaction)
+      if (!OnfhirConfig.mongoDbSettings.useTransaction)
         DBConflictManager.scheduleCheckAndCleanupForHistory(rtype, rid, "" + version)
       //Throw 409 Conflict exception
       throw new ConflictException(
