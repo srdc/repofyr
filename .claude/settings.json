@@ -1,0 +1,47 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mvn -B test:*)",
+      "Bash(mvn test:*)",
+      "Bash(mvn clean test:*)",
+      "Bash(mvn -B package:*)",
+      "Bash(mvn -B -pl:*)",
+      "Bash(mvn -pl:*)",
+      "Bash(mvn -B -DskipTests:*)",
+      "Bash(git status:*)",
+      "Bash(git log:*)",
+      "Bash(git diff:*)",
+      "Bash(git show:*)",
+      "Bash(git ls-files:*)",
+      "Bash(powershell -File scripts/check-server-boundary.ps1:*)",
+      "Bash(powershell -File scripts/check-staged-release.ps1:*)"
+    ],
+    "ask": [
+      "Bash(git push:*)"
+    ],
+    "deny": [
+      "Bash(mvn deploy:*)",
+      "Bash(mvn -B deploy:*)",
+      "Bash(mvn release:*)",
+      "Bash(mvn nexus-staging:*)",
+      "Bash(mvn org.sonatype.central:*)",
+      "Bash(docker push:*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "bash",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/block-remote-publish.sh\"",
+            "timeout": 10,
+            "statusMessage": "Checking for remote publish"
+          }
+        ]
+      }
+    ]
+  }
+}
