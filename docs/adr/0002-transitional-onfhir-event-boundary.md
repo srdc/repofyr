@@ -1,15 +1,9 @@
 # ADR 0002: Server Event SPI Boundary
 
 - Status: Accepted; permanent disposition approved
-- Date: 2026-07-31; Phase 4 disposition 2026-08-03; renamed in Phase 5B 2026-08-06
+- Date: 2026-07-31; disposition 2026-08-03; names updated 2026-08-06
 - Decision owners: onFHIR / Repofyr maintainers
 - Applies to: Repofyr server-family module graph
-
-> Naming note: this ADR was written before Phase 5B. The module it creates was
-> `io.onfhir:onfhir-event_2.13` with package `io.onfhir.event`; since Phase 5B
-> it is `io.repofyr:repofyr-event_2.13` with package `io.repofyr.event`, and
-> the sibling server modules carry `repofyr-` names likewise. The decision and
-> its rationale are unchanged; names below are current.
 
 ## Context
 
@@ -27,8 +21,9 @@ undesirable cycle while the in-place split is underway.
 Phase 1D creates the transitional GPL/server-family Maven module
 `io.repofyr:repofyr-event_2.13`.
 
-The following code moves from `onfhir-common` to that module without changing
-its Scala package names:
+The following code moves out of `onfhir-common` into that module. It kept its
+package path when the module was created and was later renamed with the rest of
+the server tree, so the released names are:
 
 - `io.repofyr.event.*`
 - `io.repofyr.util.InternalJsonMarshallers`

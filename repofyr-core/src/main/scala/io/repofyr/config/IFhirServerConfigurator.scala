@@ -13,6 +13,42 @@ import io.onfhir.config.FhirServerConfig
 import io.onfhir.config.FhirSubscriptionSettings
 import io.onfhir.config.IFhirConfigReader
 
+/**
+ * Binds a Repofyr server to a single FHIR release. This is the primary server
+ * extension point: `Onfhir.apply` takes one implementation, and everything the
+ * runtime knows about the FHIR version it is serving comes from it.
+ *
+ * A configurator has three jobs.
+ *
+ *  - Startup configuration. `initializeServerPlatform` reads the base standard
+ *    bundle and the deployment's own foundation resources (CapabilityStatement,
+ *    StructureDefinition, SearchParameter, OperationDefinition,
+ *    CompartmentDefinition, ValueSet, CodeSystem) and produces the
+ *    `FhirServerConfig` that drives request handling for the life of the
+ *    process. `setupPlatform` performs the one-time or on-change database
+ *    setup, and runs only when `fhir.initialize` is true.
+ *  - Release-specific strategies. `getAuditCreator` supplies the AuditEvent
+ *    shape for the release, and `getSubscriptionUtil` supplies its Subscription
+ *    parsing and validation rules. `getFoundationResourceParser`, inherited
+ *    from `IFhirVersionConfigurator`, supplies the parser for the foundation
+ *    resources themselves.
+ *  - Release-neutral defaults. The vals and defs declared here - the supported
+ *    result and special search parameters, the media types accepted and
+ *    produced, the `_format` mapping, and the summarization indicator code
+ *    system - hold what is common across releases, so an implementation
+ *    overrides only what its release actually changes.
+ *
+ * Implement this by extending [[BaseFhirServerConfigurator]], which carries the
+ * whole `initializeServerPlatform`/`setupPlatform` implementation; a release
+ * module then supplies little more than the parser, the audit creator, the
+ * Subscription strategy, and the `fhirVersion` label. `FhirR4Configurator`,
+ * `FhirR5Configurator`, and `FhirSTU3Configurator` are the shipped examples.
+ *
+ * The `fhirVersion` label is load-bearing beyond documentation: it selects the
+ * release-suffixed definition, conformance, and database index resources on the
+ * classpath. It is not the version reported by the server, which comes from the
+ * parsed CapabilityStatement.
+ */
 trait IFhirServerConfigurator extends IFhirVersionConfigurator {
   /**
    * List of FHIR Result parameters this FHIR version support

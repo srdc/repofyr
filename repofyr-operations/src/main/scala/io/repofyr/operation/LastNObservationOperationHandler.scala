@@ -16,6 +16,29 @@ import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.Future
 
+/**
+ * Handles the FHIR `\$lastn` operation on Observation; see
+ * https://www.hl7.org/fhir/observation-operation-lastn.html
+ *
+ * Returns the most recent `max` Observations (default 1) per code for the
+ * requested subject, grouped on `code` and ordered on `date`, as a searchset
+ * Bundle in the `return` output parameter. Included resources requested through
+ * the query are appended to the Bundle and marked as includes, and the summary
+ * and `_elements` parameters are honored when building the entries.
+ *
+ * Two inputs are mandatory here that the base specification treats more
+ * loosely, and each is rejected with a `BadRequestException` carrying an
+ * `invalid` OperationOutcome issue:
+ *
+ *  - `patient` or `subject`, because the operation is defined per subject.
+ *  - one of the code parameters (`code`, `code-value-concept`,
+ *    `code-value-date`, `code-value-quantity`, `code-value-string`). FHIR
+ *    leaves `code` optional, but the grouping expression cannot be built for
+ *    multiple coded values, so onFHIR requires it.
+ *
+ * @param fhirConfigurationManager FHIR configuration manager supplying the
+ *                                 resource manager and the Bundle entry builder
+ */
 class LastNObservationOperationHandler(fhirConfigurationManager:IFhirConfigurationManager)  extends FHIROperationHandlerService(fhirConfigurationManager) {
   private val logger: Logger = LoggerFactory.getLogger("DocumentOperationHandler")
 
