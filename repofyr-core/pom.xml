@@ -11,7 +11,9 @@
     </parent>
 
     <artifactId>repofyr-core_2.13</artifactId>
-    <name>Core functionality of onFHIR</name>
+    <name>Repofyr Core</name>
+    <description>Core Repofyr server runtime: FHIR API endpoints, request and
+        response handling, MongoDB persistence, authorization, and audit.</description>
     
     <packaging>jar</packaging>
 

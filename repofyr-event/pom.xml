@@ -11,7 +11,9 @@
     </parent>
 
     <artifactId>repofyr-event_2.13</artifactId>
-    <name>Server event contracts and marshalling</name>
+    <name>Repofyr Event</name>
+    <description>Server event contracts and JSON marshalling: the event model
+        and bus SPI that Repofyr publishes resource changes through.</description>
     <packaging>jar</packaging>
 
     <build>

@@ -68,7 +68,7 @@
 
     <scm>
         <connection>scm:git:git://github.com/srdc/repofyr.git</connection>
-        <developerConnection>scm:git:ssh://github.com:srdc/repofyr.git</developerConnection>
+        <developerConnection>scm:git:ssh://git@github.com/srdc/repofyr.git</developerConnection>
         <url>https://github.com/srdc/repofyr/tree/master</url>
     </scm>
 
@@ -84,8 +84,7 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.source>11</maven.compiler.source>
-        <maven.compiler.target>11</maven.compiler.target>
+        <maven.compiler.release>11</maven.compiler.release>
 
         <!-- This is a special placeholder to manage the version from a single property throughout the parent and child modules. No other property name can be used. -->
         <!-- https://maven.apache.org/maven-ci-friendly.html -->
@@ -101,6 +100,7 @@
         <surefire.plugin.version>3.2.5</surefire.plugin.version>
         <maven-compiler.plugin.version>3.12.1</maven-compiler.plugin.version>
         <flatten.plugin.version>1.6.0</flatten.plugin.version>
+        <maven-resources.plugin.version>3.3.1</maven-resources.plugin.version>
 
         <!-- dependency versions -->
         <scala.version>2.13.16</scala.version>
@@ -146,6 +146,12 @@
                         <args>
                             <arg>-deprecation</arg>
                             <arg>-feature</arg>
+                            <!-- Emit bytecode against the Java 11 API even when
+                                 building on a newer JDK, so a JDK 17 build host
+                                 cannot silently produce artifacts that fail on a
+                                 Java 11 runtime. -->
+                            <arg>-release</arg>
+                            <arg>11</arg>
                         </args>
                     </configuration>
                     <executions>
@@ -216,6 +222,34 @@
         </pluginManagement>
 
         <plugins>
+            <!-- Package the license text into every artifact. A GPL-3.0
+                 distribution should carry its terms inside the jar, and
+                 scripts/check-staged-release.ps1 asserts this is present. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>${maven-resources.plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>package-license-files</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.outputDirectory}/META-INF</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${maven.multiModuleProjectDirectory}</directory>
+                                    <includes>
+                                        <include>LICENSE</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>flatten-maven-plugin</artifactId>
@@ -300,8 +334,12 @@
                         <extensions>true</extensions>
                         <configuration>
                             <publishingServerId>central</publishingServerId>
-                            <autoPublish>true</autoPublish>
-                            <waitUntil>published</waitUntil>
+                            <!-- Stop at validation. Promotion to Maven Central is
+                                 an explicit maintainer action in the Central
+                                 portal - see RELEASING.md section 4 - because a
+                                 published release is immutable. -->
+                            <autoPublish>false</autoPublish>
+                            <waitUntil>validated</waitUntil>
                         </configuration>
                     </plugin>
                 </plugins>

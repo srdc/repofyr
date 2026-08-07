@@ -10,7 +10,9 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>repofyr-server-r4_2.13</artifactId>
-    <name>Server for FHIR R4</name>
+    <name>Repofyr Server R4</name>
+    <description>Runnable Repofyr server for HL7 FHIR R4, preconfigured with
+        the R4 standard definitions and configurator.</description>
 
     <packaging>jar</packaging>
     <build>

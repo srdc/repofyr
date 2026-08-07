@@ -11,7 +11,9 @@
     </parent>
 
     <artifactId>repofyr-kafka_2.13</artifactId>
-    <name>Module to handle Kafka interactions</name>
+    <name>Repofyr Kafka</name>
+    <description>Kafka integration for Repofyr: publishes server events and
+        FHIR Subscription notifications to Kafka topics.</description>
 
     <packaging>jar</packaging>
 

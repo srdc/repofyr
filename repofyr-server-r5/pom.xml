@@ -11,7 +11,9 @@
     </parent>
 
     <artifactId>repofyr-server-r5_2.13</artifactId>
-    <name>Server for FHIR R5</name>
+    <name>Repofyr Server R5</name>
+    <description>Runnable Repofyr server for HL7 FHIR R5, preconfigured with
+        the R5 standard definitions and configurator.</description>
 
     <packaging>jar</packaging>
 

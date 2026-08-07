@@ -11,7 +11,9 @@
     </parent>
 
     <artifactId>repofyr-server-stu3_2.13</artifactId>
-    <name>Server for FHIR STU3</name>
+    <name>Repofyr Server STU3</name>
+    <description>Runnable Repofyr server for HL7 FHIR STU3, preconfigured with
+        the STU3 standard definitions and configurator.</description>
     <packaging>jar</packaging>
 
     <build>

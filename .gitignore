@@ -25,3 +25,6 @@ buildNumber.properties
 logs/
 out/
 *.emb.mongo
+
+# Machine-local git safe.directory helper; path is developer-specific
+.codex-safe-gitconfig

@@ -11,7 +11,10 @@
     </parent>
 
     <artifactId>repofyr-operations_2.13</artifactId>
-    <name>onFHIR operations</name>
+    <name>Repofyr Operations</name>
+    <description>Implementations of the FHIR operations Repofyr provides out of
+        the box, including $validate, $everything, $document, $expand, $meta,
+        $lastn, and bulk $import.</description>
 
     <packaging>jar</packaging>
 
