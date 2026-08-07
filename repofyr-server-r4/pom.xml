@@ -87,6 +87,13 @@
     </build>
 
     <dependencies>
+        <!-- OnFhirTest boots the suite against an embedded MongoDB. Test scope only:
+             the runnable server must not carry it. -->
+        <dependency>
+            <groupId>io.repofyr</groupId>
+            <artifactId>repofyr-embedded-mongo_${scala.binary.version}</artifactId>
+            <scope>test</scope>
+        </dependency>
         <!-- Scala Language -->
         <dependency>
             <groupId>org.scala-lang</groupId>

@@ -36,6 +36,17 @@ below.
 
 ### Added
 
+- `repofyr-embedded-mongo` and `repofyr-dev-server`. The first starts an
+  embedded MongoDB for development and tests; the second is a runnable
+  development server that starts one and boots Repofyr for a chosen FHIR
+  release against it, defaulting to R5:
+  `mvn -pl repofyr-dev-server -am exec:java -Dexec.args=r4`.
+  `repofyr-dev-server` is a development convenience and is not published.
+- `Onfhir.apply` accepts `onShutdown: Seq[() => Unit]`, run after the HTTP
+  binding has drained and before the actor system terminates. It exists so a
+  resource started alongside the server outlives every in-flight request; a JVM
+  shutdown hook would race Akka's own `CoordinatedShutdown` instead. The
+  parameter defaults to `Nil`, so existing callers are unaffected.
 - Published jars now carry the GPL-3.0 license text at `META-INF/LICENSE`.
 - Each of the seven module POMs publishes its own `<name>` and
   `<description>`. Previously all seven inherited only the parent's, so
@@ -140,6 +151,20 @@ below.
 
 ### Removed
 
+- **Embedded MongoDB is no longer part of the runnable servers.**
+  `io.onfhir.db.EmbeddedMongo` was compile-scoped in the core module, so it
+  shipped inside every standalone jar and reached every consumer embedding
+  `repofyr-core` - a component whose job is downloading a `mongod` binary over
+  the network and executing it. It moved to `repofyr-embedded-mongo` as
+  `io.repofyr.embedded.EmbeddedMongo`, and no `repofyr-server-*` artifact
+  depends on it.
+
+  `mongodb.embedded = true` against a standalone server is now rejected at
+  startup, naming `repofyr-dev-server` as the replacement, rather than silently
+  starting without a database and failing later on a connection timeout. The
+  `DB_EMBEDDED` environment variable is gone from the Docker entrypoint; the
+  shipped `docker-compose.yml` is unaffected, having always run a real `mongo`
+  service.
 - Embedded FHIR definitions from the R4 and R5 server modules -
   `conformance-statement-rX.json` and `definitions-rX.json.zip`, 18.3 MB of
   duplicated resources. They now come from the resources-only

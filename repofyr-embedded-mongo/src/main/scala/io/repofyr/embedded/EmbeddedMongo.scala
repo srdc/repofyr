@@ -1,4 +1,4 @@
-package io.repofyr.db
+package io.repofyr.embedded
 
 
 import de.flapdoodle.embed.mongo.config.Net

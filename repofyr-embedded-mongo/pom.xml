@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.repofyr</groupId>
+        <artifactId>repofyr-parent</artifactId>
+        <version>${revision}</version>
+    </parent>
+
+    <artifactId>repofyr-embedded-mongo_2.13</artifactId>
+    <name>Repofyr Embedded MongoDB</name>
+    <description>Starts and stops an embedded MongoDB instance for development
+        and testing. Deliberately kept out of repofyr-core and out of the
+        runnable server modules, so no production artifact carries a component
+        that downloads and executes a mongod binary.</description>
+    <packaging>jar</packaging>
+
+    <build>
+        <sourceDirectory>src/main/scala</sourceDirectory>
+        <testSourceDirectory>src/test/scala</testSourceDirectory>
+        <plugins>
+            <plugin>
+                <groupId>net.alchim31.maven</groupId>
+                <artifactId>scala-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.scala-lang</groupId>
+            <artifactId>scala-library</artifactId>
+        </dependency>
+
+        <!-- Embedded MongoDB. This is the only module that depends on it. -->
+        <dependency>
+            <groupId>de.flapdoodle.embed</groupId>
+            <artifactId>de.flapdoodle.embed.mongo</artifactId>
+        </dependency>
+
+        <!-- Logging facade only; the consuming application picks the provider. -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+    </dependencies>
+</project>

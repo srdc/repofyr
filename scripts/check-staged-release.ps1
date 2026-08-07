@@ -29,14 +29,15 @@ $ErrorActionPreference = "Stop"
 # Keep in sync with the reactor <modules> list. A missing entry here means an
 # artifact ships unverified, so adding a module means adding a row.
 $artifacts = [ordered]@{
-    'repofyr-parent'            = 'pom'
-    'repofyr-event_2.13'        = 'jar'
-    'repofyr-core_2.13'         = 'jar'
-    'repofyr-operations_2.13'   = 'jar'
-    'repofyr-kafka_2.13'        = 'jar'
-    'repofyr-server-r4_2.13'    = 'jar'
-    'repofyr-server-r5_2.13'    = 'jar'
-    'repofyr-server-stu3_2.13'  = 'jar'
+    'repofyr-parent'              = 'pom'
+    'repofyr-embedded-mongo_2.13' = 'jar'
+    'repofyr-event_2.13'          = 'jar'
+    'repofyr-core_2.13'           = 'jar'
+    'repofyr-operations_2.13'     = 'jar'
+    'repofyr-kafka_2.13'          = 'jar'
+    'repofyr-server-r4_2.13'      = 'jar'
+    'repofyr-server-r5_2.13'      = 'jar'
+    'repofyr-server-stu3_2.13'    = 'jar'
 }
 
 $failures = New-Object System.Collections.Generic.List[string]

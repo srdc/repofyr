@@ -53,9 +53,6 @@ if [ ! -z "$USE_SSL" ]; then
 fi
 
 # Configure MongoDB
-if [ ! -z "$DB_EMBEDDED" ]; then
-    JAVA_CMD+="-Dmongodb.embedded=$DB_EMBEDDED "
-fi
 if [ ! -z "$DB_HOST" ]; then
     JAVA_CMD+="-Dmongodb.host=$DB_HOST "
 fi

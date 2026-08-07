@@ -32,6 +32,8 @@ single `repofyr-server-*` module and receive the rest transitively.
 | [`repofyr-server-r4`](repofyr-server-r4/README.md) | Runnable server for FHIR R4. |
 | [`repofyr-server-r5`](repofyr-server-r5/README.md) | Runnable server for FHIR R5. |
 | [`repofyr-server-stu3`](repofyr-server-stu3/README.md) | Runnable server for FHIR STU3. |
+| [`repofyr-embedded-mongo`](repofyr-embedded-mongo/README.md) | Starts an embedded MongoDB for development and tests. Not carried by any runnable server. |
+| [`repofyr-dev-server`](repofyr-dev-server/README.md) | Development launcher: embedded MongoDB plus the server for a chosen FHIR release. Not published. |
 
 ## Reusable onFHIR libraries
 
@@ -66,6 +68,16 @@ Repofyr supports all stable and build versions of HL7 FHIR. In this project, we 
 ## Prerequisites
 Repofyr requires a MongoDB database up and running. If you do not use the provided Docker containers, the MongoDB configuration parameters (host, port, dbname, etc.)
 should be passed to Repofyr through either the `application.conf` file or runtime parameters. Parameter names can be seen in the provided `application.conf` file.
+
+For development you do not need to install one. [`repofyr-dev-server`](repofyr-dev-server/README.md) starts an embedded
+MongoDB and boots the server for a chosen FHIR release against it, defaulting to R5:
+
+```
+$ mvn -pl repofyr-dev-server -am exec:java -Dexec.args=r4
+```
+
+The runnable `repofyr-server-*` artifacts deliberately do not carry the embedded database, so `mongodb.embedded = true`
+is rejected at startup with a message pointing here.
 
 ## Build & Run
 

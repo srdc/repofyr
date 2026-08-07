@@ -8,7 +8,8 @@ import akka.http.scaladsl.testkit.Specs2RouteTest
 import io.onfhir.api.Resource
 import io.onfhir.api.util.FHIRUtil
 import io.repofyr.config.OnfhirConfig
-import io.repofyr.db.{EmbeddedMongo, MongoDB}
+import io.repofyr.db.MongoDB
+import io.repofyr.embedded.EmbeddedMongo
 import io.repofyr.r4.config.FhirR4Configurator
 import io.onfhir.util.DateTimeUtil
 import org.json4s.JsonAST.{JArray, JObject}

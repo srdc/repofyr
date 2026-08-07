@@ -73,6 +73,7 @@
     </scm>
 
     <modules>
+        <module>repofyr-embedded-mongo</module>
         <module>repofyr-event</module>
         <module>repofyr-core</module>
         <module>repofyr-operations</module>
@@ -80,6 +81,7 @@
         <module>repofyr-server-r4</module>
         <module>repofyr-server-stu3</module>
         <module>repofyr-server-r5</module>
+        <module>repofyr-dev-server</module>
     </modules>
 
     <properties>
@@ -101,6 +103,7 @@
         <maven-compiler.plugin.version>3.12.1</maven-compiler.plugin.version>
         <flatten.plugin.version>1.6.0</flatten.plugin.version>
         <maven-resources.plugin.version>3.3.1</maven-resources.plugin.version>
+        <exec.plugin.version>3.5.0</exec.plugin.version>
 
         <!-- dependency versions -->
         <scala.version>2.13.16</scala.version>
@@ -115,6 +118,7 @@
         <scala.xml.version>2.2.0</scala.xml.version>
         <logback.version>1.4.14</logback.version>
         <kafka.version>3.6.1</kafka.version>
+        <slf4j.version>2.0.18</slf4j.version>
         <config.version>1.4.3</config.version>
         <specs2.version>4.20.4</specs2.version>
         <nimbus-jose.version>9.37.3</nimbus-jose.version>
@@ -403,6 +407,16 @@
                 <groupId>io.onfhir</groupId>
                 <artifactId>onfhir-common_${scala.binary.version}</artifactId>
                 <version>${onfhir.libs.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-api</artifactId>
+                <version>${slf4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.repofyr</groupId>
+                <artifactId>repofyr-embedded-mongo_${scala.binary.version}</artifactId>
+                <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.repofyr</groupId>
@@ -695,7 +709,7 @@
 
     </dependencyManagement>
 
-    <!--distributionManagement>
+    <distributionManagement>
         <snapshotRepository>
             <id>srdc-maven-snapshots</id>
             <url>https://nexus.srdc.com.tr/repository/maven-snapshots/</url>
@@ -704,6 +718,6 @@
             <id>srdc-maven-releases</id>
             <url>https://nexus.srdc.com.tr/repository/maven-releases/</url>
         </repository>
-    </distributionManagement-->
+    </distributionManagement>
 
 </project>

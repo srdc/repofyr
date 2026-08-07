@@ -52,7 +52,7 @@ mvn -B -Prelease deploy -DaltDeploymentRepository=staging::file:///<absolute-sta
 powershell -File scripts/check-staged-release.ps1 -RepositoryPath <staging-path> -Version <version>
 ```
 
-Expect: `check-staged-release: PASS - 8 <version> artifacts verified.`
+Expect: `check-staged-release: PASS - 9 <version> artifacts verified.`
 
 `-RepositoryPath` is mandatory; `-Version` defaults to `4.0.0`. The script
 checks eight coordinates - `repofyr-parent` (pom) plus the seven

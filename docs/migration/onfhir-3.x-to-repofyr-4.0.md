@@ -550,6 +550,62 @@ from `onfhir-r5_2.13` rather than `R4Parser`. `R5Parser` extends
 `R4Parser` with an identical constructor and no overrides, so behavior is
 unchanged; R5 simply gains a real extension point.
 
+### Embedded MongoDB left the runnable servers
+
+This is the one capability the 4.0.0 artifacts drop.
+
+Through 3.x, `io.onfhir.db.EmbeddedMongo` lived in the core module at compile
+scope. It therefore shipped inside every standalone jar and reached every
+consumer embedding the core - a component whose job is downloading a `mongod`
+binary over the network and executing it, which does not belong in the
+production artifact of a health data repository.
+
+In 4.0.0 it is `io.repofyr.embedded.EmbeddedMongo` in the new
+`io.repofyr:repofyr-embedded-mongo_2.13`, and **no `repofyr-server-*` artifact
+depends on it**.
+
+What this means for you:
+
+- **If you set `mongodb.embedded = true`**, a standalone server now refuses to
+  start and tells you what to do instead. It does not silently come up without
+  a database and fail later on a connection timeout. Either run a MongoDB you
+  operate and set the flag to `false`, or use the development launcher below.
+- **If you used the `DB_EMBEDDED` environment variable** with the Docker image,
+  it no longer exists. The shipped `docker-compose.yml` is unaffected: it has
+  always run a real `mongo` service with `DB_EMBEDDED=false`.
+- **If you imported `EmbeddedMongo`** - most likely in a test harness - add the
+  new artifact at test scope and update the import:
+
+  ```xml
+  <dependency>
+      <groupId>io.repofyr</groupId>
+      <artifactId>repofyr-embedded-mongo_2.13</artifactId>
+      <version>4.0.0</version>
+      <scope>test</scope>
+  </dependency>
+  ```
+
+  ```scala
+  import io.repofyr.embedded.EmbeddedMongo   // was io.onfhir.db.EmbeddedMongo
+  ```
+
+  The `start` and `stop` signatures are unchanged.
+
+For development there is now a launcher that starts an embedded MongoDB and
+boots the server for a chosen FHIR release against it, defaulting to R5:
+
+```
+mvn -pl repofyr-dev-server -am exec:java -Dexec.args=r4
+```
+
+`repofyr-dev-server` is a development convenience and is not published to Maven
+Central; build it from the repository.
+
+Finally, if you embed Repofyr and start a resource of your own alongside it,
+`Onfhir.apply` now takes `onShutdown: Seq[() => Unit]`, run after the HTTP
+binding has drained and before the actor system terminates. It defaults to
+`Nil`, so existing calls compile unchanged.
+
 ## 8. Upgrade recipe
 
 Ordered and mechanical. Steps 1 through 3 are compiler-checked; step 4 is

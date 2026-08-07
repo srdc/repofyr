@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.repofyr</groupId>
+        <artifactId>repofyr-parent</artifactId>
+        <version>${revision}</version>
+    </parent>
+
+    <artifactId>repofyr-dev-server_2.13</artifactId>
+    <name>Repofyr Dev Server</name>
+    <description>Runnable development server: starts an embedded MongoDB and boots Repofyr for a
+        chosen FHIR release. Not a production artifact and not published; the released servers are
+        the repofyr-server-* modules.</description>
+    <packaging>jar</packaging>
+
+    <properties>
+        <!-- A development convenience bundling all three servers. It is not part of the
+             released artifact set, so it is neither deployed nor signed. -->
+        <maven.deploy.skip>true</maven.deploy.skip>
+        <gpg.skip>true</gpg.skip>
+    </properties>
+
+    <build>
+        <sourceDirectory>src/main/scala</sourceDirectory>
+        <testSourceDirectory>src/test/scala</testSourceDirectory>
+        <plugins>
+            <plugin>
+                <groupId>net.alchim31.maven</groupId>
+                <artifactId>scala-maven-plugin</artifactId>
+            </plugin>
+            <!-- Exec support so the launcher runs without building a fat jar:
+                 mvn -pl repofyr-dev-server -am exec:java -Dexec.args=r4 -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>${exec.plugin.version}</version>
+                <configuration>
+                    <mainClass>io.repofyr.dev.DevServer</mainClass>
+                </configuration>
+            </plugin>
+            <!-- ... and a standalone jar so `java -jar` works after a local build.
+                 A distinct finalName: the server modules all use repofyr-server-standalone. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <shadedArtifactAttached>false</shadedArtifactAttached>
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
+                            <finalName>repofyr-dev-server-standalone</finalName>
+                            <transformers>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <mainClass>io.repofyr.dev.DevServer</mainClass>
+                                </transformer>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+                                    <resource>reference.conf</resource>
+                                </transformer>
+                            </transformers>
+                            <filters>
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.scala-lang</groupId>
+            <artifactId>scala-library</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>io.repofyr</groupId>
+            <artifactId>repofyr-embedded-mongo_${scala.binary.version}</artifactId>
+        </dependency>
+
+        <!-- All three releases, so one launcher can boot any of them. They coexist on a single
+             classpath because every packaged resource carries its FHIR release in its name. -->
+        <dependency>
+            <groupId>io.repofyr</groupId>
+            <artifactId>repofyr-server-r4_${scala.binary.version}</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.repofyr</groupId>
+            <artifactId>repofyr-server-r5_${scala.binary.version}</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.repofyr</groupId>
+            <artifactId>repofyr-server-stu3_${scala.binary.version}</artifactId>
+        </dependency>
+    </dependencies>
+</project>

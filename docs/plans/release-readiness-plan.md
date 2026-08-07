@@ -11,7 +11,7 @@ Completed so far:
   server-r5 21, kafka 4, server-stu3 4; event and operations have none), full
   reactor 2m30s.
 - **Phase 1** - items 1-6 applied. Item 7 (embedded MongoDB scope) was resolved
-  on 2026-08-07 and promoted to **Phase 9**; nothing for it is applied yet.
+  on 2026-08-07, promoted to **Phase 9**, and executed there.
 - **Phase 2** - `docs/migration/onfhir-3.x-to-repofyr-4.0.md` written (9
   sections, 522 lines), the 10 internal and library-scoped documents purged,
   and ADR 0002's naming preamble folded into its text. Four places where this
@@ -42,9 +42,12 @@ relative link resolves, except one reference inside
 `library-server-split-plan-v2.md` to the ADR deleted in Phase 2 - that file is
 itself deleted in Phase 8, so the dangling link is transient.
 
-Outstanding, in execution order: **Phase 9** (extract embedded MongoDB into a
-dev launcher), **Phase 6** (test coverage - it depends on the module Phase 9
-creates), then **Phase 8** (retire the plans, cut the release).
+- **Phase 9** - complete. Embedded MongoDB extracted into
+  `repofyr-embedded-mongo` and a `repofyr-dev-server` launcher; no runnable
+  server carries it any more.
+
+Outstanding, in execution order: **Phase 6** (test coverage), then **Phase 8**
+(retire the plans, cut the release).
 
 ### Work done outside this plan
 
@@ -62,7 +65,7 @@ plan. Both are complete and verified.
   `fhir.default.search-handling` with a deprecated-key fallback. 18 new tests.
 - **The STU3 SUBSETTED fix** described below.
 
-Reactor total is now **270 tests**, up from the 251 baseline.
+Reactor total is now **273 tests**, up from the 251 baseline.
 
 ### A permission-model gap worth knowing about
 
@@ -971,6 +974,17 @@ and nothing else.
 ---
 
 ## Phase 9 - Extract embedded MongoDB into a dev launcher
+
+**Status: complete 2026-08-07.** Both modules exist, flapdoodle is absent from
+all three standalone jars (verified against the built jars, not the scope
+rules), and the launcher was run end to end for R4 and STU3: it booted, served
+a CapabilityStatement, and on `quit` shut the server down and stopped the
+embedded database, freeing both ports.
+
+One deviation from the plan as written: `slf4j-api` had to be added to the root
+`dependencyManagement` at 2.0.18, matching what onfhir-libs pins. It reached
+the reactor only transitively through logback before, and the new leaf module
+declares the facade directly.
 
 **Run this BEFORE Phase 6.** Phase 6's R5 and STU3 boot smoke tests need
 embedded MongoDB at test scope, and this phase is what gives them a module to

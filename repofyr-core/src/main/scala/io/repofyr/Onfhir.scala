@@ -12,7 +12,7 @@ import io.repofyr.audit.{AuditManager, RequestLogManager}
 import io.repofyr.authz._
 import io.onfhir.authz._
 import io.repofyr.config.{FhirConfigurationManager, IFhirServerConfigurator, OnfhirConfig, SSLConfig}
-import io.repofyr.db.{DBConflictManager, EmbeddedMongo}
+import io.repofyr.db.DBConflictManager
 import io.repofyr.event.kafka.{KafkaConfig, KafkaEventProducer}
 import io.repofyr.event.{FhirDataEvent, FhirEventSubscription}
 import io.repofyr.operation.IFhirOperationLibrary
@@ -34,6 +34,10 @@ import scala.util.{Failure, Success}
   * @param customAuditHandler    Module to handle auditing with a custom strategy
   * @param externalRoutes        External non-fhir routes for the server that uses marshalling and authentication
   * @param cdsHooksRoute         CDS-Hooks compliant CDS route (using onfhir-cds)
+  * @param onShutdown            Callbacks run after the HTTP binding has drained and before the
+  *                              actor system terminates. Use this for resources started alongside
+  *                              the server, such as the embedded MongoDB that repofyr-dev-server
+  *                              starts, so they outlive every in-flight request.
   */
 class Onfhir(
               val fhirConfigurator:IFhirServerConfigurator,
@@ -42,7 +46,8 @@ class Onfhir(
               val customTokenResolver:Option[ITokenResolver],
               val customAuditHandler:Option[ICustomAuditHandler],
               val externalRoutes:Seq[(FHIRRequest, (AuthContext, Option[AuthzContext])) => Route],
-              val cdsHooksRoute:Option[Route]
+              val cdsHooksRoute:Option[Route],
+              val onShutdown:Seq[() => Unit] = Nil
             )(implicit actorSystem:ActorSystem) extends SSLConfig with FHIREndpoint with OnFhirInternalEndpoint{
 
   private val logger:Logger = LoggerFactory.getLogger(this.getClass)
@@ -141,9 +146,13 @@ class Onfhir(
           fhirServerBinding.whenTerminated onComplete {
             case Success(t) =>
               logger.info("Closing OnFhir server...")
-              if (OnfhirConfig.mongoDbSettings.embedded) {
-                EmbeddedMongo.stop()
-              }
+              // Run after the HTTP binding has drained and before the actor system goes
+              // away, so a resource started alongside the server - an embedded database,
+              // for instance - outlives every in-flight request. A JVM shutdown hook would
+              // not give this ordering: it races Akka's own CoordinatedShutdown hook.
+              onShutdown.foreach(hook =>
+                try hook()
+                catch { case e: Throwable => logger.error("A shutdown hook failed", e) })
               actorSystem.terminate()
               logger.info("OnFhir server is gracefully terminated...")
             case Failure(exception) => logger.error("Problem while gracefully terminating OnFhir server!", exception)
@@ -226,6 +235,7 @@ object Onfhir {
     * @param customAuditHandler   Module to handle auditing with a custom strategy, if not supplied decided based on configurations
     * @param externalRoutes       External non-fhir routes for the server
     * @param cdsRoute             CDS-Hooks compliant CDS route (using onfhir-cds and repository together)
+    * @param onShutdown           Callbacks run after the HTTP binding has drained and before the actor system terminates, for resources started alongside the server
     * @return
     */
   def apply(
@@ -235,11 +245,12 @@ object Onfhir {
              customTokenResolver:Option[ITokenResolver] = None,
              customAuditHandler:Option[ICustomAuditHandler] = None,
              externalRoutes:Seq[(FHIRRequest, (AuthContext, Option[AuthzContext])) => Route] = Nil,
-             cdsRoute:Option[Route] = None
+             cdsRoute:Option[Route] = None,
+             onShutdown:Seq[() => Unit] = Nil
            ): Onfhir = {
 
     if(_instance == null)
-      _instance = new Onfhir(fhirConfigurator, fhirOperationLibraries, customAuthorizer, customTokenResolver,customAuditHandler,externalRoutes, cdsRoute)
+      _instance = new Onfhir(fhirConfigurator, fhirOperationLibraries, customAuthorizer, customTokenResolver,customAuditHandler,externalRoutes, cdsRoute, onShutdown)
     _instance
   }
 }

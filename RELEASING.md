@@ -93,7 +93,7 @@ library API surface, so the migration guide is the contract that
    are present; the binary JAR packages `META-INF/LICENSE`; and every file
    has a good detached `.asc` signature.
 
-   Expect: `check-staged-release: PASS - 8 <version> artifacts verified.`
+   Expect: `check-staged-release: PASS - 9 <version> artifacts verified.`
 
 The license assertion runs in both directions on purpose. Repofyr is
 GPL-3.0 and the `io.onfhir` libraries are Apache-2.0, so an accidental
