@@ -14,7 +14,9 @@ services:
     volumes:
       - onfhirdata:/data/db
   onfhir:
-    image: srdc/repofyr:r5
+    # Must match the FHIR version of sample-setup/conf/conformance-statement.json,
+    # which declares fhirVersion 4.0.1 (R4).
+    image: srdc/repofyr:r4
     container_name: onfhir
     restart: always
     depends_on:
