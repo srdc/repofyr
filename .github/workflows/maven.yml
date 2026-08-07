@@ -2,9 +2,9 @@ name: Maven verification
 
 on:
   push:
-    branches: [master, updating-operation-handling, repository-split]
+    branches: [master, oss-release]
   pull_request:
-    branches: [master, updating-operation-handling, repository-split]
+    branches: [master, oss-release]
 
 jobs:
   server-build:
@@ -17,5 +17,36 @@ jobs:
           java-version: '17'
           distribution: temurin
           cache: maven
+      # Boots a full server against embedded MongoDB in the repofyr-server-r4
+      # module, so this job is the reactor's main regression net.
       - name: Full Repofyr reactor
         run: mvn -B test
+
+  boundary:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Repository boundary
+        shell: pwsh
+        run: ./scripts/check-server-boundary.ps1
+
+  # Repofyr is developed on Windows. This job keeps the primary development
+  # platform compiling and keeps the PowerShell gate scripts working there.
+  # Tests are skipped deliberately: the R4 suite downloads and starts a real
+  # mongod through flapdoodle, which is slow and flaky on hosted Windows
+  # runners. Coverage comes from server-build above.
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: temurin
+          cache: maven
+      - name: Compile and package
+        run: mvn -B -DskipTests package
+      - name: Repository boundary
+        shell: pwsh
+        run: ./scripts/check-server-boundary.ps1

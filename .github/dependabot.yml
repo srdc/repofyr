@@ -1,0 +1,20 @@
+# Dependency bumps are reviewed by the gates that already run on every pull
+# request: the boundary script catches a dependency that drifts across the
+# io.onfhir / io.repofyr line or off the onfhir.libs.version property, and the
+# full reactor suite catches behavioral regressions.
+#
+# Once io.onfhir:*:4.0.0 is published to Maven Central, Dependabot will also
+# propose onfhir.libs.version bumps. Handle those with the bump-libs skill
+# rather than merging them blind: a library major can require server changes.
+version: 2
+updates:
+  - package-ecosystem: maven
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
