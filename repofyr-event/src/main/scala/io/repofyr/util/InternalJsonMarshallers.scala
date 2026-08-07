@@ -8,7 +8,7 @@ import akka.http.scaladsl.unmarshalling.{FromResponseUnmarshaller, Unmarshaller}
 import io.onfhir.api.model.{FhirSubscription, FhirSubscriptionChannel, InternalEntity, Parameter}
 import io.onfhir.config.SearchParameterConf
 import io.onfhir.util.DateTimeUtil
-import io.repofyr.event.{FhirNamedEvent, FhirTimeEvent, ResourceAccessed, ResourceCreated, ResourceDeleted, ResourceUpdated}
+import io.repofyr.event.{FhirNamedEvent, FhirPatternEvent, FhirTimeEvent, ResourceAccessed, ResourceCreated, ResourceDeleted, ResourceUpdated}
 import org.json4s
 import org.json4s.{CustomSerializer, Formats, JString, ShortTypeHints}
 import org.json4s.jackson.JsonMethods._
@@ -39,7 +39,8 @@ object InternalJsonMarshallers {
       classOf[ResourceDeleted],
       classOf[ResourceAccessed],
       classOf[FhirNamedEvent],
-      classOf[FhirTimeEvent]
+      classOf[FhirTimeEvent],
+      classOf[FhirPatternEvent]
     ))) + new FhirDateTimeSerializer
 
   def parseAndExtract[T](content:String)(implicit manifest:Manifest[T]):T = {

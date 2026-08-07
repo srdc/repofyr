@@ -219,6 +219,12 @@ class AuditManager(fhirConfigurationManager: IFhirConfigurationManager,
                       Future(())
                     })
 
+                // A configured 'none' switches auditing off. It is a documented value, so it must
+                // not fall through to the unknown-mode branch below, which logged an error on
+                // every audited interaction.
+                case AuditManager.AUDITING_METHOD_NONE =>
+                  Nil
+
                 case any =>
                   logger.error(s"Unknown default audit mode '$any'")
                   Seq(Future(()))
@@ -249,6 +255,7 @@ class AuditManager(fhirConfigurationManager: IFhirConfigurationManager,
 object AuditManager {
   final val AUDITING_METHOD_LOCAL = "local"   //Audits (FHIR AuditEvent) are stored to local repository
   final val AUDITING_METHOD_REMOTE = "remote" //Audits (FHIR AuditEvent) are sent to a remote FHIR repository
+  final val AUDITING_METHOD_NONE = "none"     //Auditing is switched off
   //Name for the actor
   final val ACTOR_NAME = "audit-manager"
 

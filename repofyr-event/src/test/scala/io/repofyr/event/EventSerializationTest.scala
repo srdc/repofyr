@@ -199,4 +199,30 @@ class EventSerializationTest extends Specification {
       )
     }
   }
+
+  "A FhirPatternEvent" should {
+
+    // It was the one IFhirEvent missing from the marshaller type hints, so it serialized without
+    // a hint and could not be extracted back. Nothing publishes it in this reactor today, which
+    // is why it went unnoticed - registering it makes the whole event hierarchy round-trippable
+    // rather than all-but-one.
+    "round trip, including the events nested inside each matched pattern" in {
+      val created = ResourceCreated("Patient", "p1", patient)
+      val accessed = ResourceAccessed("Patient", "p1", patient)
+      val event = FhirPatternEvent(Map("admission-then-read" -> Seq(created, accessed)))
+
+      val parsed = roundTrip(event)
+
+      parsed.matchedPatterns.keySet mustEqual Set("admission-then-read")
+      parsed.matchedPatterns("admission-then-read") mustEqual Seq(created, accessed)
+    }
+
+    "carry a simple class name hint like every other event" in {
+      val json = InternalJsonMarshallers.serializeToJson(FhirPatternEvent(Map.empty))
+
+      json must contain("\"jsonClass\":\"FhirPatternEvent\"")
+      json must not(contain("io.repofyr"))
+      json must not(contain("io.onfhir"))
+    }
+  }
 }

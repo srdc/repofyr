@@ -18,7 +18,7 @@
 
     <build>
         <sourceDirectory>src/main/scala</sourceDirectory>
-        <!--testSourceDirectory>src/test/scala</testSourceDirectory-->
+        <testSourceDirectory>src/test/scala</testSourceDirectory>
         <plugins>
             <!-- Allows compiling/testing/running/documenting Scala code in Maven. -->
             <plugin>

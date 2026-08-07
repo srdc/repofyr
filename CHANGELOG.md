@@ -189,6 +189,24 @@ below.
 
 ### Fixed
 
+- **`$meta-delete` now removes what it is asked to remove.** It was broken four
+  ways over: it derived the entries to delete from `storedMeta diff
+  submittedMeta`, whose `deleted` component is the complement of the request,
+  so a request naming exactly the tag to remove deleted nothing; it cast absent
+  meta categories and array nodes to the wrong JSON types, returning HTTP 500
+  with no OperationOutcome; and it read the resource without excluding internal
+  fields, so the replace was rejected for altering the immutable `_id`.
+- **`fhir.auditing.repository = "none"` no longer logs an error per
+  interaction.** The value is documented as "no auditing" but had no case in
+  the dispatch, so it fell through to the unknown-mode branch. Auditing was off
+  either way; the log was pure noise, 303 lines in one test run.
+- `FhirPatternEvent` is registered with the event type hints. It was the one
+  `IFhirEvent` missing from them, so it serialized without a hint and could not
+  be read back. Nothing publishes it yet, which is why it went unnoticed.
+- `repofyr-core`, `repofyr-operations` and `repofyr-server-stu3` declare
+  `<testSourceDirectory>` rather than leaving it commented out. Scala tests
+  compiled anyway through the scala-maven-plugin `add-source` goal, but a Java
+  test source in those modules would have been skipped silently.
 - **STU3 summarized responses carry the STU3 code system in the SUBSETTED
   tag.** `FhirSTU3Configurator` overrides
   `FHIR_SUMMARIZATION_INDICATOR_CODE_SYSTEM` to

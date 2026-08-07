@@ -22,13 +22,9 @@ import scala.io.Source
  * Endpoint coverage for the `$meta` and `$meta-add` operations, served by
  * `io.repofyr.operation.MetaOperationHandler`.
  *
- * Both route to one handler that switches on the operation name, so the property worth pinning is
- * that the name survives the URL and the reflective dispatch table intact - not merely that one of
- * them works.
- *
- * `$meta-delete` is deliberately absent: it throws a `ClassCastException` on any resource whose
- * meta has no `security` array, which is most of them. See entry 14 of
- * `docs/release/known-limitations.md`; the test belongs with the fix.
+ * All three route to one handler that switches on the operation name, so the property worth
+ * pinning is that the name survives the URL and the reflective dispatch table intact - not merely
+ * that one of them works.
  */
 @RunWith(classOf[JUnitRunner])
 class FHIRMetaOperationTest extends OnFhirTest with FHIREndpoint {
@@ -104,6 +100,24 @@ class FHIRMetaOperationTest extends OnFhirTest with FHIREndpoint {
       Get(s"$base/$resourceType/$resourceId/" + "$meta") ~> fhirRoute ~> check {
         status === OK
         returnedTagCodes(responseAs[Resource]) must contain(tagCode)
+      }
+    }
+
+    // The regression this guards: the handler used to cast each diffed meta category to a JSON
+    // array, so deleting a tag from a resource carrying no security label threw
+    // ClassCastException and returned a bare HTTP 500. This Patient has a tag and no security
+    // label, which is exactly that case.
+    "remove a tag through $meta-delete, on a resource with no security label" in {
+      Post(s"$base/$resourceType/$resourceId/" + "$meta-delete", HttpEntity(metaParameters(tagSystem, tagCode))) ~> fhirRoute ~> check {
+        status === OK
+        returnedTagCodes(responseAs[Resource]) must not(contain(tagCode))
+      }
+    }
+
+    "persist the tag removal" in {
+      Get(s"$base/$resourceType/$resourceId/" + "$meta") ~> fhirRoute ~> check {
+        status === OK
+        returnedTagCodes(responseAs[Resource]) must not(contain(tagCode))
       }
     }
 

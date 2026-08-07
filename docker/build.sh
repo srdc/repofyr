@@ -10,4 +10,4 @@ docker build -f docker\Dockerfile-addJar --build-arg FHIR_VERSION=r5 -t srdc/rep
 
 # buildJar
 docker build -f docker/Dockerfile-buildJar --build-arg FHIR_VERSION=r4 -t srdc/repofyr:r4 .
-docker build -f docker\Dockerfile-buildJar --build-arg FHIR_VERSION=r4 -t srdc/repofyr:r4 .
+docker build -f docker\Dockerfile-buildJar --build-arg FHIR_VERSION=r5 -t srdc/repofyr:r5 .

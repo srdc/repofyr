@@ -12,7 +12,6 @@ import io.repofyr.db.ResourceManager
 import io.repofyr.exception._
 import io.onfhir.exception._
 import io.onfhir.util.JsonFormatter.formats
-import org.json4s.Diff
 import org.json4s.JsonAST.{JArray, JObject, JValue}
 import org.json4s.JsonDSL._
 import org.slf4j.{Logger, LoggerFactory}
@@ -125,7 +124,9 @@ class MetaOperationHandler(fhirConfigurationManager:IFhirConfigurationManager)  
      //Get the input parameter "meta:Meta"
      val metaToBeDeleted = operationRequest.getParam("meta").get.asInstanceOf[FHIRSimpleOperationParam].value
 
-     fhirConfigurationManager.resourceManager.getResource(resourceType, resourceId).flatMap {
+     // excludeExtraFields, as $meta-add does: without it the internal Mongo _id travels with
+     // the resource and replaceResource is rejected for altering an immutable field.
+     fhirConfigurationManager.resourceManager.getResource(resourceType, resourceId, excludeExtraFields = true).flatMap {
        case None =>
          logger.debug("resource not found, return 404 NotFound...")
          throw new NotFoundException(Seq(
@@ -138,19 +139,35 @@ class MetaOperationHandler(fhirConfigurationManager:IFhirConfigurationManager)  
            )
          ))
        case Some(resource) =>
-         //Find the difference
-         val Diff(_, _, deleted) = (resource \ FHIR_COMMON_FIELDS.META) diff metaToBeDeleted.removeField(f => f._1 == FHIR_COMMON_FIELDS.VERSION_ID || f._1 == FHIR_COMMON_FIELDS.LAST_UPDATED)
+         // What to remove is exactly what the client submitted. This used to be derived from
+         // `storedMeta diff submittedMeta`, whose `deleted` component is the entries present in
+         // the resource and ABSENT from the request - the complement of the intent. When the
+         // request named exactly the tag to remove, which is the normal case, that set was empty
+         // and the operation silently removed nothing.
+         val requestedMeta = metaToBeDeleted.removeField(f =>
+           f._1 == FHIR_COMMON_FIELDS.VERSION_ID || f._1 == FHIR_COMMON_FIELDS.LAST_UPDATED)
 
-         val profilesToBeDeleted:Seq[String] = (deleted \ FHIR_COMMON_FIELDS.PROFILE).extract[Seq[String]]
-         val securityTagsToBeDeleted:Seq[String] =  (deleted \ FHIR_COMMON_FIELDS.SECURITY).asInstanceOf[JArray].arr.map(processCoding(_))
-         val tagsToBeDeleted:Seq[String] =  (deleted \ FHIR_COMMON_FIELDS.TAG).asInstanceOf[JArray].arr.map(processCoding(_))
+         // An absent category is JNothing rather than an empty array, so match instead of casting.
+         def requestedCodings(field:String):Seq[String] =
+           requestedMeta \ field match {
+             case codings:JArray => codings.arr.map(processCoding)
+             case _ => Nil
+           }
+
+         val profilesToBeDeleted:Seq[String] =
+           (requestedMeta \ FHIR_COMMON_FIELDS.PROFILE).extractOpt[Seq[String]].getOrElse(Nil)
+         val securityTagsToBeDeleted:Seq[String] = requestedCodings(FHIR_COMMON_FIELDS.SECURITY)
+         val tagsToBeDeleted:Seq[String] = requestedCodings(FHIR_COMMON_FIELDS.TAG)
          //Update the resource delete the meta fields
          val updatedResource = resource.transformField {
            case (FHIR_COMMON_FIELDS.META, meta) =>
              FHIR_COMMON_FIELDS.META -> meta.transformField {
                case (FHIR_COMMON_FIELDS.PROFILE, profiles:JArray) => (FHIR_COMMON_FIELDS.PROFILE -> profiles.remove(p => profilesToBeDeleted.contains(p.extract[String])))
-               case (FHIR_COMMON_FIELDS.SECURITY, securityTags:JArray) =>  (FHIR_COMMON_FIELDS.SECURITY -> securityTags.remove(st => securityTagsToBeDeleted.contains(processCoding(st.asInstanceOf[JObject]))))
-               case (FHIR_COMMON_FIELDS.TAG, tags:JArray) =>  (FHIR_COMMON_FIELDS.TAG -> tags.remove(t => tagsToBeDeleted.contains(processCoding(t.asInstanceOf[JObject]))))
+               // JValue.remove walks the whole subtree, so the predicate also sees the array node
+               // itself, not only its elements - casting it to JObject threw. processCoding takes
+               // a JValue and reads through safe field access, so no cast is needed.
+               case (FHIR_COMMON_FIELDS.SECURITY, securityTags:JArray) =>  (FHIR_COMMON_FIELDS.SECURITY -> securityTags.remove(st => securityTagsToBeDeleted.contains(processCoding(st))))
+               case (FHIR_COMMON_FIELDS.TAG, tags:JArray) =>  (FHIR_COMMON_FIELDS.TAG -> tags.remove(t => tagsToBeDeleted.contains(processCoding(t))))
              }
          }.asInstanceOf[JObject]
          //Replace the resource
