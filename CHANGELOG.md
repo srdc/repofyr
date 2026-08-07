@@ -36,6 +36,18 @@ below.
 
 ### Added
 
+- Test coverage across the reactor, 251 tests to 310. `repofyr-event` had none
+  and now round-trips every event type through `InternalJsonMarshallers`,
+  pinning that the emitted type hint is the simple class name so a 3.x consumer
+  reads 4.0.0 Kafka payloads unchanged despite the package rename.
+  `repofyr-server-r5` and `repofyr-server-stu3` gained boot smoke tests that
+  start a server on embedded MongoDB, assert the served CapabilityStatement
+  `fhirVersion`, and round trip create/read/search/delete - the class of test
+  that catches a packaged-resource lookup break like the STU3 startup defect
+  fixed in this release. `repofyr-server-r4` gained endpoint coverage for the
+  `$validate` and `$meta` operations, plus a suite that reflectively resolves
+  every entry of the default operation dispatch table, since those handler
+  class names are strings no compiler checks.
 - `repofyr-embedded-mongo` and `repofyr-dev-server`. The first starts an
   embedded MongoDB for development and tests; the second is a runnable
   development server that starts one and boots Repofyr for a chosen FHIR

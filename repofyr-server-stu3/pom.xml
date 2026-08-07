@@ -86,6 +86,14 @@
         </plugins>
     </build>
     <dependencies>
+        <!-- OnFhirSTU3Test boots the suite against an embedded MongoDB. Test scope only:
+             the runnable server must not carry it. Declared here rather than inherited
+             from repofyr-server-r4, whose copy is test scope and so does not propagate. -->
+        <dependency>
+            <groupId>io.repofyr</groupId>
+            <artifactId>repofyr-embedded-mongo_${scala.binary.version}</artifactId>
+            <scope>test</scope>
+        </dependency>
         <!-- Scala Language -->
         <dependency>
             <groupId>org.scala-lang</groupId>
@@ -116,6 +124,17 @@
             <artifactId>onfhir-definitions-stu3</artifactId>
         </dependency>
 
+        <!--Testing toolkits for Akka-->
+        <dependency>
+            <groupId>com.typesafe.akka</groupId>
+            <artifactId>akka-testkit_${scala.binary.version}</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.typesafe.akka</groupId>
+            <artifactId>akka-http-testkit_${scala.binary.version}</artifactId>
+            <scope>test</scope>
+        </dependency>
         <!-- Unit Testing -->
         <dependency>
             <groupId>org.specs2</groupId>

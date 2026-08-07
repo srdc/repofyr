@@ -46,8 +46,9 @@ itself deleted in Phase 8, so the dangling link is transient.
   `repofyr-embedded-mongo` and a `repofyr-dev-server` launcher; no runnable
   server carries it any more.
 
-Outstanding, in execution order: **Phase 6** (test coverage), then **Phase 8**
-(retire the plans, cut the release).
+- **Phase 6** - complete. Test coverage: 310 tests, up from 251.
+
+Outstanding: **Phase 8** (retire the plans, cut the release).
 
 ### Work done outside this plan
 
@@ -65,7 +66,7 @@ plan. Both are complete and verified.
   `fhir.default.search-handling` with a deprecated-key fallback. 18 new tests.
 - **The STU3 SUBSETTED fix** described below.
 
-Reactor total is now **273 tests**, up from the 251 baseline.
+Reactor total is now **310 tests**, up from the 251 baseline.
 
 ### A permission-model gap worth knowing about
 
@@ -861,6 +862,35 @@ local cache.
 ---
 
 ## Phase 6 - Test coverage
+
+**Status: complete 2026-08-07.** Reactor is at 310 tests, up from the 251
+baseline. `repofyr-event` went from zero to 17; `repofyr-server-r4` 144 -> 160;
+`repofyr-server-r5` 21 -> 23; `repofyr-server-stu3` 5 -> 7; `repofyr-core`
+96 -> 99 (the Phase 9 guard).
+
+Two deviations from the spec below, both forced by what the code actually
+does:
+
+- **Operation coverage is narrower than the priority list.** The test
+  CapabilityStatement declares `validate`, `meta`, `meta-add`, `meta-delete`,
+  `document` and `expand` at system level and no resource-level operations.
+  `$document` needs a Composition and `$expand` a ValueSet, neither of which is
+  a supported resource type there, and `$everything`, `$lastn` and `$import`
+  are not declared at all - so only `$validate` and the `$meta` family are
+  reachable without rewriting the fixture. Covered those, plus a dispatch suite
+  that resolves every entry of `DEFAULT_IMPLEMENTED_FHIR_OPERATIONS`
+  reflectively - class exists, constructor matches what the factory calls,
+  type is a handler - which is the check that catches a renamed handler without
+  booting anything. Widening the fixture to reach the rest is worth a follow-up.
+- **`$meta-delete` is a defect, not a gap.** It throws `ClassCastException` on
+  any resource whose meta lacks a `security` array. Recorded as entry 14 in
+  `docs/release/known-limitations.md`; the test belongs with the fix rather
+  than pinning broken behavior.
+
+The R5 and STU3 harnesses were copied rather than abstracted, as the spec
+directed. They diverged by about 12 lines each, and a shared test-jar would
+still have to carry R4's five assertion helpers that neither smoke test uses -
+so the copies stay.
 
 Current state: 140 main sources against 23 test files, with
 `repofyr-operations` (7 sources, every FHIR operation handler) and

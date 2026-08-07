@@ -184,3 +184,18 @@ what is described here, please report it privately as described in
       collection - commonly the patient or subject reference - and verify
       after startup that the collection was actually sharded rather than
       only warned about.
+
+## FHIR operations
+
+14. `$meta-delete` fails on a resource whose meta has no `security` array
+    - `MetaOperationHandler` diffs the submitted Meta against the stored one and then
+      casts each of the `profile`, `security` and `tag` results to a JSON array
+      (`repofyr-operations/src/main/scala/io/repofyr/operation/MetaOperationHandler.scala`
+      lines 145-146). When a category is absent from the diff the value is
+      `JNothing`, the cast throws `ClassCastException`, and the request fails
+      with HTTP 500 and no OperationOutcome. Deleting a tag from a resource that
+      carries no security label - the common case - hits this.
+    - Remove meta entries with a normal UPDATE of the resource instead. `$meta`
+      and `$meta-add` are unaffected and are covered by
+      `FHIRMetaOperationTest`; the missing `$meta-delete` case belongs with the
+      fix rather than pinning the broken behavior.
