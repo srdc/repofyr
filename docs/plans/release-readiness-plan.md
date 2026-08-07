@@ -2,14 +2,16 @@
 
 Status: in progress - 2026-08-07. Executes on branch `oss-release`.
 
-Completed so far, none of it committed yet:
+Everything below is **committed** as of 2026-08-07, in seven commits from
+`1e37b53` to `6aa9001`, all DCO signed off. Nothing is pushed.
+
+Completed so far:
 
 - **Phase 0** - baseline recorded: 251 tests green (core 78, server-r4 144,
   server-r5 21, kafka 4, server-stu3 4; event and operations have none), full
   reactor 2m30s.
-- **Phase 1** - items 1-6 applied. Item 7 (embedded MongoDB scope) is
-  deliberately NOT applied and remains an open decision; its analysis was
-  corrected after an error was found in the original draft.
+- **Phase 1** - items 1-6 applied. Item 7 (embedded MongoDB scope) was resolved
+  on 2026-08-07 and promoted to **Phase 9**; nothing for it is applied yet.
 - **Phase 2** - `docs/migration/onfhir-3.x-to-repofyr-4.0.md` written (9
   sections, 522 lines), the 10 internal and library-scoped documents purged,
   and ADR 0002's naming preamble folded into its text. Four places where this
@@ -40,8 +42,9 @@ relative link resolves, except one reference inside
 `library-server-split-plan-v2.md` to the ADR deleted in Phase 2 - that file is
 itself deleted in Phase 8, so the dangling link is transient.
 
-Outstanding: **Phase 6** (test coverage) and **Phase 8** (retire the plans, cut
-the release), plus the Phase 1 item 7 decision.
+Outstanding, in execution order: **Phase 9** (extract embedded MongoDB into a
+dev launcher), **Phase 6** (test coverage - it depends on the module Phase 9
+creates), then **Phase 8** (retire the plans, cut the release).
 
 ### Work done outside this plan
 
@@ -90,9 +93,9 @@ on. Worth closing there too.
    value. Retired from known-limitations, recorded in `CHANGELOG.md` and in
    section 7 of the migration guide, since it changes STU3 output.
 
-The remaining item below changes user-visible behavior and stays deferred; it
-is recorded in `docs/release/known-limitations.md`.
-2. **PATCH is not authorized against its result.**
+2. **PATCH is not authorized against its result** - deferred, and recorded in
+   `docs/release/known-limitations.md` because it changes user-visible
+   behavior.
    `authorizeAgainstGivenContent` returns `true` unconditionally for PATCH
    (`AuthzManager.scala:194`, with a pre-existing TODO). The stored resource
    *is* checked, so this is narrower than it looks, but a caller can still
@@ -241,8 +244,10 @@ The merge of `oss-release` into `master` should happen after item 1 passes.
 
 ## Open decisions
 
-- **Embedded MongoDB packaging** (Phase 1, item 7). Recommendation stated
-  there; confirm or reject.
+- **Embedded MongoDB packaging** - RESOLVED 2026-08-07. Option B2 plus a dev
+  launcher; see Phase 9. Two smaller decisions remain inside that phase:
+  whether to publish `repofyr-dev-server` to Central, and whether to shade it
+  or run it through `mvn exec`.
 - **DCO sign-off backfill.** See "Commit hygiene" below.
 
 ## Commit hygiene - DCO sign-off
@@ -347,46 +352,21 @@ Small, mechanical, and touches the published artifact - so it goes first.
    anyone including its author. `git rm --cached .codex-safe-gitconfig` and add
    it to `.gitignore`.
 
-7. **Embedded MongoDB dependency scope** (decision). `de.flapdoodle.embed.mongo`
-   is declared without a scope - therefore compile - in
-   `repofyr-core/pom.xml:136-140`, its version managed at `pom.xml:548-552`,
-   because `io.repofyr.db.EmbeddedMongo` lives in `src/main`. It ships inside
-   the production standalone jar and propagates transitively to every consumer
-   embedding `repofyr-core`.
+7. **Embedded MongoDB dependency scope** - RESOLVED 2026-08-07, moved to
+   Phase 9. The maintainer chose option B2: remove the capability from the
+   production artifacts rather than merely stopping it leaking, and package it
+   behind a runnable dev launcher. This is no longer a Phase 1 item - it is two
+   new modules, a public API addition to `Onfhir.apply`, and a removed feature,
+   so it has its own phase. Do NOT apply anything here; see Phase 9.
 
-   Correction to an earlier draft of this item, which claimed marking the
-   dependency `<optional>true</optional>` would leave the standalone jar
-   unaffected. **That is wrong.** `optional` suppresses transitive propagation
-   to *every* consumer, and the `repofyr-server-*` modules are consumers of
-   `repofyr-core` - so flapdoodle would drop off their classpath, the shade
-   plugin would not bundle it, and `embedded = true` would fail at runtime in
-   the standalone jar. Any option here must be verified by inspecting the
-   shaded jar, not reasoned about from scope rules alone.
-
-   The three real options:
-
-   - **A - `optional` plus explicit re-declaration.** Mark it optional in
-     `repofyr-core`, then declare `de.flapdoodle.embed.mongo` explicitly at
-     compile scope in each of the three `repofyr-server-*` modules, and at
-     test scope wherever tests call `EmbeddedMongo`. Consumers embedding
-     `repofyr-core` as a library stop inheriting it; the standalone jars keep
-     working and keep their current weight. Low risk, but it does not shrink
-     the artifact - it only stops the leak.
-   - **B - remove it from `src/main`.** Move `EmbeddedMongo` to test sources or
-     a separate dev-only module. This is the only option that actually shrinks
-     the production artifact, and it removes `embedded = true` as a production
-     capability - a breaking change for anyone using it.
-   - **C - do nothing** for 4.0.0 and record it in
-     `docs/release/known-limitations.md`.
-
-   Recommendation: **A**, verified by confirming flapdoodle classes are still
-   present in `repofyr-server-r4/target/repofyr-server-standalone.jar` and that
-   `mvn -pl repofyr-server-r4 -am test` still starts the harness. B is the
-   better end state but is a breaking change that does not belong in a release
-   whose headline is "we renamed things and changed nothing else".
-
-   This item is unresolved and was deliberately NOT applied during the
-   2026-08-07 execution of Phase 1; items 1-6 were.
+   The option-A analysis that used to sit here contained an error worth
+   remembering: it claimed marking the dependency `<optional>true</optional>`
+   would leave the standalone jar unaffected. It would not. `optional`
+   suppresses transitive propagation to every consumer, and the
+   `repofyr-server-*` modules are themselves consumers of `repofyr-core`, so
+   the shade plugin would have stopped bundling flapdoodle and `embedded =
+   true` would have failed at runtime. Verify packaging claims against the
+   built jar, not against scope rules.
 
 ### Verification
 
@@ -398,8 +378,8 @@ Test count matches Phase 0. `git status` shows only intended changes.
 
 ### Definition of done
 
-Seven items above applied (or item 7 explicitly deferred with a recorded
-reason), reactor green, and no change to any runtime configuration key.
+Items 1-6 applied, reactor green, and no change to any runtime configuration
+key. Item 7 is out of scope for this phase; it is Phase 9.
 
 ---
 
@@ -987,6 +967,228 @@ mvn -B -Prelease -Dgpg.skip=true package
 
 Confirms the scaladoc jar still builds - a malformed scaladoc tag fails this
 and nothing else.
+
+---
+
+## Phase 9 - Extract embedded MongoDB into a dev launcher
+
+**Run this BEFORE Phase 6.** Phase 6's R5 and STU3 boot smoke tests need
+embedded MongoDB at test scope, and this phase is what gives them a module to
+depend on. Phase 8 stays last.
+
+This resolves Phase 1 item 7. The maintainer chose **option B2** - remove the
+capability from the production artifacts entirely - and extended it: rather
+than deleting embedded MongoDB, package it behind a runnable dev launcher that
+boots any FHIR release against it.
+
+### Why
+
+`de.flapdoodle.embed.mongo` is compile-scoped in `repofyr-core` because
+`io.repofyr.db.EmbeddedMongo` lives in `src/main`. It therefore ships inside
+every standalone jar and propagates to every consumer embedding `repofyr-core`.
+It is a component whose job is downloading a `mongod` binary over the network
+and executing it - not something that belongs in the production artifact of a
+secure health data repository.
+
+Note the jar-size argument is weak and should not be used to justify this: the
+`mongod` binary is fetched at runtime, never packaged. The bundled flapdoodle
+libraries are roughly 700 KB. The reason is dependency hygiene and attack
+surface.
+
+### The constraint that shapes the design: two modules, not one
+
+The launcher must compile-depend on all three `repofyr-server-*` modules to
+construct their configurators. But `OnFhirTest` in `repofyr-server-r4` needs
+`EmbeddedMongo` for its 144 tests. If `EmbeddedMongo` lived in the launcher:
+
+```
+repofyr-dev-server  --compile-->  repofyr-server-r4
+repofyr-server-r4   --test----->  repofyr-dev-server     <- reactor cycle
+```
+
+Maven computes reactor cycles across **all** scopes, so a test-scope back edge
+is still rejected. Hence one leaf module for the wrapper and one launcher on
+top of it.
+
+### Verified preconditions
+
+Checked 2026-08-07; re-check if the tree has moved.
+
+- The three server modules can share a classpath. Each ships only its
+  release-suffixed `db-index-conf-<release>.json`; definitions and conformance
+  come from the release-suffixed `onfhir-definitions-*` artifacts; and
+  `application.conf` plus `logback.xml` come from `repofyr-core` alone. This is
+  what the Phase 5B suffixing work bought, and the launcher is the first thing
+  to exploit it.
+- `EmbeddedMongo` imports only flapdoodle, slf4j and `java.nio`, so the leaf
+  module needs no dependency on `repofyr-core`.
+- `de.flapdoodle` is declared in `repofyr-core/pom.xml` only; no server pom
+  declares it, they inherit it transitively.
+- `EmbeddedMongo` call sites are exactly: the three `Boot` objects,
+  `Onfhir.scala:145`, and `OnFhirTest`.
+- `docker-compose.yml` already runs a real `mongo` service and sets
+  `DB_EMBEDDED=false`, so the shipped sample never used embedded mode.
+
+### Step 1 - `repofyr-embedded-mongo` (leaf)
+
+Move `EmbeddedMongo` here, repackaged `io.repofyr.db` -> `io.repofyr.embedded`.
+Keeping the old package would split `io.repofyr.db` across two jars - legal,
+but a split package is worth avoiding.
+
+POM: parent `repofyr-parent`, dependencies `de.flapdoodle.embed.mongo` at
+compile scope and `slf4j-api`. Nothing else.
+
+Then **delete flapdoodle from `repofyr-core/pom.xml`** and add the new module to
+the root `<modules>` list and `dependencyManagement` at `${project.version}`.
+
+### Step 2 - the shutdown seam in `repofyr-core`
+
+`Onfhir.scala:145` calls `EmbeddedMongo.stop()` inside `whenTerminated`. Core
+must stop knowing about embedded MongoDB, so whoever starts it also stops it.
+
+Add a trailing parameter to both the class at `Onfhir.scala:38` and the
+companion `apply` at `Onfhir.scala:229`:
+
+```scala
+onShutdown: Seq[() => Unit] = Nil
+```
+
+Invoke the callbacks exactly where the `EmbeddedMongo.stop()` call sits today -
+after the HTTP binding has terminated, before `actorSystem.terminate()`. Do not
+replace this with a JVM shutdown hook: ordering matters, and a bare hook races
+Akka's own `CoordinatedShutdown` hook rather than running after the server
+drains.
+
+The default makes this source-compatible for existing callers.
+
+### Step 3 - `repofyr-dev-server` (launcher)
+
+Depends on `repofyr-embedded-mongo` and all three `repofyr-server-*` modules.
+Main class `io.repofyr.dev.DevServer`, taking the FHIR release as the first
+argument and defaulting to R5:
+
+```scala
+object DevServer extends App {
+  private val release = args.headOption.map(_.toLowerCase).getOrElse("r5")
+  private val configurator = release match {
+    case "r4"   => new FhirR4Configurator()
+    case "r5"   => new FhirR5Configurator()
+    case "stu3" => new FhirSTU3Configurator()
+    case other  => sys.error(s"Unknown FHIR release '$other'. Use one of: r4, r5, stu3.")
+  }
+
+  val Array(host, port) = OnfhirConfig.mongoDbSettings.hosts.head.split(':')
+  EmbeddedMongo.start(OnfhirConfig.serverName, host, port.toInt, withTemporaryDatabaseDir = false)
+
+  Onfhir.apply(configurator, onShutdown = Seq(() => EmbeddedMongo.stop())).start
+}
+```
+
+Call the configurators directly, not the `Boot` objects - `Boot` is an `App`
+with its own `main`, so delegating to it would be awkward. The exact class
+names are `io.repofyr.r4.config.FhirR4Configurator`,
+`io.repofyr.r5.config.FhirR5Configurator` and
+`io.repofyr.stu3.config.FhirSTU3Configurator`.
+
+The launcher always starts embedded MongoDB - that is its entire purpose - and
+does not consult `mongodb.embedded`. It reads host and port from
+`mongodb.host`.
+
+### Step 4 - the production Boots
+
+Delete the embedded block from all three `Boot` objects and replace it with a
+fail-fast, so a stale `mongodb.embedded = true` is a clear error rather than a
+silent no-op followed by a confusing connection timeout:
+
+```scala
+if (OnfhirConfig.mongoDbSettings.embedded)
+  sys.error("mongodb.embedded is not supported by the standalone server. " +
+            "Run repofyr-dev-server, or start MongoDB separately and set mongodb.embedded = false.")
+```
+
+No reflection and no classpath probing is needed, because the production Boots
+no longer reference `EmbeddedMongo` at all. Extract the check to a small
+testable function rather than inlining it in the `App` body.
+
+### Step 5 - tests
+
+- `repofyr-server-r4/pom.xml`: add `repofyr-embedded-mongo` at **test scope**.
+- `OnFhirTest.scala`: update the import to `io.repofyr.embedded.EmbeddedMongo`.
+  Nothing else changes; the harness already starts and stops it itself, so the
+  Step 2 seam is invisible to it.
+- Add a test for the Step 4 fail-fast. Under B2 the production error path is
+  the most likely user-visible symptom of this change, and it is the one thing
+  no existing test can reach.
+- `repofyr-core`'s tests need nothing: none require a live database.
+
+### Step 6 - Docker
+
+`docker-entrypoint.sh:56` maps `DB_EMBEDDED` to `-Dmongodb.embedded=`. That
+mapping becomes dead - remove it. The shipped `docker-compose.yml` is
+unaffected because it already sets `DB_EMBEDDED=false` and runs a real `mongo`
+service.
+
+### Step 7 - gates and docs
+
+- `scripts/check-staged-release.ps1` has a **hardcoded artifact table**; a
+  coordinate missing from it ships unverified. Add `repofyr-embedded-mongo`
+  (and the launcher, if published), and update the expected count in the PASS
+  line and in `RELEASING.md` section 2.
+- `scripts/check-server-boundary.ps1` needs no change: it discovers `repofyr-*`
+  directories automatically.
+- Module READMEs for both new modules; root README module table rows.
+- `CHANGELOG.md` under **Removed** and **Added**.
+- A migration-guide entry: `io.onfhir.db.EmbeddedMongo` was public in 3.x, so
+  its new coordinate and package are a consumer-visible move, and the removal
+  of `mongodb.embedded` support from the standalone jars is a removed feature.
+  State that plainly - it is the one place this release does more than rename.
+
+### Open decisions
+
+- **Publish `repofyr-dev-server` to Central?** Publishing gives a "try Repofyr
+  in 30 seconds" story, but it is a GPL fat jar bundling all three servers and
+  it grows the verified release surface. Recommendation: **do not publish for
+  4.0.0** (`maven.deploy.skip`), keep the surface at 8 plus
+  `repofyr-embedded-mongo`, revisit afterwards.
+- **Shade the launcher, or run it with `mvn exec`?** If it is not published,
+  `mvn -pl repofyr-dev-server exec:java -Dexec.args=r4` avoids a fat jar
+  entirely. If `java -jar` is wanted, it needs its own shade config with a
+  distinct `finalName`: all three server modules already use
+  `repofyr-server-standalone`.
+
+### Verification
+
+```bash
+mvn -B test
+```
+
+```bash
+powershell -File scripts/check-server-boundary.ps1
+```
+
+Then confirm the capability actually left the production artifact:
+
+```bash
+unzip -l repofyr-server-r4/target/repofyr-server-standalone.jar | grep -c flapdoodle
+```
+
+Expect `0`. Build the jar with `mvn -B -pl repofyr-server-r4 -am package` first.
+Reasoning about scopes is not sufficient here - the earlier `optional` analysis
+in Phase 1 item 7 was wrong precisely because it was not checked against the
+built jar.
+
+### Definition of done
+
+- `repofyr-core` no longer declares flapdoodle and no longer references
+  `EmbeddedMongo`.
+- No `repofyr-server-*` standalone jar contains flapdoodle classes.
+- `mongodb.embedded = true` against a standalone jar fails with the message
+  naming the dev launcher, and a test asserts it.
+- `mvn -pl repofyr-dev-server exec:java` (or `java -jar`) starts a working
+  server on embedded MongoDB for each of r4, r5 and stu3, and stops MongoDB
+  cleanly on shutdown.
+- The full reactor is green and the staged-release gate covers every new
+  coordinate.
 
 ---
 
