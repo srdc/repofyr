@@ -103,6 +103,12 @@ Maven cache, to prove the build does not depend on locally staged artifacts:
   captured output afterwards instead.
 - Module-scoped builds need `-am` while the working tree is ahead of the
   installed artifacts.
+- Renaming or deleting a file under `src/main/resources` requires `mvn clean`
+  before the result means anything. `maven-resources-plugin` copies new
+  resources into `target/classes` but never removes ones that disappeared, so
+  the old file stays on the classpath and in the shaded jar. A rename then
+  appears to work while both names are live - and any test asserting the new
+  arrangement passes for the wrong reason.
 - A killed or crashed Maven run can corrupt zinc incremental state under
   `target/`, producing bogus "X is not a member of package Y" errors. Fix with
   `mvn -B -pl <module> clean`, then rebuild.

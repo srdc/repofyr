@@ -47,7 +47,16 @@ repository contains only the server family and remains GPL-3.0.
 * **Open Source Core:** Maintained by [SRDC](https://srdc.com.tr)
 
 ## Basic Configuration
-You can copy and update the **repofyr-core/src/main/resources/application.conf** file, which is the main entry-point configuration for tailoring the Repofyr repository to your needs.
+Repofyr ships its defaults as **repofyr-core/src/main/resources/repofyr-reference.conf**, a fully commented file listing every key and its default. Read it as the reference; you do not need to copy it.
+
+To tailor the server, write your own `application.conf` containing **only the keys you change** and point the server at it with `-Dconfig.file`. It layers over the shipped defaults, so anything you leave out keeps its default and picks up improvements when you upgrade:
+
+```hocon
+mongodb {
+  host = "mongo.internal:27017"
+  db = clinical
+}
+```
 
 For logger configurations, check **repofyr-core/src/main/resources/logback.xml**
 
@@ -101,7 +110,8 @@ $ java -jar target/repofyr-server-standalone.jar
 ```
 
 You can override in-app configurations by supplying an external application.conf file or JAVA arguments
-using the following commands:
+using the following commands. Both layer over the shipped defaults, so the file needs to carry only
+the keys you change, and a `-D` argument outranks the file:
 ```
 $ java -Dconfig.file={path-to-application.conf} -jar target/repofyr-server-standalone.jar
 $ java -Dserver.port=9999 -Dserver.host=172.17.0.1 -jar target/repofyr-server-standalone.jar

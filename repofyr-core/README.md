@@ -172,10 +172,19 @@ the bulk create-or-update path.
 
 ## Configuration
 
-`OnfhirConfig` is the typed view of `application.conf`. The module ships a
-fully commented default at `src/main/resources/application.conf` and a logging
-default at `src/main/resources/logback.xml`; copy the former and override what
-you need.
+`OnfhirConfig` is the typed view of the application configuration. The module
+ships a fully commented set of defaults at
+`src/main/resources/repofyr-reference.conf` and a logging default at
+`src/main/resources/logback.xml`.
+
+`OnfhirConfig.config` layers four sources, highest precedence first: JVM system
+properties, the deployment's `application.conf` or `-Dconfig.file`,
+`repofyr-reference.conf`, then each library's `reference.conf`. A deployment
+therefore writes only the keys it changes - there is no need to copy the
+defaults. The resource is deliberately not named `reference.conf`: the `akka.*`
+entries would then be peers of Akka's own reference rather than overrides of
+it, decided by classpath order, which resolves one way on a plain classpath and
+the opposite way in a shaded jar.
 
 The key groups are `server.*` (host, port, base URI, SSL, the internal API),
 `mongodb.*` (hosts, database, credentials, pooling, sharding, transactions,

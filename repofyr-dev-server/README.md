@@ -39,10 +39,10 @@ reject it.
 
 ## Configuration
 
-It reads the same `application.conf` as any Repofyr server - the one packaged in
-`repofyr-core`, overridable with `-Dconfig.file=...`. The only setting it treats
-specially is `mongodb.host`, which must be `host:port`, because that is where it
-puts the embedded instance.
+It reads the same configuration as any Repofyr server - the defaults packaged in
+`repofyr-core` as `repofyr-reference.conf`, overridable with `-Dconfig.file=...`
+or a `-D` argument. The only setting it treats specially is `mongodb.host`,
+which must be `host:port`, because that is where it puts the embedded instance.
 
 ## How one launcher boots three releases
 
@@ -50,7 +50,7 @@ It depends on all three server modules at once, which works because every
 packaged resource carries its FHIR release in its name:
 `definitions-r4.json.zip`, `conformance-statement-stu3.json`,
 `db-index-conf-r5.json`, and so on. Nothing collides on the classpath, and
-`application.conf` and `logback.xml` come from `repofyr-core` alone.
+`repofyr-reference.conf` and `logback.xml` come from `repofyr-core` alone.
 
 ## Relationship to the other modules
 

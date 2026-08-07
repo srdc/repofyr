@@ -1,0 +1,80 @@
+package io.repofyr.config
+
+import com.typesafe.config.ConfigFactory
+import org.junit.runner.RunWith
+import org.specs2.mutable.Specification
+import org.specs2.runner.JUnitRunner
+
+/**
+ * Pins how Repofyr's shipped defaults are layered.
+ *
+ * Before 4.0.0 those defaults lived in `application.conf`, so a deployment pointing
+ * `-Dconfig.file` at its own file replaced them wholesale and had to restate all of them. They now
+ * ship as `repofyr-reference.conf` and [[OnfhirConfig.config]] inserts them between the
+ * deployment's file and the library `reference.conf` files.
+ *
+ * Two things are easy to break silently here and neither shows up as a compile error:
+ *
+ *  - the resource going missing or being renamed, which turns every default into whatever the
+ *    `Standard` case-class values happen to be
+ *  - the `akka.*` overrides losing to Akka's own `reference.conf`, which is exactly what would
+ *    happen if the defaults were moved into a plain `reference.conf`
+ */
+@RunWith(classOf[JUnitRunner])
+class ConfigLayeringTest extends Specification {
+
+  "The shipped defaults resource" should {
+
+    "be on the classpath and carry the server defaults" in {
+      val defaults = ConfigFactory.parseResources("repofyr-reference.conf")
+      defaults.isEmpty must beFalse
+      defaults.getString("mongodb.db") mustEqual "onfhir"
+      defaults.getString("mongodb.host") mustEqual "localhost:27017"
+      defaults.getBoolean("mongodb.embedded") must beFalse
+    }
+
+    "agree with the code-level fallback for the database name" in {
+      // These two disagreed until 4.0.0 - the file said 'onfhir' and the case class said 'fhir' -
+      // so a configuration that omitted mongodb.db silently addressed a different database.
+      val defaults = ConfigFactory.parseResources("repofyr-reference.conf")
+      defaults.getString("mongodb.db") mustEqual MongoDbSettings.Standard.dbName
+    }
+  }
+
+  "A deployment configuration" should {
+
+    "override only the keys it sets and inherit the rest" in {
+      val userFile = ConfigFactory.parseString("""mongodb { db = "my-fhir-db" }""")
+      val merged = userFile.withFallback(ConfigFactory.parseResources("repofyr-reference.conf")).resolve()
+
+      val settings = MongoDbSettings.fromConfig(merged.getConfig("mongodb"))
+      settings.dbName mustEqual "my-fhir-db"
+      settings.hosts mustEqual Seq("localhost:27017")
+      settings.writeConcern mustEqual "1"
+      settings.useTransaction must beFalse
+    }
+  }
+
+  "The assembled application config" should {
+
+    // Repofyr's akka settings are peers of Akka's own reference.conf the moment they are put in a
+    // file named reference.conf, and the tie is then broken by classpath order - which resolves
+    // one way on a plain classpath and the other way in a shaded jar. These assertions fail if
+    // that layering is ever flattened.
+    "rank Repofyr's akka overrides above the library reference" in {
+      OnfhirConfig.config.getString("akka.loglevel") mustEqual "OFF"
+      OnfhirConfig.config.getString("akka.http.server.server-header") mustEqual "OnFhir.io FHIR Repository"
+      OnfhirConfig.config.getString("akka.http.server.parsing.uri-parsing-mode") mustEqual "relaxed"
+      OnfhirConfig.config.getDuration("akka.http.server.request-timeout").toSeconds mustEqual 60L
+    }
+
+    "keep remote-address-header on, which audit records depend on for the client IP" in {
+      OnfhirConfig.config.getString("akka.http.server.remote-address-header") mustEqual "on"
+    }
+
+    "expose the server defaults through the same chain" in {
+      OnfhirConfig.mongoDbSettings.dbName mustEqual "onfhir"
+      OnfhirConfig.serverSettings.port mustEqual 8080
+    }
+  }
+}

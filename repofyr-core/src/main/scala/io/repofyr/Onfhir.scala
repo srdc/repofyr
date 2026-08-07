@@ -218,8 +218,11 @@ class Onfhir(
   * Companion object to initialize Akka Actor System and OnFhir
   */
 object Onfhir {
-  //Base Akka Actor system for the whole system
-  implicit val actorSystem: ActorSystem = ActorSystem("onfhir")
+  // Base Akka Actor system for the whole system. It is handed OnfhirConfig.config rather than
+  // left to load its own: Repofyr's akka settings ship in repofyr-reference.conf, which sits
+  // above every library reference.conf only in the chain OnfhirConfig assembles. A bare
+  // ActorSystem("onfhir") would call ConfigFactory.load() and never see that layer.
+  implicit val actorSystem: ActorSystem = ActorSystem("onfhir", OnfhirConfig.config)
   //Singleton onfhir server instance
   private var _instance:Onfhir = null
 

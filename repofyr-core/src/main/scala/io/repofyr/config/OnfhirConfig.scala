@@ -41,8 +41,39 @@ object OnfhirConfig {
 
   private val logger: Logger = LoggerFactory.getLogger(getClass)
 
-  /** Application config object. */
-  val config: com.typesafe.config.Config = ConfigFactory.load()
+  /**
+   * Name of the resource holding Repofyr's shipped defaults.
+   *
+   * Deliberately not `application.conf`: a deployment that sets `-Dconfig.file` replaces the
+   * `application.conf` lookup outright, so every default would vanish and each operator would have
+   * to maintain a copy of the entire file. Deliberately not `reference.conf` either, because there
+   * the `akka.*` entries below would be peers of Akka's own reference rather than overrides of it,
+   * and the winner would follow classpath order - which is not merely unspecified but
+   * contradictory: a shaded jar concatenates the references and lets the last assignment win,
+   * while a plain classpath merges them and lets the first win. Settings such as
+   * `akka.http.server.remote-address-header = on`, which audit records depend on, would then hold
+   * under `mvn test` and silently flip in the standalone jar. A resource name only this reactor
+   * publishes keeps the precedence explicit and identical in both.
+   */
+  private final val DefaultsResource = "repofyr-reference.conf"
+
+  /**
+   * Application config object, layered highest precedence first:
+   *
+   *  1. JVM system properties, so the container entrypoint's `-Dmongodb.host=...` still wins
+   *  2. the deployment's own `application.conf`, or the file named by `-Dconfig.file`
+   *  3. [[DefaultsResource]] - Repofyr's shipped defaults
+   *  4. `reference.conf` from every library on the classpath, Akka's included
+   *
+   * An operator's configuration file therefore needs to carry only the keys it changes.
+   */
+  val config: com.typesafe.config.Config =
+    ConfigFactory
+      .defaultOverrides()
+      .withFallback(ConfigFactory.defaultApplication())
+      .withFallback(ConfigFactory.parseResources(DefaultsResource))
+      .withFallback(ConfigFactory.defaultReference())
+      .resolve()
 
   private def subtree(path: String): Config =
     Try(config.getConfig(path)).getOrElse(ConfigFactory.empty())

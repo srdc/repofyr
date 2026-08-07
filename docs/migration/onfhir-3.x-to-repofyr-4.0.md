@@ -458,6 +458,48 @@ The `<mainClass>` entries changed with the packages:
 
 This matters if you launch by class name rather than by `java -jar`.
 
+### Your configuration file now layers over the shipped defaults
+
+Nothing you have to do, but worth knowing before you trim anything.
+
+Through 3.x, Repofyr's defaults were themselves an `application.conf` inside
+the server jar. Typesafe Config's `-Dconfig.file` **replaces** the
+`application.conf` lookup rather than merging with it, so a deployment that
+supplied its own file discarded every default and had to restate all of them.
+That is why the shipped Docker sample was a 268-line copy of the full file.
+
+In 4.0.0 the defaults ship as `repofyr-reference.conf` and `OnfhirConfig`
+assembles four layers, highest precedence first:
+
+| Layer | Source | Typical use |
+|---|---|---|
+| 1 | JVM system properties | `-Dmongodb.host=...`, what the container entrypoint sets |
+| 2 | `application.conf`, or the file named by `-Dconfig.file` | your deployment's configuration |
+| 3 | `repofyr-reference.conf` | Repofyr's shipped defaults |
+| 4 | `reference.conf` from each library | Akka and friends |
+
+**Your existing file keeps working unchanged.** A self-contained 3.x
+configuration still sets every key it always set; layer 2 simply wins.
+
+What you gain is the option to shrink it. A file that now reads
+
+```hocon
+mongodb {
+  host = "mongo.internal:27017"
+  db = clinical
+}
+```
+
+inherits every other default, and picks up new ones when you upgrade instead
+of drifting from them. If you do trim, note that a key you delete falls back
+to the shipped default rather than to nothing - check
+`repofyr-reference.conf` in `repofyr-core` for the value you would inherit.
+
+One related fix: the code-level fallback for `mongodb.db` was `fhir` while the
+shipped file said `onfhir`. The two now agree on `onfhir`, so a configuration
+that omits the key addresses the database it always did rather than a
+different one.
+
 ### Container images
 
 | 3.x image | 4.0.0 image |

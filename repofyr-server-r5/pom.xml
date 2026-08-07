@@ -78,6 +78,14 @@
                                     <resource>reference.conf</resource>
                                 </transformer>
 
+                                <!-- Repofyr's own shipped defaults, loaded by OnfhirConfig between
+                                     the deployment's application.conf and the library references.
+                                     Only repofyr-core publishes it today; appending rather than
+                                     picking one keeps that from becoming a silent clobber. -->
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+                                    <resource>repofyr-reference.conf</resource>
+                                </transformer>
+
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
                             </transformers>
                         </configuration>

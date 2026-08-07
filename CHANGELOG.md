@@ -36,7 +36,7 @@ below.
 
 ### Added
 
-- Test coverage across the reactor, 251 tests to 310. `repofyr-event` had none
+- Test coverage across the reactor, 251 tests to 320. `repofyr-event` had none
   and now round-trips every event type through `InternalJsonMarshallers`,
   pinning that the emitted type hint is the simple class name so a 3.x consumer
   reads 4.0.0 Kafka payloads unchanged despite the package rename.
@@ -78,6 +78,31 @@ below.
 
 ### Changed
 
+- **A deployment's configuration file now layers over Repofyr's defaults
+  instead of replacing them.** Those defaults ship as `repofyr-reference.conf`
+  in `repofyr-core` rather than as an `application.conf`, and `OnfhirConfig`
+  assembles four layers, highest precedence first: JVM system properties, the
+  deployment's own `application.conf` or the file named by `-Dconfig.file`,
+  `repofyr-reference.conf`, then the `reference.conf` of every library on the
+  classpath.
+
+  Typesafe Config's `config.file` *replaces* the `application.conf` lookup
+  rather than merging with it, so through 3.x a deployment that supplied its
+  own file silently discarded every shipped default and had to restate all of
+  them. That is why the Docker sample was a 268-line copy of the full file: it
+  had no choice. A configuration file now carries only the keys it changes and
+  picks up new defaults on upgrade rather than drifting from them. The three
+  test configurations and the Docker sample shrank accordingly, and the sample
+  lost a `kafka` block that had been naming keys the server stopped reading.
+
+  The defaults are deliberately not in a plain `reference.conf`: there the
+  `akka.*` entries would be peers of Akka's own reference rather than overrides
+  of it, and the winner would follow classpath order - which resolves one way
+  on a plain classpath and the opposite way in a shaded jar, where the
+  references are concatenated and the last assignment wins.
+
+  Nothing needs editing to keep working: a self-contained 3.x file still sets
+  everything it always set. See section 7 of the migration guide.
 - **`fhir.search-handling` moved to `fhir.default.search-handling`**, joining
   `return-preference` - both are defaults for the `Prefer` header. The old key
   is still read when the new one is absent, with a deprecation warning, so
@@ -157,8 +182,8 @@ below.
   deliberate act in the Central portal.
 - Scala sources compile with `-release 11`, so a build on a newer JDK
   cannot silently emit bytecode that fails at runtime on Java 11.
-- The `db-index-conf` comment in the shipped `application.conf` files named
-  a module and a file that no longer exist. It now names
+- The `db-index-conf` comment in the shipped configuration named a module and a
+  file that no longer exist. It now names
   `repofyr-server-r4/db-index-conf-r4.json`.
 
 ### Removed

@@ -184,7 +184,7 @@ object MongoDbSettings {
   val Standard: MongoDbSettings = MongoDbSettings(
     embedded = false,
     hosts = Seq("localhost"),
-    dbName = "fhir",
+    dbName = "onfhir",
     authDbName = None,
     username = None,
     password = None,

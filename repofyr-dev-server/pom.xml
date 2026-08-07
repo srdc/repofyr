@@ -64,6 +64,9 @@
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
                                     <resource>reference.conf</resource>
                                 </transformer>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+                                    <resource>repofyr-reference.conf</resource>
+                                </transformer>
                             </transformers>
                             <filters>
                                 <filter>
