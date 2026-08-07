@@ -171,6 +171,8 @@ abstract class BaseFhirServerConfigurator extends BaseFhirConfigurator with IFhi
     logger.info("Configuring other FHIR version specific parameters (mime types, etc)...")
     fhirConfig.FHIR_RESULT_PARAMETERS = FHIR_RESULT_PARAMETERS
     fhirConfig.FHIR_SPECIAL_PARAMETERS = FHIR_SPECIAL_PARAMETERS
+    //Release-specific code system for the SUBSETTED tag; STU3 predates the terminology.hl7.org URLs
+    fhirConfig.FHIR_SUMMARIZATION_INDICATOR_CODE_SYSTEM = FHIR_SUMMARIZATION_INDICATOR_CODE_SYSTEM
 
     val unsupportedFormats = conformance.formats.diff(FHIR_FORMATS.JSON ++ FHIR_FORMATS.XML)
     //onFHIR.io is not supporting turtle format yet

@@ -49,5 +49,18 @@ class FhirSTU3ConfiguratorTest extends Specification {
     "parse the STU3 database index configuration" in {
       fhirConfigurator.indexConfigurations must not(beEmpty)
     }
+
+    // The configurator declares the STU3-era code system for the SUBSETTED tag, but until 4.0.0
+    // initializeServerPlatform never copied it onto FhirServerConfig - it copied the sibling
+    // FHIR_* fields and skipped this one. FHIRServerUtil reads it from FhirServerConfig, so the
+    // override was inert and summarized STU3 responses carried the R4-era terminology.hl7.org
+    // system. Asserting the propagated value, not the configurator's own field, is what makes
+    // this a regression test rather than a restatement of the override.
+    "propagate the STU3 summarization code system onto the server config" in {
+      fhirConfigurator.FHIR_SUMMARIZATION_INDICATOR_CODE_SYSTEM mustEqual
+        "http://hl7.org/fhir/v3/ObservationValue"
+      fhirServerConfig.FHIR_SUMMARIZATION_INDICATOR_CODE_SYSTEM mustEqual
+        "http://hl7.org/fhir/v3/ObservationValue"
+    }
   }
 }

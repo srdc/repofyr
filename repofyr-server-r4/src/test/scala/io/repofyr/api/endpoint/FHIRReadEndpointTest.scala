@@ -181,6 +181,11 @@ class FHIRReadEndpointTest extends OnFhirTest with FHIREndpoint {
         //Check the SUBSETTED tag
         (resource \ FHIR_COMMON_FIELDS.META \ FHIR_COMMON_FIELDS.TAG \ FHIR_COMMON_FIELDS.CODE).extract[Seq[String]] must contain("SUBSETTED")
         (resource \ FHIR_COMMON_FIELDS.META \ FHIR_COMMON_FIELDS.TAG \ FHIR_COMMON_FIELDS.SYSTEM).extract[Seq[String]] must contain(FhirConfigurationManager.fhirConfig.FHIR_SUMMARIZATION_INDICATOR_CODE_SYSTEM)
+        //Pin the literal for R4. The assertion above compares the response against the config, so
+        //it holds for any value; this one contracts what that value actually is. STU3 overrides it
+        //to the pre-terminology.hl7.org URL, asserted in FhirSTU3ConfiguratorTest.
+        (resource \ FHIR_COMMON_FIELDS.META \ FHIR_COMMON_FIELDS.TAG \ FHIR_COMMON_FIELDS.SYSTEM).extract[Seq[String]] must
+          contain("http://terminology.hl7.org/CodeSystem/v3-ObservationValue")
 
         //This is not a summary parameter
         (resource \ "contact")  === JNothing
