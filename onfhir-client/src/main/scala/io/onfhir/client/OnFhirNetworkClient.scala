@@ -4,6 +4,8 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.headers.{Accept, RawHeader}
 import akka.http.scaladsl.model.{HttpMethods, HttpRequest, HttpResponse, MediaRange, MediaType, Uri}
+import akka.http.scaladsl.unmarshalling.Unmarshaller.UnsupportedContentTypeException
+import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.stream.Materializer
 import com.typesafe.config.Config
 import io.onfhir.api.client._
@@ -68,15 +70,50 @@ case class OnFhirNetworkClient(serverBaseUrl: String, interceptors: Seq[IHttpReq
    * @return
    */
   override def execute(fhirRequest: FHIRRequest): Future[FHIRResponse] = {
+    //Keep track of the last request/response seen so we can report them in debug logs on failure
+    var lastHttpRequest: Option[HttpRequest] = None
+    var lastHttpResponse: Option[HttpResponse] = None
+
     FHIRRequestMarshaller
       .marshallRequest(fhirRequest, getBaseUrl())
-      .flatMap(httpRequest => executeHttpRequest(httpRequest))
-      .flatMap(httpResponse => FHIRResponseUnmarshaller.unmarshallResponse(httpResponse))
-      .recover {
+      .flatMap(httpRequest => {
+        lastHttpRequest = Some(httpRequest)
+        executeHttpRequest(httpRequest)
+      })
+      .flatMap(httpResponse => {
+        lastHttpResponse = Some(httpResponse)
+        FHIRResponseUnmarshaller.unmarshallResponse(httpResponse)
+      })
+      .recoverWith {
+        case t: UnsupportedContentTypeException =>
+          logger.error("Problem while executing FHIR request!", t)
+          logRequestAndResponseOnDebug(lastHttpRequest, lastHttpResponse)
+            .flatMap(_ => Future.failed(FhirClientException("Problem while executing FHIR request!" + t.getMessage)))
         case t: Throwable =>
           logger.error("Problem while executing FHIR request!", t)
-          throw FhirClientException("Problem while executing FHIR request!" + t.getMessage)
+          Future.failed(FhirClientException("Problem while executing FHIR request!" + t.getMessage))
       }
+  }
+
+  /**
+   * Log the full request URL and the response content at the debug level (used when the response could not be
+   * unmarshalled, e.g. an unexpected Content-Type was returned by the server)
+   *
+   * @param httpRequest  HTTP request sent to the server (if available)
+   * @param httpResponse HTTP response received from the server (if available)
+   * @return
+   */
+  private def logRequestAndResponseOnDebug(httpRequest: Option[HttpRequest], httpResponse: Option[HttpResponse]): Future[Unit] = {
+    if (!logger.isDebugEnabled)
+      Future.successful(())
+    else {
+      val requestUrl = httpRequest.map(_.uri.toString()).getOrElse("N/A")
+      httpResponse
+        .map(response => Unmarshal(response.entity).to[String])
+        .getOrElse(Future.successful("N/A"))
+        .recover { case e: Throwable => s"<unable to read response content: ${e.getMessage}>" }
+        .map(responseContent => logger.debug(s"Request URL: $requestUrl\nResponse content: $responseContent"))
+    }
   }
 
   /**
