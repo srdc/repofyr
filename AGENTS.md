@@ -11,23 +11,29 @@ artifacts.
 - Workflow skills: `.claude/skills/` (verify, release-stage, bump-libs,
   new-operation).
 
-While the 4.0.0 release is being prepared, the active plan is
-`docs/plans/release-readiness-plan.md`. Execute one phase at a time and keep
-its Status header current. It retires itself, and the split plans it
-supersedes, at its Phase 8.
+There is no active plan document. The 4.0.0 release-readiness plan and the two
+library-server split plans it superseded were retired once their work landed;
+git history holds them if you need to know why something was done a particular
+way. What they left behind lives in the documents above and in `CHANGELOG.md`.
 
 ## Branch policy
 
-- Release-readiness work belongs on `oss-release`, branched from
-  `repository-split` on 2026-08-07.
-- `master` is updated to `oss-release` - as a fast-forward, the lineage being
-  linear - once the plan is complete and `onfhir-libs` 4.0.0 is published.
-  `master` is trunk from that point on.
-- `updating-operation-handling` was the trunk the split work was built on and
-  is reachable from `oss-release` with its published SHAs intact. It is retired
-  after the fast-forward, not merged separately.
-- `repository-split` is retained untouched as a fallback until that merge
-  lands. Do not commit to it.
+- `master` is trunk. It was fast-forwarded to `oss-release` at the 4.0.0
+  release cut, the lineage being linear, so no merge commit exists.
+- `3.4` is the retired pre-split line, pointing at what was `master` before
+  that fast-forward: the old monorepo shape, twelve `onfhir-*` modules in one
+  reactor at `3.4-SNAPSHOT`. It is an archive, not a maintenance branch -
+  `SECURITY.md` states 3.x receives no fixes. Do not commit to it.
+- `updating-operation-handling` was the trunk the split work was built on. Keep
+  it: it carries 21 commits of pre-split work that `3.4` does not, since `3.4`
+  points at the older `master` tip. Those commits are also reachable from
+  `master`, but no version-named branch names them. Do not commit to it.
+- Consumers who have not migrated use the published `io.onfhir` 3.x artifacts
+  from Maven Central, which are immutable and unaffected by any of the above.
+  Neither `3.4` nor any branch is the answer for them; 3.3 is the last released
+  3.x, and `3.4` was never released.
+- `repository-split` was a fallback during the split and was never pushed. Its
+  commits are pre-rewrite SHAs of work now in `master`.
 - Do not commit unless explicitly asked and never rewrite published history.
   The `oss-release` history rewrite of 2026-08-07 was permissible only because
   those commits had never been pushed; that is not a precedent.
