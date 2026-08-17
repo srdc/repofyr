@@ -1,9 +1,13 @@
 # Repofyr 4.0.0 Release Readiness Plan
 
-Status: in progress - 2026-08-07. Executes on branch `oss-release`.
+Status: in progress - 2026-08-17. Executes on branch `oss-release`.
 
-Everything below is **committed** as of 2026-08-07, in seven commits from
-`1e37b53` to `6aa9001`, all DCO signed off. Nothing is pushed.
+Everything below is **committed**: 49 commits ahead of `master`, the
+plan's own work beginning at `1e37b53`. Nothing is pushed.
+
+`io.onfhir` 4.0.0 was published to Maven Central on 2026-08-17, which
+released the three-item gate below. Item 1 has since passed; items 2 and 3
+are now unblocked and outstanding.
 
 Completed so far:
 
@@ -46,14 +50,16 @@ itself deleted in Phase 8, so the dangling link is transient.
   `repofyr-embedded-mongo` and a `repofyr-dev-server` launcher; no runnable
   server carries it any more.
 
-- **Phase 6** - complete. Test coverage: 310 tests, up from 251.
+- **Phase 6** - complete. Test coverage: 310 tests, up from 251. Later work
+  outside this plan took it to **334**; `repofyr-server-r4` is 162 of them.
 
-Outstanding: **Phase 8** (retire the plans, cut the release).
+Outstanding: **Phase 8** (retire the plans, cut the release), and gate items
+2 and 3.
 
 ### Work done outside this plan
 
-Two maintainer-directed changes landed after Phase 7 and are not phases of this
-plan. Both are complete and verified.
+Maintainer-directed changes landed after Phase 7 and are not phases of this
+plan. All are complete and verified.
 
 - **Configuration settings grouped and adopted.** `onfhir-libs` 4.0.0 gained
   `fromConfig` companions for the typed runtime settings (planned and executed
@@ -65,8 +71,35 @@ plan. Both are complete and verified.
   public members to 18. `fhir.search-handling` moved to
   `fhir.default.search-handling` with a deprecated-key fallback. 18 new tests.
 - **The STU3 SUBSETTED fix** described below.
+- **Configuration layering, 2026-08-17** (`3c1fb98`). Repofyr's shipped
+  defaults moved out of `application.conf` into `repofyr-reference.conf`, and
+  `OnfhirConfig` now assembles four layers explicitly, so a deployment's own
+  file overrides rather than replaces them. Typesafe Config's `config.file`
+  replaces the `application.conf` lookup, so before this a deployment
+  supplying its own file silently lost every default - which is why the Docker
+  sample was a 268-line copy of the whole file. Not a plain `reference.conf`:
+  there the `akka.*` entries would be peers of Akka's own, decided by
+  classpath order, which resolves one way on a plain classpath and the
+  opposite way in a shaded jar.
+- **Docker setup made to work, 2026-08-17** (`5d85bd4`, `3b74a0a`). The
+  shipped `docker-compose.yml` had never started the server: its MongoDB
+  healthcheck used the `mongo` shell removed in 6.0, so the container never
+  became healthy and the `service_healthy` dependency held the server back.
+  Also added MongoDB credentials and TLS through the environment
+  (`DB_USERNAME`/`DB_PASSWORD`/`DB_AUTHDB`, `SSL_KEYSTORE`/
+  `SSL_KEYSTORE_PASSWORD`), fixed a credential requirement that silently
+  discarded username and password unless `authdb` was also set, and added
+  container healthchecks and a `.dockerignore`. Verified against real
+  containers, including a negative control.
+- **Audit and dead-code fixes, 2026-08-17** (`973eb2d`, `35623ea`, `c0e5daa`,
+  `f738995`). STU3 audit records never carried an `entity` element - it was
+  built and the result discarded rather than assigned - and the search query
+  entity was never attached. Both fixed, with the reactor's first audit-creator
+  tests. Two commented-out blocks removed, and `OnfhirConfig.serverName`
+  documented as a constant that must not be repointed, since it reaches
+  `AuditEvent.agent.name` and the dev-server data directory.
 
-Reactor total is now **310 tests**, up from the 251 baseline.
+Reactor total is now **334 tests**, up from the 251 baseline.
 
 ### A permission-model gap worth knowing about
 
@@ -223,28 +256,43 @@ The invariants from `AGENTS.md` continue to hold and are not renegotiated here:
   documents only the server-side migration and cross-links rather than
   duplicating.
 
-## Release gate - blocked on the onfhir-libs 4.0.0 publish
+## Release gate - released by the onfhir-libs 4.0.0 publish
 
-Three items cannot complete until `io.onfhir:*:4.0.0` is on Maven Central.
-Everything else in this plan is independent of it.
+`io.onfhir:*:4.0.0` reached Maven Central on 2026-08-17. All three items
+below were blocked on it; item 1 has passed, items 2 and 3 are open.
 
-1. **Fresh-cache resolution proof.** Until the libraries are public, the
-   reactor only builds because the signed staging artifacts sit in the local
-   Maven cache. Once published, prove independence with a throwaway repository
-   so a stale cache cannot mask a failure:
+1. **Fresh-cache resolution proof - PASSED 2026-08-17.** Until the libraries
+   were public, the reactor only built because the signed staging artifacts
+   sat in the local Maven cache. Proven independent with a throwaway
+   repository, so a stale cache could not mask a failure:
 
    ```bash
    mvn -B -Dmaven.repo.local=C:/tmp/repofyr-precheck -DskipTests compile
    ```
 
-2. **Phase 5 (CI).** The `server-build` job cannot pass before this - a hosted
-   runner has no local cache. Write the workflow during Phase 5 if convenient,
-   but expect red until the publish, and do not debug that redness as a
-   workflow fault.
-3. **Phase 8 (release cut).** Setting `revision` to `4.0.0` and staging a
-   signed release is meaningless while a dependency is unpublished.
+   Run as `test` rather than `-DskipTests compile`, which proves the suite
+   too: **334 tests, all ten modules green, zero resolution failures.** The
+   exit code is not the evidence - provenance is. Maven's
+   `_remote.repositories` in the throwaway repo records
+   `onfhir-common_2.13-4.0.0.jar>central=`, and that repo contains no `.asc`
+   files where `~/.m2` does, so the build consumed the published artifacts
+   and not the staging copies. Thirteen of the fourteen `io.onfhir`
+   artifacts were fetched; `onfhir-template-engine_2.13` was not, because
+   nothing depends on it - it is managed at `pom.xml:520` and referenced
+   nowhere, dead config left by the split and worth deleting.
 
-The merge of `oss-release` into `master` should happen after item 1 passes.
+2. **Phase 5 (CI) - unblocked, unconfirmed.** The `server-build` job could not
+   pass before the publish, a hosted runner having no local cache, so its
+   redness was expected rather than a workflow fault. It should now go green
+   on the next run with no change to the workflow. Confirm that rather than
+   assume it: a genuine workflow defect would have been indistinguishable
+   from the expected redness all this time, and is only now visible.
+3. **Phase 8 (release cut) - unblocked.** Setting `revision` to `4.0.0` and
+   staging a signed release was meaningless while a dependency was
+   unpublished. It no longer is.
+
+The merge of `oss-release` into `master` should happen after item 1 passes;
+item 1 passed on 2026-08-17.
 
 ## Open decisions
 
