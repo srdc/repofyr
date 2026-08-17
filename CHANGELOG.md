@@ -36,7 +36,7 @@ below.
 
 ### Added
 
-- Test coverage across the reactor, 251 tests to 320. `repofyr-event` had none
+- Test coverage across the reactor, 251 tests to 327. `repofyr-event` had none
   and now round-trips every event type through `InternalJsonMarshallers`,
   pinning that the emitted type hint is the simple class name so a 3.x consumer
   reads 4.0.0 Kafka payloads unchanged despite the package rename.
@@ -59,6 +59,22 @@ below.
   resource started alongside the server outlives every in-flight request; a JVM
   shutdown hook would race Akka's own `CoordinatedShutdown` instead. The
   parameter defaults to `Nil`, so existing callers are unaffected.
+- **MongoDB credentials can be supplied through the environment**, as
+  `DB_USERNAME`, `DB_PASSWORD` and `DB_AUTHDB`. They are read by the shipped
+  configuration rather than mapped onto JVM system properties like the other
+  container settings, because system properties are visible in the process list
+  to anything sharing the container - no place for a database password. A
+  secured external MongoDB therefore needs no configuration file at all:
+  `docker run -e DB_HOST=... -e DB_USERNAME=... -e DB_PASSWORD=... srdc/repofyr:r4`.
+- The container images declare a `HEALTHCHECK` that requests the
+  CapabilityStatement, so a container reports healthy only once configuration
+  has loaded and the database has answered - not merely once the port is open.
+  Both Dockerfiles already installed curl for a healthcheck that did not exist.
+- `docker-compose.yml` takes the image tag from `REPOFYR_TAG`, defaulting to
+  `r4`, so one compose file serves all three FHIR releases instead of needing
+  the `image:` line edited.
+- A `.dockerignore`. `Dockerfile-buildJar` does `COPY . ./`, which was sending
+  roughly a gigabyte of `.git` and build output to the daemon.
 - Published jars now carry the GPL-3.0 license text at `META-INF/LICENSE`.
 - Each of the seven module POMs publishes its own `<name>` and
   `<description>`. Previously all seven inherited only the parent's, so
@@ -213,6 +229,20 @@ below.
   standalone jar with no definitions in it, which fails at startup.
 
 ### Fixed
+
+- **The shipped `docker-compose.yml` could not start the server at all.** Its
+  MongoDB healthcheck invoked the legacy `mongo` shell, which MongoDB removed
+  in 6.0 and the pinned `mongo:7.0` image does not carry, so every probe exited
+  127, the container was marked unhealthy, and the `service_healthy` dependency
+  meant the FHIR server never started. The probe now uses `mongosh`, and gains
+  a `start_period` so a slow first start is not counted against it.
+- **MongoDB credentials were ignored unless `authdb` was also set.** The client
+  required all three of `username`, `password` and `authdb` before it would
+  authenticate, so the natural configuration - a user name and a password -
+  produced an unauthenticated client and an authentication error from MongoDB
+  naming neither the missing key nor the cause. `authdb` is now optional and
+  defaults to `admin`. The decision moved into `MongoCredentialSupport`, which
+  unlike `MongoDB` can be tested without opening a connection pool.
 
 - **`$meta-delete` now removes what it is asked to remove.** It was broken four
   ways over: it derived the entries to delete from `storedMeta diff

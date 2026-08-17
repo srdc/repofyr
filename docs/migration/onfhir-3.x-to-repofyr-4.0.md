@@ -514,6 +514,32 @@ the service and container are still named `onfhir`. Repointing the image
 tag is the whole change - existing bind mounts and named volumes attach
 exactly as before.
 
+Three environment variables are new, all optional and all additive:
+
+| Variable | Effect |
+|---|---|
+| `DB_USERNAME` | MongoDB user to connect as |
+| `DB_PASSWORD` | that user's password |
+| `DB_AUTHDB` | database to verify the credential against; defaults to `admin` |
+
+These are read from the environment by the shipped configuration rather than
+mapped onto `-D` system properties like `DB_HOST` and `DB_NAME`, because
+system properties appear in the container's process list and a database
+password should not. If you previously reached a secured MongoDB by mounting a
+configuration file that set `mongodb.username` and friends, that still works
+and still takes precedence; the variables are an alternative, not a
+replacement.
+
+One behaviour change worth knowing if you already set those keys: `authdb` used
+to be **required** before any credential was sent, so a configuration with only
+a user name and password was silently unauthenticated. It is now optional and
+defaults to `admin`. A deployment that was relying on the old behaviour to stay
+anonymous - which would be a strange thing to rely on - would now start
+authenticating.
+
+`DB_EMBEDDED` is gone. It stopped being read when embedded MongoDB moved to
+`repofyr-dev-server`; setting it did nothing in either case.
+
 ### FHIR definitions are no longer embedded
 
 The R4 and R5 server modules used to embed their own copy of

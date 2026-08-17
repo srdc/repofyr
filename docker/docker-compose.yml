@@ -7,16 +7,22 @@ services:
     container_name: mongo
     restart: always
     healthcheck:
-      test: echo 'db.stats().ok' | mongo localhost:27017/test --quiet
+      # mongosh, not mongo: the legacy shell was removed in MongoDB 6.0, so on this image the old
+      # probe exits 127 and the container never becomes healthy - which, with the dependency below,
+      # meant the FHIR server never started at all.
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
       interval: 10s
       timeout: 10s
       retries: 5
+      start_period: 20s
     volumes:
       - onfhirdata:/data/db
   onfhir:
-    # Must match the FHIR version of sample-setup/conf/conformance-statement.json,
-    # which declares fhirVersion 4.0.1 (R4).
-    image: srdc/repofyr:r4
+    # Must match the FHIR version of sample-setup/conf/conformance-statement.json. The sample
+    # declares fhirVersion 4.0.1, so REPOFYR_TAG defaults to r4; override it together with the
+    # conformance resources to run another release:
+    #   REPOFYR_TAG=r5 docker compose up -d
+    image: srdc/repofyr:${REPOFYR_TAG:-r4}
     container_name: onfhir
     restart: always
     depends_on:
@@ -25,8 +31,10 @@ services:
     environment:
       - APP_CONF_FILE=/usr/local/onfhir/conf/application-docker.conf
       - FHIR_ROOT_URL=http://127.0.0.1:8080/fhir
-      - DB_EMBEDDED=false
       - DB_HOST=mongo:27017
+      # A secured MongoDB additionally needs DB_USERNAME and DB_PASSWORD, plus DB_AUTHDB when the
+      # credential does not live in 'admin'. The mongo service above runs unauthenticated, which is
+      # fine for a sample and not fine for anything else.
     ports:
       - "8080:8080"
     volumes:

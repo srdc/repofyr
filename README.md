@@ -194,9 +194,52 @@ $ cd docker
 $ docker compose -f docker-compose.yml -p onfhir up -d
 ```
 
-To run an R5 server instead, build with `--build-arg FHIR_VERSION=r5 -t srdc/repofyr:r5`, point the compose `image`
-at that tag, and replace `sample-setup/conf` with R5 conformance resources. See `docker/build.sh` for the full set of
-build commands.
+To run another release, build that image and set `REPOFYR_TAG`, replacing `sample-setup/conf` with conformance
+resources for the matching FHIR version - the CapabilityStatement's `fhirVersion` has to agree with the image:
+
+```
+$ REPOFYR_TAG=r5 docker compose -f docker-compose.yml -p onfhir up -d
+```
+
+See `docker/build.sh` for the full set of build commands.
+
+#### Running against your own MongoDB
+
+The compose file exists to give you a MongoDB alongside the server. If you already have one, you do not need compose
+at all - a single container is enough, and no configuration file is required, because the server falls back to its
+shipped defaults for everything you do not set:
+
+```
+$ docker run -d -p 8080:8080 -e DB_HOST=mongo01.example.org:27017 srdc/repofyr:r4
+```
+
+`DB_HOST` is the one value nobody can guess for you. The default is `localhost:27017`, and inside a container
+`localhost` is the container itself - never your host, never another container:
+
+| Where MongoDB runs | `DB_HOST` |
+|---|---|
+| Another service in the same compose file | the service name, e.g. `mongo:27017` |
+| On the Docker host | `host.docker.internal:27017` (Docker Desktop; on plain Linux use the gateway address) |
+| A separate server or managed service | its real hostname, e.g. `mongo01.example.org:27017` |
+
+If the database requires authentication, supply the credentials through the environment. They are read directly from
+it, so a password never has to be written into a configuration file, and never appears on the JVM command line where
+the container's process list would expose it:
+
+```
+$ docker run -d -p 8080:8080 \
+    -e DB_HOST=mongo01.example.org:27017 \
+    -e DB_USERNAME=fhiruser \
+    -e DB_PASSWORD="$MONGO_PASSWORD" \
+    srdc/repofyr:r4
+```
+
+`DB_AUTHDB` is only needed when the credential lives somewhere other than `admin`. A user name and a password must
+both be present before any credential is sent.
+
+To tailor the FHIR API rather than the database, mount a configuration directory as the compose file does - a
+CapabilityStatement, profiles, and an `application.conf` naming them. That file needs only the keys it changes; see
+`docker/sample-setup/conf` for a worked example.
 
 Then you will be able to send requests to this running instance from your Docker host. The following command returns the CapabilityStatement:
 ```

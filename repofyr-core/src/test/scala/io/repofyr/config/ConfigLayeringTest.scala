@@ -26,7 +26,7 @@ class ConfigLayeringTest extends Specification {
   "The shipped defaults resource" should {
 
     "be on the classpath and carry the server defaults" in {
-      val defaults = ConfigFactory.parseResources("repofyr-reference.conf")
+      val defaults = ConfigFactory.parseResources("repofyr-reference.conf").resolve()
       defaults.isEmpty must beFalse
       defaults.getString("mongodb.db") mustEqual "onfhir"
       defaults.getString("mongodb.host") mustEqual "localhost:27017"
@@ -36,7 +36,7 @@ class ConfigLayeringTest extends Specification {
     "agree with the code-level fallback for the database name" in {
       // These two disagreed until 4.0.0 - the file said 'onfhir' and the case class said 'fhir' -
       // so a configuration that omitted mongodb.db silently addressed a different database.
-      val defaults = ConfigFactory.parseResources("repofyr-reference.conf")
+      val defaults = ConfigFactory.parseResources("repofyr-reference.conf").resolve()
       defaults.getString("mongodb.db") mustEqual MongoDbSettings.Standard.dbName
     }
   }
@@ -52,6 +52,35 @@ class ConfigLayeringTest extends Specification {
       settings.hosts mustEqual Seq("localhost:27017")
       settings.writeConcern mustEqual "1"
       settings.useTransaction must beFalse
+    }
+
+    "leave MongoDB credentials unset when the environment supplies none" in {
+      val settings = MongoDbSettings.fromConfig(
+        ConfigFactory.parseResources("repofyr-reference.conf").resolve().getConfig("mongodb"))
+
+      settings.username must beNone
+      settings.password must beNone
+      settings.authDbName must beNone
+    }
+
+    "take MongoDB credentials from the environment" in {
+      // The defaults declare username/password/authdb as optional substitutions, which resolve
+      // against the root config and then the process environment. Supplying them at the root here
+      // exercises the same path DB_USERNAME and DB_PASSWORD take in a container, without the test
+      // having to mutate its own environment.
+      val resolved = ConfigFactory
+        .parseString("""
+            |DB_USERNAME = alice
+            |DB_PASSWORD = s3cret
+            |""".stripMargin)
+        .withFallback(ConfigFactory.parseResources("repofyr-reference.conf"))
+        .resolve()
+
+      val settings = MongoDbSettings.fromConfig(resolved.getConfig("mongodb"))
+      settings.username must beSome("alice")
+      settings.password must beSome("s3cret")
+      // Unset, so MongoCredentialSupport falls back to admin rather than skipping authentication.
+      settings.authDbName must beNone
     }
   }
 

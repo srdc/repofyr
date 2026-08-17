@@ -50,8 +50,8 @@ object MongoDB {
       ))
 
     //If database is secure
-    if (OnfhirConfig.mongoDbSettings.username.isDefined && OnfhirConfig.mongoDbSettings.password.isDefined && OnfhirConfig.mongoDbSettings.authDbName.isDefined){
-      clientSettingsBuilder = clientSettingsBuilder.credential(MongoCredential.createCredential(OnfhirConfig.mongoDbSettings.username.get, OnfhirConfig.mongoDbSettings.authDbName.get, OnfhirConfig.mongoDbSettings.password.get.toCharArray))
+    MongoCredentialSupport.credentialFor(OnfhirConfig.mongoDbSettings).foreach { credential =>
+      clientSettingsBuilder = clientSettingsBuilder.credential(credential)
     }
 
     //If pooling is configured

@@ -1,0 +1,18 @@
+# Keeps the build context small. Dockerfile-buildJar does `COPY . ./`, and without this the daemon
+# receives roughly a gigabyte - about 100 MB of .git and 860 MB of build output - to produce an
+# image that needs the sources and one jar.
+
+.git
+.gitattributes
+.github
+.idea
+.claude
+.agents
+docs
+logs
+
+# Build output. Dockerfile-addJar copies the shaded jar out of a module's target directory, so that
+# one file has to survive; nothing else in target is ever needed, and Dockerfile-buildJar rebuilds
+# from source anyway.
+**/target/*
+!**/target/repofyr-server-standalone.jar

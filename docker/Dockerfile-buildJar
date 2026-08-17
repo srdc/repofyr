@@ -26,4 +26,11 @@ COPY --from=builder $ONFHIR_HOME/repofyr-server-$FHIR_VERSION/target/repofyr-ser
 COPY docker/docker-entrypoint.sh .
 RUN chmod +x docker-entrypoint.sh
 
+# Serving a CapabilityStatement is the cheapest proof the server is actually up rather than merely
+# listening: it means configuration loaded and the database answered. HEAD, because the route
+# accepts it and nothing here needs the body. The start period is generous because initialization
+# validates every configured profile, which is slow on a large implementation guide.
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
+    CMD curl -fsS --head "http://localhost:${SERVER_PORT:-8080}/${SERVER_BASE_URI:-fhir}/metadata" || exit 1
+
 ENTRYPOINT ["./docker-entrypoint.sh"]
