@@ -38,11 +38,12 @@ class STU3AuditCreator extends IFhirAuditCreator {
     //Resolve entities
     val relatedResourceEntities = createRelatedResourceEntitities(fhirRequest)
     val relatedPatientEntities = createRelatedPatientEntitities(fhirRequest, authzContext)
+    val queryEntity = createQueryEntity(fhirRequest)
     val allEntities =
       if(batchTransactionId.isDefined)
-        relatedResourceEntities ++ relatedPatientEntities :+ createRelatedBatchTransactionEntity(batchTransactionId.get)
+        relatedResourceEntities ++ relatedPatientEntities ++ queryEntity.toSeq :+ createRelatedBatchTransactionEntity(batchTransactionId.get)
       else
-        relatedResourceEntities ++ relatedPatientEntities
+        relatedResourceEntities ++ relatedPatientEntities ++ queryEntity.toSeq
 
     //Construct audit record
     var auditRecord = createBaseAuditEventRecord() ~
@@ -56,7 +57,7 @@ class STU3AuditCreator extends IFhirAuditCreator {
       ("source" -> ("site" -> OnfhirConfig.fhirEndpointSettings.rootUrl))
 
     if(allEntities.nonEmpty)
-      auditRecord ~ ("entity" -> allEntities)
+      auditRecord = auditRecord ~ ("entity" -> allEntities)
 
     auditRecord
   }

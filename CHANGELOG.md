@@ -36,7 +36,7 @@ below.
 
 ### Added
 
-- Test coverage across the reactor, 251 tests to 330. `repofyr-event` had none
+- Test coverage across the reactor, 251 tests to 334. `repofyr-event` had none
   and now round-trips every event type through `InternalJsonMarshallers`,
   pinning that the emitted type hint is the simple class name so a 3.x consumer
   reads 4.0.0 Kafka payloads unchanged despite the package rename.
@@ -255,6 +255,16 @@ below.
   naming neither the missing key nor the cause. `authdb` is now optional and
   defaults to `admin`. The decision moved into `MongoCredentialSupport`, which
   unlike `MongoDB` can be tested without opening a connection pool.
+
+- **STU3 audit records now carry their entities.** `STU3AuditCreator` built the
+  `entity` element with `auditRecord ~ ("entity" -> allEntities)` and discarded
+  the result instead of assigning it, so no STU3 AuditEvent ever recorded the
+  resource touched, the patient concerned, or the enclosing batch - the elements
+  were computed on every interaction and thrown away. Separately,
+  `createQueryEntity` was written but never called, so a search recorded nothing
+  about what was searched for, where R4 records it. Both are fixed, and
+  `STU3AuditCreatorTest` covers them; the audit creators had no tests at all,
+  which is why two defects sat in one method.
 
 - **`$meta-delete` now removes what it is asked to remove.** It was broken four
   ways over: it derived the entries to delete from `storedMeta diff

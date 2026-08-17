@@ -618,7 +618,8 @@ renamed to `db-index-conf-stu3.json`.
 
 ### STU3 summarized responses now carry the STU3 code system
 
-This is the one place where an STU3 server's **output** changes.
+One of two places where an STU3 server's **output** changes; the other is audit
+records, below.
 
 `FhirSTU3Configurator` has always declared
 `http://hl7.org/fhir/v3/ObservationValue` as the code system for the
@@ -645,6 +646,37 @@ default, so their output is byte-identical to 3.x.
 from `onfhir-r5_2.13` rather than `R4Parser`. `R5Parser` extends
 `R4Parser` with an identical constructor and no overrides, so behavior is
 unchanged; R5 simply gains a real extension point.
+
+### STU3 audit records now carry an `entity` element
+
+The second change to an STU3 server's output, and only relevant if you store
+audit records - `fhir.auditing.repository` set to `local` or `remote`.
+
+`STU3AuditCreator` assembled the `entity` element and then discarded it,
+writing `auditRecord ~ ("entity" -> allEntities)` without assigning the result.
+Every STU3 AuditEvent through 3.x therefore recorded its agents and outcome but
+never the resource the interaction touched, the patient it concerned, or the
+enclosing batch, even though all of them were computed. A search additionally
+recorded nothing about the query, because the helper for it was never called.
+
+From 4.0.0 an STU3 AuditEvent carries `entity` like the R4 one does:
+
+| Interaction | Entities recorded |
+|---|---|
+| create, read, update, patch, delete | the resource reference |
+| any interaction touching patients | the patient references |
+| search | the query, base64-encoded, as R4 already did |
+| batch or transaction member | a reference to the enclosing `Bundle` |
+
+Nothing is removed or renamed, so a consumer that reads the fields it already
+read is unaffected. Two things to be aware of. Records written before the
+upgrade have no `entity`, so a consumer that now expects one must tolerate its
+absence in history - the element is optional in FHIR, and it is omitted rather
+than emitted empty when nothing was resolved. And audit records get larger,
+which matters if you sized storage against the old ones; a search record grows
+by roughly the length of its query.
+
+R4 and R5 are unaffected - both already recorded entities correctly.
 
 ### Embedded MongoDB left the runnable servers
 
