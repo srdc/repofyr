@@ -18,16 +18,29 @@ way. What they left behind lives in the documents above and in `CHANGELOG.md`.
 
 ## Branch policy
 
-- `master` is trunk. It was fast-forwarded to `oss-release` at the 4.0.0
-  release cut, the lineage being linear, so no merge commit exists.
-- `3.4` is the retired pre-split line, pointing at what was `master` before
-  that fast-forward: the old monorepo shape, twelve `onfhir-*` modules in one
-  reactor at `3.4-SNAPSHOT`. It is an archive, not a maintenance branch -
-  `SECURITY.md` states 3.x receives no fixes. Do not commit to it.
+- `master` is trunk, carrying the 4.0.0 release cut. The plan expected a
+  fast-forward from `oss-release`, but `master` had gained a commit in the
+  meantime, so the cut is the merge `ba8168a` and the lineage is not linear.
+  The plan's own instruction was to stop rather than force if the
+  fast-forward no longer held, and forcing would have dropped a published
+  commit; merging kept it. Check `origin/master`, not just local `master`,
+  before assuming a fast-forward is available.
+- `3.4` is the retired pre-split line at `98b2e5e`, the true final tip of the
+  old architecture: 13 `onfhir-*` modules in one reactor at `3.4-SNAPSHOT`. It
+  is an archive, not a maintenance branch - `SECURITY.md` states 3.x receives
+  no fixes. Do not commit to it.
 - `updating-operation-handling` was the trunk the split work was built on. Keep
-  it: it carries 21 commits of pre-split work that `3.4` does not, since `3.4`
-  points at the older `master` tip. Those commits are also reachable from
-  `master`, but no version-named branch names them. Do not commit to it.
+  it: it carries 21 commits of pre-split work that `3.4` does not, `3.4` being
+  descended from the older `master` tip rather than from it. Those commits are
+  reachable from `master`, but no version-named branch names them. Do not
+  commit to it.
+- The one commit `3.4` has and `master` reached only through `ba8168a` is a
+  client-side logging fix to `onfhir-client`, a module that left this
+  repository in the split. The merge resolved it as deleted rather than
+  reinstating the file, which would have breached the repository boundary;
+  the change is being ported to `srdc/onfhir-libs` separately. Expect the same
+  shape from any late commit to the pre-split line: preserve it on `3.4`, keep
+  it out of this reactor's tree.
 - Consumers who have not migrated use the published `io.onfhir` 3.x artifacts
   from Maven Central, which are immutable and unaffected by any of the above.
   Neither `3.4` nor any branch is the answer for them; 3.3 is the last released

@@ -14,10 +14,20 @@ Two steps. Run them in order and report each verdict verbatim.
    ```
 
    Expect zero failures and zero errors across all modules. Baseline is
-   251 tests: `repofyr-core` 78, `repofyr-server-r4` 144,
-   `repofyr-server-r5` 21, `repofyr-kafka` 4, `repofyr-server-stu3` 4.
-   `repofyr-event` and `repofyr-operations` currently have no tests, so
-   "Tests run: 0" for those two is expected, not a wiring failure.
+   334 tests: `repofyr-server-r4` 162, `repofyr-core` 115,
+   `repofyr-server-r5` 23, `repofyr-event` 19, `repofyr-server-stu3` 11,
+   `repofyr-kafka` 4.
+
+   `repofyr-operations`, `repofyr-embedded-mongo` and `repofyr-dev-server`
+   have no `src/test` at all, so a module with no test output is expected
+   rather than a wiring failure. Operations coverage lives in
+   `repofyr-server-r4` - `DefaultOperationHandlersTest` resolves every
+   entry of the default dispatch table there, because those handler class
+   names are strings no compiler checks.
+
+   Treat a total below the baseline as a wiring or discovery failure, not
+   a clean run: a module whose tests stop being found still reports
+   SUCCESS. Compare the per-module split, not just the total.
 
 2. **Repository boundary gate**
 
