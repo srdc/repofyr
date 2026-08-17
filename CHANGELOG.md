@@ -36,7 +36,7 @@ below.
 
 ### Added
 
-- Test coverage across the reactor, 251 tests to 327. `repofyr-event` had none
+- Test coverage across the reactor, 251 tests to 329. `repofyr-event` had none
   and now round-trips every event type through `InternalJsonMarshallers`,
   pinning that the emitted type hint is the simple class name so a 3.x consumer
   reads 4.0.0 Kafka payloads unchanged despite the package rename.
@@ -59,6 +59,11 @@ below.
   resource started alongside the server outlives every in-flight request; a JVM
   shutdown hook would race Akka's own `CoordinatedShutdown` instead. The
   parameter defaults to `Nil`, so existing callers are unaffected.
+- **TLS is configured through `SSL_KEYSTORE` and `SSL_KEYSTORE_PASSWORD`**,
+  read from the environment by the shipped configuration. Naming a keystore is
+  what enables TLS; there is no separate switch. Both work outside a container
+  as well, the server reading them directly rather than through the Docker
+  entrypoint. They replace `USE_SSL` - see Removed.
 - **MongoDB credentials can be supplied through the environment**, as
   `DB_USERNAME`, `DB_PASSWORD` and `DB_AUTHDB`. They are read by the shipped
   configuration rather than mapped onto JVM system properties like the other
@@ -204,6 +209,13 @@ below.
 
 ### Removed
 
+- **The `USE_SSL` environment variable**, replaced by `SSL_KEYSTORE` and
+  `SSL_KEYSTORE_PASSWORD`. It set `spray.can.server.ssl-encryption`, a key Akka
+  HTTP has never read, and hardcoded both a keystore path belonging to a
+  different product (`/pds/ssl/keystore.jks`) and the built-in default password.
+  So it enabled TLS only for a deployment that happened to mount a keystore at
+  that exact path under that exact password. Anyone doing so should set the two
+  new variables instead; see section 7 of the migration guide.
 - **Embedded MongoDB is no longer part of the runnable servers.**
   `io.onfhir.db.EmbeddedMongo` was compile-scoped in the core module, so it
   shipped inside every standalone jar and reached every consumer embedding

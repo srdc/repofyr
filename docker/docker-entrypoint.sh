@@ -45,12 +45,12 @@ if [ ! -z "$KAFKA_PORT" ]; then
     JAVA_CMD+="-Dkafka.enabled=true "
 fi
 
-# Configure SSL
-if [ ! -z "$USE_SSL" ]; then
-    JAVA_CMD+="-Dspray.can.server.ssl-encryption=on "
-    JAVA_CMD+="-Dserver.ssl.keystore=/pds/ssl/keystore.jks "
-    JAVA_CMD+="-Dserver.ssl.password=fhir-repository "
-fi
+# TLS needs nothing here. SSL_KEYSTORE and SSL_KEYSTORE_PASSWORD are read straight from the
+# environment by the shipped configuration, which keeps the keystore password off the command line
+# where the process list would expose it. Mount a keystore and point SSL_KEYSTORE at it.
+#
+# This replaces USE_SSL, which set a spray.can key Akka HTTP has never read and hardcoded both a
+# keystore path belonging to another product and the built-in default password.
 
 # Configure MongoDB
 if [ ! -z "$DB_HOST" ]; then

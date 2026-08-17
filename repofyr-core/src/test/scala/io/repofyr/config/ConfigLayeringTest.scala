@@ -82,6 +82,34 @@ class ConfigLayeringTest extends Specification {
       // Unset, so MongoCredentialSupport falls back to admin rather than skipping authentication.
       settings.authDbName must beNone
     }
+
+    "serve plain HTTP when no keystore is configured" in {
+      // Worth pinning in its own right: a regression here would have the server quietly serving
+      // TLS off the sample keystore that SSLConfig falls back to.
+      val settings = ServerSettings.fromConfig(
+        ConfigFactory.parseResources("repofyr-reference.conf").resolve().getConfig("server"))
+
+      settings.ssl.enabled must beFalse
+      settings.ssl.keystorePath must beNone
+      settings.ssl.keystorePassword must beNone
+    }
+
+    "enable TLS when the environment supplies a keystore" in {
+      // There is no separate on/off switch - naming a keystore is what enables TLS - so this pins
+      // the contract SSL_KEYSTORE relies on.
+      val resolved = ConfigFactory
+        .parseString("""
+            |SSL_KEYSTORE = "/etc/repofyr/keystore.jks"
+            |SSL_KEYSTORE_PASSWORD = changeit
+            |""".stripMargin)
+        .withFallback(ConfigFactory.parseResources("repofyr-reference.conf"))
+        .resolve()
+
+      val settings = ServerSettings.fromConfig(resolved.getConfig("server"))
+      settings.ssl.enabled must beTrue
+      settings.ssl.keystorePath must beSome("/etc/repofyr/keystore.jks")
+      settings.ssl.keystorePassword must beSome("changeit")
+    }
   }
 
   "The assembled application config" should {

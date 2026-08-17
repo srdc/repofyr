@@ -241,6 +241,22 @@ To tailor the FHIR API rather than the database, mount a configuration directory
 CapabilityStatement, profiles, and an `application.conf` naming them. That file needs only the keys it changes; see
 `docker/sample-setup/conf` for a worked example.
 
+#### Serving HTTPS
+
+Mount a Java keystore and name it with `SSL_KEYSTORE`. Providing a keystore is what enables TLS - there is no separate
+switch - and `SSL_KEYSTORE_PASSWORD` is read from the environment so the password stays off the command line:
+
+```
+$ docker run -d -p 8080:8080 \
+    -e DB_HOST=mongo01.example.org:27017 \
+    -e SSL_KEYSTORE=/usr/local/onfhir/ssl/keystore.jks \
+    -e SSL_KEYSTORE_PASSWORD="$KEYSTORE_PASSWORD" \
+    -v /path/to/ssl:/usr/local/onfhir/ssl:ro \
+    srdc/repofyr:r4
+```
+
+Both variables work outside Docker too, since the server reads them directly rather than through the entrypoint.
+
 Then you will be able to send requests to this running instance from your Docker host. The following command returns the CapabilityStatement:
 ```
 $ curl http://127.0.0.1:8080/fhir/metadata

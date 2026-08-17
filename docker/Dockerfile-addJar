@@ -1,7 +1,11 @@
 FROM eclipse-temurin:11-jre
 
-# We need curl for healthcheck
-RUN apt -y update; apt -y install curl
+# curl, for the HEALTHCHECK below. Chained with && so a failed index update fails the build rather
+# than falling through to an install against a stale index, and the lists are dropped again because
+# they would otherwise sit in this layer for the life of the image.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
 
 ENV ONFHIR_HOME /usr/local/onfhir
 RUN mkdir -p "$ONFHIR_HOME"
@@ -16,7 +20,13 @@ RUN chmod +x docker-entrypoint.sh
 # listening: it means configuration loaded and the database answered. HEAD, because the route
 # accepts it and nothing here needs the body. The start period is generous because initialization
 # validates every configured profile, which is slow on a large implementation guide.
+#
+# The scheme follows SSL_KEYSTORE, the same condition the server itself uses, because enabling TLS
+# replaces the plain listener on the same port rather than adding a second one - so a fixed http://
+# probe would report every TLS deployment as permanently unhealthy. -k because this dials localhost,
+# where the point is liveness, not validating a certificate chain.
 HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
-    CMD curl -fsS --head "http://localhost:${SERVER_PORT:-8080}/${SERVER_BASE_URI:-fhir}/metadata" || exit 1
+    CMD if [ -n "$SSL_KEYSTORE" ]; then SCHEME=https; else SCHEME=http; fi; \
+        curl -fsS -k --head "$SCHEME://localhost:${SERVER_PORT:-8080}/${SERVER_BASE_URI:-fhir}/metadata" || exit 1
 
 ENTRYPOINT ["./docker-entrypoint.sh"]

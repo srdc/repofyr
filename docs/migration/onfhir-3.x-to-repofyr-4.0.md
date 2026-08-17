@@ -540,6 +540,34 @@ authenticating.
 `DB_EMBEDDED` is gone. It stopped being read when embedded MongoDB moved to
 `repofyr-dev-server`; setting it did nothing in either case.
 
+**`USE_SSL` is gone**, and this one needs action if you used it. It set
+`spray.can.server.ssl-encryption` - a key Akka HTTP has never read - and
+hardcoded the keystore path `/pds/ssl/keystore.jks`, from a different product,
+together with the built-in default password `fhir-repository`. It therefore
+enabled TLS only for a deployment that happened to mount a keystore at exactly
+that path under exactly that password. Two variables replace it:
+
+| Variable | Effect |
+|---|---|
+| `SSL_KEYSTORE` | path to the Java keystore; naming one is what enables TLS |
+| `SSL_KEYSTORE_PASSWORD` | its password; defaults to `fhir-repository` when unset |
+
+```bash
+# 3.x
+-e USE_SSL=true -v /path/to/ssl:/pds/ssl
+
+# 4.0.0
+-e SSL_KEYSTORE=/usr/local/onfhir/ssl/keystore.jks \
+-e SSL_KEYSTORE_PASSWORD=... \
+-v /path/to/ssl:/usr/local/onfhir/ssl:ro
+```
+
+You can keep the old mount path if you prefer - `SSL_KEYSTORE` takes whatever
+path you give it, so `/pds/ssl/keystore.jks` still works. Like the database
+credentials, these are read from the environment rather than mapped onto `-D`
+properties, so the keystore password stays out of the process list, and both
+work for a plain `java -jar` deployment as well.
+
 ### FHIR definitions are no longer embedded
 
 The R4 and R5 server modules used to embed their own copy of
