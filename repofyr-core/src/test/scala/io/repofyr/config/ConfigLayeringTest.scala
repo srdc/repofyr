@@ -133,5 +133,16 @@ class ConfigLayeringTest extends Specification {
       OnfhirConfig.mongoDbSettings.dbName mustEqual "onfhir"
       OnfhirConfig.serverSettings.port mustEqual 8080
     }
+
+    "hold the server name at its stored value" in {
+      // Not a tautology: serverName reads spray.can.server.server-header, a key nothing sets, so it
+      // is this constant in practice. Repointing it at akka.http.server.server-header - which the
+      // defaults do set, to a different string - looks like an obvious tidy-up and would change
+      // AuditEvent.agent.name on every newly written audit record, and the data directory
+      // repofyr-dev-server derives from it. Both are stored-data conventions, so the value is
+      // pinned here rather than left to a reviewer to notice.
+      OnfhirConfig.serverName mustEqual "onFHIR Repository"
+      OnfhirConfig.config.getString("akka.http.server.server-header") mustEqual "OnFhir.io FHIR Repository"
+    }
   }
 }

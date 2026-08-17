@@ -36,7 +36,7 @@ below.
 
 ### Added
 
-- Test coverage across the reactor, 251 tests to 329. `repofyr-event` had none
+- Test coverage across the reactor, 251 tests to 330. `repofyr-event` had none
   and now round-trips every event type through `InternalJsonMarshallers`,
   pinning that the emitted type hint is the simple class name so a 3.x consumer
   reads 4.0.0 Kafka payloads unchanged despite the package rename.

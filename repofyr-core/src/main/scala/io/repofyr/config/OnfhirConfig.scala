@@ -145,7 +145,25 @@ object OnfhirConfig {
   /* so grouping them would force a companion to read absolute paths.                          */
   /* ---------------------------------------------------------------------------------------- */
 
-  /** Name of the server, from the legacy Spray key `spray.can.server.server-header`. */
+  /**
+   * Name this deployment gives itself.
+   *
+   * In practice the constant below. `spray.can.server.server-header` belongs to Spray, the
+   * framework Akka HTTP replaced, and no shipped configuration sets it - the server header
+   * operators actually set is `akka.http.server.server-header`. The lookup remains so that a
+   * pre-4.0.0 configuration which did set the Spray key keeps working.
+   *
+   * Do not repoint this at the Akka key to close that gap, tempting as the dead lookup makes it
+   * look. The value reaches two places where changing it is not cosmetic:
+   *
+   *  - the R4 and STU3 audit creators write it to `AuditEvent.agent.name` for the receiver agent,
+   *    so a new value makes fresh audit records disagree with every one already stored
+   *  - `repofyr-dev-server` derives its MongoDB data directory from it, so a new value silently
+   *    orphans a developer's existing local database
+   *
+   * Making the name configurable therefore needs a key of its own defaulting to this exact value,
+   * not a redirect to a key whose value differs.
+   */
   lazy val serverName: String =
     Try(config.getString("spray.can.server.server-header")).getOrElse("onFHIR Repository")
 
