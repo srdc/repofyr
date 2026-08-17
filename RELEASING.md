@@ -55,7 +55,7 @@ library API surface, so the migration guide is the contract that
   published, so the first server release cannot go out ahead of the
   library release it depends on.
 - Full verification suite is green (the `verify` skill):
-  1. `mvn -B test` - full reactor, zero failures (251 tests today);
+  1. `mvn -B test` - full reactor, zero failures (334 tests today);
   2. `powershell -File scripts/check-server-boundary.ps1` - expect
      `check-server-boundary: PASS - server modules stay in io.repofyr.*`.
 - Fresh-checkout rehearsal: clone into a temporary directory and run the

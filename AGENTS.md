@@ -82,8 +82,8 @@ build when it happens.
 Run the `verify` skill, which executes the suite in the right order. The raw
 commands, as a fallback:
 
-- Full reactor: `mvn -B test` (baseline 251 tests; `repofyr-server-r4` is the
-  main regression net at 144 of them)
+- Full reactor: `mvn -B test` (baseline 334 tests; `repofyr-server-r4` is the
+  main regression net at 162 of them)
 - Targeted module: `mvn -B -pl <module> -am test`
 - Repository boundary: `powershell -File scripts/check-server-boundary.ps1`
 

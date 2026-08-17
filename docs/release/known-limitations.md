@@ -184,3 +184,23 @@ what is described here, please report it privately as described in
       collection - commonly the patient or subject reference - and verify
       after startup that the collection was actually sharded rather than
       only warned about.
+
+14. `Dockerfile-buildJar` cannot build until the libraries are published
+    - It runs `mvn package` inside the builder image, which starts with an
+      empty Maven cache and can reach only Maven Central. `io.onfhir` 4.0.0
+      is not on Central yet - Central carries `onfhir-common_2.13` up to 3.3 -
+      so the build fails resolving `io.onfhir:onfhir-common_2.13:jar:4.0.0`
+      at the first module that needs it, `repofyr-event`. A developer's local
+      build succeeds only because `~/.m2` holds a locally installed copy,
+      which the container deliberately cannot see. Section 1 of
+      `RELEASING.md` records the same constraint for the server release
+      itself: it cannot go out ahead of the library release it depends on.
+    - Use `Dockerfile-addJar`, which packages a jar you have already built on
+      the host and runs no Maven inside the image:
+      `mvn package -pl repofyr-server-r4 -am` then
+      `docker build -f docker/Dockerfile-addJar --build-arg FHIR_VERSION=r4
+      -t srdc/repofyr:r4 .`. Once `io.onfhir` 4.0.0 is on Central,
+      `Dockerfile-buildJar` starts working with no change to it.
+    - Worth keeping rather than removing: it is the only build path that
+      resolves the libraries from a clean cache, so it fails exactly when a
+      release would be irreproducible for anyone outside this machine.
