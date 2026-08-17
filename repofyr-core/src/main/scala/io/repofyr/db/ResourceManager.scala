@@ -1787,29 +1787,6 @@ class ResourceManager(fhirConfig: FhirServerConfig, fhirEventBus: IFhirEventBus 
     DocumentManager.upsertDocuments(rtype, populatedDocuments, ordered)
   }
 
-  /*/***
-    * Deletes a given FHIR resource
-    * @param rtype Resource type
-    * @param rid Resource id to delete
-    * @param previousVersion  Previous version id of the resource
-    * @param statusCode Http Status to set for deletion result
-    * @return
-    */
-  def deleteResource(rtype:String, rid:String, previousVersion:Long, statusCode:StatusCode = StatusCodes.NoContent)(implicit transactionSession: Option[TransactionSession] = None):Future[(Long, DateTime)]  = {
-    //1) Create a empty document to represent deletion
-    val newVersion     = previousVersion + 1L   //new version is 1 incremented
-    val lastModified = DateTime.now
-    val resource  = FHIRUtil.createEmptyResourceForDelete(rtype, rid, newVersion, lastModified, statusCode)  //create an empty resource
-
-    //2) insert this new version
-    DocumentManager
-      .insertNewVersion(rtype, rid, Document(resource.toBson))
-      .map( _ => resourceDeleted(rtype, rid)) //trigger the event
-      .map( _ =>
-        (newVersion, lastModified)
-      )
-  }*/
-
   /** *
    * Deletes a given FHIR resource
    *
