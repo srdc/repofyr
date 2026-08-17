@@ -15,7 +15,7 @@ packaging convention occurs only in a major release - where it additionally
 gets an entry in the
 [migration guide](docs/migration/onfhir-3.x-to-repofyr-4.0.md).
 
-## 4.0.0 (unreleased)
+## 4.0.0 - 2026-08-17
 
 First release of the FHIR server as Repofyr. Through 3.x one repository
 produced both the reusable onFHIR libraries and the server built on them.
