@@ -51,13 +51,23 @@ library API surface, so the migration guide is the contract that
   resolvable from Maven Central. A server release whose libraries resolve
   only from a local install or a staging directory is not reproducible for
   anyone else, and Central will reject a POM whose dependencies it cannot
-  see. The property is `4.0.0` today and those libraries are NOT yet
-  published, so the first server release cannot go out ahead of the
-  library release it depends on.
+  see. The property is `4.0.0` today, and `io.onfhir` 4.0.0 is published -
+  all fourteen artifacts the reactor depends on resolve from Central - so
+  this no longer blocks the first server release. Re-check it whenever
+  `onfhir.libs.version` moves: confirm the version resolves from Central
+  and not merely from `~/.m2`, which a local `mvn install` in the sibling
+  repository will happily satisfy. The fresh-cache build in the next item
+  is what actually proves it.
 - Full verification suite is green (the `verify` skill):
   1. `mvn -B test` - full reactor, zero failures (334 tests today);
   2. `powershell -File scripts/check-server-boundary.ps1` - expect
-     `check-server-boundary: PASS - server modules stay in io.repofyr.*`.
+     `check-server-boundary: PASS - server modules stay in io.repofyr.*`;
+  3. the same reactor against a throwaway Maven cache, which is what
+     distinguishes a published dependency from a locally installed one:
+     `mvn -B -Dmaven.repo.local=<throwaway> test`. `Dockerfile-buildJar`
+     exercises the same property from inside a container, so a successful
+     `docker build -f docker/Dockerfile-buildJar` counts as a second
+     independent check of it.
 - Fresh-checkout rehearsal: clone into a temporary directory and run the
   reactor tests there. This catches working-copy-only state - an untracked
   configuration file, a stale `target/`, or a locally installed artifact
