@@ -709,15 +709,4 @@
 
     </dependencyManagement>
 
-    <distributionManagement>
-        <snapshotRepository>
-            <id>srdc-maven-snapshots</id>
-            <url>https://nexus.srdc.com.tr/repository/maven-snapshots/</url>
-        </snapshotRepository>
-        <repository>
-            <id>srdc-maven-releases</id>
-            <url>https://nexus.srdc.com.tr/repository/maven-releases/</url>
-        </repository>
-    </distributionManagement>
-
 </project>
