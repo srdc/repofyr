@@ -107,18 +107,31 @@ library API surface, so the migration guide is the contract that
    deploy that lacks either flag, so the command that caused the accident
    cannot be run from Claude Code again.
 
-   The target is a LOCAL directory (for example under `C:\tmp`).
-   The `release` profile also attaches the sources and
-   javadoc JARs that Maven Central requires.
+   **The staged artifacts do not land at the path you name.** With
+   `<extensions>true</extensions>` the publishing plugin takes over the `deploy`
+   phase entirely, so `maven-deploy-plugin` never runs and
+   `altDeploymentRepository` routes nothing. The artifacts are written to the
+   plugin's own `stagingDirectory`, which defaults to `target/central-staging`,
+   and the bundle it would upload to `target/central-publishing`. Verify the
+   former, not the path you passed - on 2026-08-18 the documented path was
+   searched, found absent, and mistaken for a failed run.
+
+   The flag is kept in the command anyway, for two reasons: the hook requires
+   both as an explicit signal of intent, and it would start routing again if
+   `<extensions>true</extensions>` were ever removed.
+
+   The `release` profile also attaches the sources and javadoc JARs that Maven
+   Central requires.
 
 3. Verify the staging repository:
 
    ```shell
-   powershell -File scripts/check-staged-release.ps1 -RepositoryPath <staging-path> -Version <version>
+   powershell -File scripts/check-staged-release.ps1 -RepositoryPath target/central-staging -Version <version>
    ```
 
-   `-RepositoryPath` is mandatory; `-Version` defaults to `4.0.0`. The
-script walks the nine coordinates and asserts, for each: the POM
+   `-RepositoryPath` is mandatory and is `target/central-staging` - see above, it is not whatever
+   `altDeploymentRepository` named. `-Version` defaults to `4.0.0`. The
+   script walks the nine coordinates and asserts, for each: the POM
    exists, declares the GNU General Public License, does NOT declare an
    Apache License, and carries no unresolved `${revision}` (which would
    mean flatten did not run); the binary, `-sources` and `-javadoc` JARs
@@ -141,12 +154,18 @@ reactor means adding a row, or the new artifact ships unverified.
 
 ## 3. Consumer rehearsal
 
-Required before a MAJOR release, and for any release that changes
-publishing mechanics (a new module, coordinate changes, POM or release
-profile restructuring). Optional otherwise: consumers pin their versions,
-so a routine minor or patch release cannot break them retroactively, and
-the gates in section 1 plus the staging checks in section 2 are the
-acceptance bar.
+**Not required for a Repofyr server release.** Decided 2026-08-18, after
+4.0.0 shipped without one - itself a major, with renamed coordinates and packages.
+Consumers pin their versions and migrate on their own schedule, so a release
+cannot break them retroactively; the gates in section 1 and the staging checks
+in section 2 are the acceptance bar.
+
+The rehearsal for the reusable libraries belongs to `srdc/onfhir-libs`, whose
+artifacts a far wider set of consumers compile against.
+
+If you do want one - a release that restructures the POM or the release profile
+is the case that would justify it - the mechanics are below. The trap is worth
+reading even if you skip the rest.
 
 Purge `io/repofyr` from the rehearsal's local Maven repository first - and
 `io/onfhir` too when the libraries are being released from staging in the

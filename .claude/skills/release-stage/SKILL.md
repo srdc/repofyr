@@ -34,14 +34,20 @@ immutable.
 mvn -B -Prelease deploy -DskipPublishing=true -DaltDeploymentRepository=staging::file:///<absolute-staging-path>
 ```
 
-- **Both flags are mandatory.** `-DskipPublishing=true` is what keeps this
-  local; `-DaltDeploymentRepository` only chooses where the artifacts land.
+- **Both flags are mandatory, and neither controls where the artifacts land.**
+  `-DskipPublishing=true` is what keeps this local.
   The `release` profile runs `central-publishing-maven-plugin` as an
   extension, and its injected `publish` goal contacts the Central portal
   regardless of `altDeploymentRepository`. Omitting `skipPublishing` created
   a real portal deployment on 2026-08-18 while leaving the staging directory
   empty. `block-remote-publish.sh` now denies a deploy missing either flag.
-- The target is a LOCAL file-based repository, for example under `C:\tmp`.
+- **The artifacts are written to `target/central-staging`, not to the path you
+  named.** With the plugin running as an extension, `maven-deploy-plugin` never
+  runs and `altDeploymentRepository` routes nothing; the plugin uses its own
+  `stagingDirectory`. Verify that directory. On 2026-08-18 the named path was
+  searched, found absent, and mistaken for a failed staging run. The flag stays
+  in the command because the hook requires it, and because it would matter again
+  if the extension were ever removed.
 - Signing requires the SRDC release GPG key on this machine; headless
   signing works via the loopback pinentry already configured in the
   `release` profile. If GPG prompts or fails, stop and report - do not
@@ -53,12 +59,13 @@ mvn -B -Prelease deploy -DskipPublishing=true -DaltDeploymentRepository=staging:
 ## 3. Verify the staging repository
 
 ```
-powershell -File scripts/check-staged-release.ps1 -RepositoryPath <staging-path> -Version <version>
+powershell -File scripts/check-staged-release.ps1 -RepositoryPath target/central-staging -Version <version>
 ```
 
 Expect: `check-staged-release: PASS - 9 <version> artifacts verified.`
 
-`-RepositoryPath` is mandatory; `-Version` defaults to `4.0.0`. The script
+`-RepositoryPath` is `target/central-staging`, not whatever
+`altDeploymentRepository` named; `-Version` defaults to `4.0.0`. The script
 checks nine coordinates - `repofyr-parent` (pom), the seven
 `repofyr-*_2.13` server jars, and `repofyr-embedded-mongo_2.13` -
 for POM presence, GNU General Public License metadata with no Apache
@@ -70,17 +77,16 @@ Run it bare, never piped: under PowerShell 5.1 with
 `$ErrorActionPreference = "Stop"` a native stderr line from `gpg` or `jar`
 becomes a terminating NativeCommandError.
 
-## 4. Consumer rehearsal (majors and mechanics changes; report, then stop)
+## 4. Consumer rehearsal - not required
 
-For a MAJOR release or any change to publishing mechanics, RELEASING.md
-section 3 requires proving the staged artifacts against the release chain:
-spark-on-fhir built against staging with the Migration Table applied, then
-CRT launch verification, then other internal consumers. These builds live
-in sibling repositories. If asked to run them, purge `io/repofyr` (and
-`io/onfhir` when the libraries also come from staging) from the
-rehearsal's local Maven repository first, so nothing resolves from a stale
-cache. For a routine minor or patch release the rehearsal is optional -
-note that in the hand-over report instead of running it by default.
+RELEASING.md section 3 records the decision of 2026-08-18: a Repofyr server
+release does not gate on a consumer rehearsal, not even a major. 4.0.0 shipped
+without one. Consumers pin their versions, and the section 1 gates plus the
+staging checks above are the acceptance bar. The rehearsal for the reusable
+libraries belongs to `srdc/onfhir-libs`.
+
+Say in the hand-over report that it was not run and why, rather than leaving it
+as an outstanding item.
 
 ## Hand-over report
 
@@ -90,7 +96,7 @@ Finish with a report containing:
 - the artifact count verified and the version;
 - every gate verdict, quoted verbatim (`mvn -B test` totals,
   `check-server-boundary`, `check-staged-release`);
-- whether the consumer rehearsal ran, and what it found;
+- that the consumer rehearsal was not run, and why (section 4);
 - what remains for the maintainer: RELEASING.md section 4 - portal upload,
   portal promotion, tag and push, Docker image build and push, GitHub
   release.
