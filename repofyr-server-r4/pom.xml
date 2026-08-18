@@ -48,6 +48,14 @@
                             <goal>shade</goal>
                         </goals>
                         <configuration>
+                            <!-- The published artifact is the thin module jar; the uber jar
+                                 has its own finalName and is not attached. Shade would
+                                 otherwise publish a dependency-reduced POM - correct only when
+                                 the uber jar IS the artifact - stripping every compile
+                                 dependency and leaving consumers a jar with no repofyr-core,
+                                 no io.onfhir and no Akka. That is what shipped in 4.0.0 and
+                                 why 4.0.1 exists. -->
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
                             <filters>
                                 <filter>
                                     <artifact>*:*</artifact>

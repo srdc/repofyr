@@ -108,6 +108,24 @@ foreach ($artifactId in $artifacts.Keys) {
             $failures.Add("$artifactId POM contains an unresolved " + '${revision}' + " - flatten did not run")
         }
 
+        # A shaded module publishes a dependency-reduced POM unless it is told not
+        # to - maven-shade-plugin defaults createDependencyReducedPom to true. That
+        # is right when the uber jar IS the published artifact, and wrong here: the
+        # uber jar has its own finalName and is not attached, so the reduced POM
+        # left consumers a thin jar declaring no compile dependencies. 4.0.0 shipped
+        # that way and resolved to exactly one artifact instead of 106. Nothing in
+        # this script noticed, because it never looked at dependencies.
+        if ($artifactId -like "repofyr-server-*") {
+            if ($pomText -notmatch "<artifactId>repofyr-core_") {
+                $failures.Add("$artifactId POM does not declare repofyr-core - shade published a dependency-reduced POM; set createDependencyReducedPom=false")
+            }
+            $compileDeps = ([regex]::Matches($pomText, "(?s)<dependency>(?:(?!</dependency>).)*</dependency>") |
+                Where-Object { $_.Value -notmatch "<scope>(test|provided)</scope>" }).Count
+            if ($compileDeps -lt 3) {
+                $failures.Add("$artifactId POM declares only $compileDeps non-test dependencies - expected the server stack; shade reduced the POM")
+            }
+        }
+
         Test-Signature $pomPath
         Write-Host "    pom"
     }

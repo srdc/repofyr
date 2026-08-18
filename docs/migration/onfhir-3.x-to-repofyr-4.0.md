@@ -140,9 +140,17 @@ An example server dependency after the upgrade:
 <dependency>
   <groupId>io.repofyr</groupId>
   <artifactId>repofyr-server-r4_2.13</artifactId>
-  <version>4.0.0</version>
+  <version>4.0.1</version>
 </dependency>
 ```
+
+**Use 4.0.1, not 4.0.0.** The three `repofyr-server-*` artifacts published at
+4.0.0 carry a dependency-reduced POM that declares no compile dependencies, so
+the coordinate resolves to a single jar with no `repofyr-core`, no `io.onfhir`
+and no Akka, and fails at runtime. A published release is immutable, so it was
+corrected in 4.0.1 rather than in place. Only these three artifacts were
+affected: `repofyr-core` resolved correctly at 4.0.0, as did the standalone jar
+and the container images, which bundle their dependencies.
 
 Library dependencies stay on `io.onfhir` coordinates. If your build names
 both families, keep two version properties - the server version and the
@@ -708,7 +716,7 @@ What this means for you:
   <dependency>
       <groupId>io.repofyr</groupId>
       <artifactId>repofyr-embedded-mongo_2.13</artifactId>
-      <version>4.0.0</version>
+      <version>4.0.1</version>
       <scope>test</scope>
   </dependency>
   ```

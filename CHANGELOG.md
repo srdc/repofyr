@@ -3,9 +3,9 @@
 User-visible changes to the Repofyr FHIR server.
 
 Repofyr is versioned independently of the `io.onfhir` reusable libraries it
-consumes. Both families start at 4.0.0 because they were split out of a
-single monorepo in this release; from the next release onwards the two
-version lines move separately. The library version the server builds
+consumes. Both families started at 4.0.0, having been split out of a single
+monorepo in that release, and have since diverged: the server is at 4.0.1
+against libraries at 4.0.0. The library version the server builds
 against is the `onfhir.libs.version` property, never `revision`.
 
 The seven server artifacts release together at one version, set by the
@@ -16,6 +16,46 @@ Patches are fixes only, minors are additive, and a breaking change to a
 server API, a configuration key, or a packaging convention occurs only in
 a major release - where it additionally gets an entry in the
 [migration guide](docs/migration/onfhir-3.x-to-repofyr-4.0.md).
+
+## 4.0.1 - 2026-08-18
+
+### Fixed
+
+- **The `repofyr-server-*` artifacts are usable as Maven dependencies again.**
+  In 4.0.0 all three published a dependency-reduced POM that declared no
+  compile dependencies at all: no `repofyr-core`, no `io.onfhir`, no Akka, no
+  MongoDB driver. Declaring
+  `io.repofyr:repofyr-server-r4_2.13:4.0.0` resolved to exactly one artifact
+  where it should resolve 106, so it failed at runtime with
+  `NoClassDefFoundError`. The same coordinate at 4.0.1 resolves the full
+  server stack.
+
+  `maven-shade-plugin` defaults `createDependencyReducedPom` to true, which is
+  correct when the uber jar is the published artifact. Here it is not: the uber
+  jar carries its own `finalName` and is never attached, so the published
+  artifact is the thin module jar and the reduced POM disclaimed dependencies
+  it genuinely needs. The three server modules now set the flag to false, as
+  `repofyr-dev-server` already did.
+
+  **4.0.0 is unusable as a Maven dependency and cannot be fixed in place**, a
+  published release being immutable. Use 4.0.1. Unaffected by the defect, and
+  so unaffected by this release: the standalone jar and the container images,
+  which bundle everything into the uber jar; and `repofyr-core`, whose POM was
+  always complete, so embedding through it worked at 4.0.0.
+
+- `scripts/check-staged-release.ps1` now asserts that each `repofyr-server-*`
+  POM declares `repofyr-core` and more than two non-test dependencies. The gate
+  passed 4.0.0 because it inspected licences, signatures, JARs and
+  `${revision}` but never looked at dependencies at all.
+
+### Changed
+
+- Published JARs and the shaded standalone JAR record `Implementation-Version`
+  and `Specification-Version` in their manifests, and both container images
+  carry the OCI `org.opencontainers.image.*` labels. Given a running container
+  there was previously no way to tell which build it was.
+- `docker/build.sh` tags each image with an immutable `<version>-<release>` tag
+  alongside the floating `<release>` tag, and covers STU3, which it never did.
 
 ## 4.0.0 - 2026-08-17
 

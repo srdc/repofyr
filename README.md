@@ -126,7 +126,7 @@ custom configuration:
 <dependency>
     <groupId>io.repofyr</groupId>
     <artifactId>repofyr-server-r4_2.13</artifactId>
-    <version>4.0.0</version>
+    <version>4.0.1</version>
 </dependency>
 ```
 

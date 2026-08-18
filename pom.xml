@@ -90,7 +90,7 @@
 
         <!-- This is a special placeholder to manage the version from a single property throughout the parent and child modules. No other property name can be used. -->
         <!-- https://maven.apache.org/maven-ci-friendly.html -->
-        <revision>4.0.0</revision>
+        <revision>4.0.1</revision>
         <!-- Kept distinct now so the server reactor can consume independently
              versioned library artifacts after the physical split. -->
         <onfhir.libs.version>4.0.0</onfhir.libs.version>
