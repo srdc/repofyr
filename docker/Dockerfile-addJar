@@ -13,6 +13,16 @@ WORKDIR $ONFHIR_HOME
 # Define the FHIR_VERSION variable to specify the version of the FHIR server
 ARG FHIR_VERSION
 COPY ./repofyr-server-$FHIR_VERSION/target/repofyr-server-standalone.jar .
+# OCI image metadata. VERSION and REVISION are arguments rather than literals so an
+# image can be traced back to the exact artifacts and commit that produced it; the
+# defaults are only a fallback for an ad-hoc local build. docker/build.sh passes real
+# values. org.opencontainers.image.created is deliberately absent: baking a build
+# timestamp changes the digest on every rebuild, so pass it with --label in CI if you
+# want it rather than making local builds irreproducible.
+ARG VERSION=0.0.0-local
+ARG REVISION=unknown
+LABEL org.opencontainers.image.title="Repofyr FHIR Server ($FHIR_VERSION)"       org.opencontainers.image.description="HL7 FHIR compliant secure, high-performance health data repository"       org.opencontainers.image.version="$VERSION"       org.opencontainers.image.revision="$REVISION"       org.opencontainers.image.licenses="GPL-3.0-only"       org.opencontainers.image.source="https://github.com/srdc/repofyr"       org.opencontainers.image.url="https://repofyr.io"       org.opencontainers.image.vendor="SRDC Corp."       org.opencontainers.image.documentation="https://github.com/srdc/repofyr/blob/master/README.md"
+
 COPY ./docker/docker-entrypoint.sh .
 RUN chmod +x docker-entrypoint.sh
 

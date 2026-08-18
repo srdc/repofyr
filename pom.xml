@@ -180,6 +180,18 @@
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-jar-plugin</artifactId>
                     <version>${jar.plugin.version}</version>
+                    <configuration>
+                        <archive>
+                            <manifest>
+                                <!-- Record Implementation-* and Specification-* in the manifest, so
+                                     a jar can be identified once it is detached from its filename -
+                                     which is exactly what happens inside a container image. Without
+                                     these the manifest carried only Main-Class and Created-By. -->
+                                <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+                                <addDefaultSpecificationEntries>true</addDefaultSpecificationEntries>
+                            </manifest>
+                        </archive>
+                    </configuration>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>

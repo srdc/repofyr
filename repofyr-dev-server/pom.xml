@@ -68,6 +68,15 @@
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                                     <mainClass>io.repofyr.dev.DevServer</mainClass>
+                                    <!-- The transformer writes its own manifest, so
+                                         addDefaultImplementationEntries on maven-jar-plugin never
+                                         reaches the shaded jar. Set them here or a running
+                                         container cannot report which build it is. -->
+                                    <manifestEntries>
+                                        <Implementation-Title>${project.artifactId}</Implementation-Title>
+                                        <Implementation-Version>${project.version}</Implementation-Version>
+                                        <Implementation-Vendor>SRDC Corp.</Implementation-Vendor>
+                                    </manifestEntries>
                                 </transformer>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
                                     <resource>reference.conf</resource>
