@@ -31,13 +31,17 @@ immutable.
 ## 2. Stage signed artifacts
 
 ```
-mvn -B -Prelease deploy -DaltDeploymentRepository=staging::file:///<absolute-staging-path>
+mvn -B -Prelease deploy -DskipPublishing=true -DaltDeploymentRepository=staging::file:///<absolute-staging-path>
 ```
 
-- The target is a LOCAL file-based repository (for example under
-  `C:\tmp`); this is not a publish. A `deploy` without
-  `-DaltDeploymentRepository` would upload to the Central portal - never
-  run that form.
+- **Both flags are mandatory.** `-DskipPublishing=true` is what keeps this
+  local; `-DaltDeploymentRepository` only chooses where the artifacts land.
+  The `release` profile runs `central-publishing-maven-plugin` as an
+  extension, and its injected `publish` goal contacts the Central portal
+  regardless of `altDeploymentRepository`. Omitting `skipPublishing` created
+  a real portal deployment on 2026-08-18 while leaving the staging directory
+  empty. `block-remote-publish.sh` now denies a deploy missing either flag.
+- The target is a LOCAL file-based repository, for example under `C:\tmp`.
 - Signing requires the SRDC release GPG key on this machine; headless
   signing works via the loopback pinentry already configured in the
   `release` profile. If GPG prompts or fails, stop and report - do not
@@ -55,11 +59,12 @@ powershell -File scripts/check-staged-release.ps1 -RepositoryPath <staging-path>
 Expect: `check-staged-release: PASS - 9 <version> artifacts verified.`
 
 `-RepositoryPath` is mandatory; `-Version` defaults to `4.0.0`. The script
-checks eight coordinates - `repofyr-parent` (pom) plus the seven
-`repofyr-*_2.13` jars - for POM presence, GNU General Public License
-metadata with no Apache License, no unresolved `${revision}`, the binary
-plus `-sources` and `-javadoc` JARs, packaged `META-INF/LICENSE`, and a
-good `.asc` signature on every file.
+checks nine coordinates - `repofyr-parent` (pom), the seven
+`repofyr-*_2.13` server jars, and `repofyr-embedded-mongo_2.13` -
+for POM presence, GNU General Public License metadata with no Apache
+License, no unresolved `${revision}`, the binary plus `-sources` and
+`-javadoc` JARs, packaged `META-INF/LICENSE`, and a good `.asc`
+signature on every file.
 
 Run it bare, never piped: under PowerShell 5.1 with
 `$ErrorActionPreference = "Stop"` a native stderr line from `gpg` or `jar`

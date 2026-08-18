@@ -9,8 +9,17 @@
 # deny beats allow and both share the prefix. Only content inspection can tell
 # the two apart, so the rule is expressed here.
 #
-# Local staging is allowed and is how RELEASING.md section 2 works:
-#   mvn -B -Prelease deploy -DaltDeploymentRepository=staging::file:///<path>
+# THE RULE THAT MATTERS, learned by publishing to Central by accident on
+# 2026-08-18: -DaltDeploymentRepository does NOT keep a deploy local. The
+# release profile runs central-publishing-maven-plugin with
+# <extensions>true</extensions>, which injects its own publish goal into the
+# deploy lifecycle; that goal talks to the Central portal and ignores
+# altDeploymentRepository completely. A run that looked like local staging
+# created a real portal deployment. Only -DskipPublishing=true suppresses it.
+#
+# So a deploy is permitted only when BOTH are present:
+#   -DskipPublishing=true          stops the portal upload
+#   -DaltDeploymentRepository=...  routes the artifacts to a local directory
 #
 # Publishing is a maintainer action performed outside Claude Code.
 #
@@ -19,8 +28,10 @@
 #   1. Heredoc bodies are data, not commands. A commit message, a doc edit, or
 #      a `cat <<EOF` may legitimately quote `mvn -Prelease deploy`. Everything
 #      from the first heredoc opener onward is ignored.
-#   2. The tool name must appear in command position - at the start of a line
-#      or after a shell separator - not as a substring of some argument.
+#   2. Goals are matched only within the argument list of an mvn invocation,
+#      not anywhere on the line. The previous version scanned the whole command
+#      and denied `mvn validate` because the word "deploy" appeared in an echo
+#      alongside it.
 
 set -uo pipefail
 
@@ -40,26 +51,38 @@ deny() {
   exit 0
 }
 
-# Rule 2: <tool> in command position on some line of the command head.
-invokes() {
-  printf '%s\n' "$command_head" | grep -Eq "(^|[;&|(]|&&|\|\|)[[:space:]]*$1([[:space:]]|$)"
+# Rule 2: split the command head into shell segments, then keep only the
+# segments that invoke mvn, reduced to that invocation's arguments. Splitting
+# on separators can also split a single invocation that contains one in a
+# quoted string; that direction is safe, since it can only cause a false deny.
+mvn_invocations() {
+  printf '%s\n' "$command_head" \
+    | tr ';&|()' '\n' \
+    | grep -E '(^|[[:space:]])mvn([[:space:]]|$)' \
+    | sed -E 's/^.*(^|[[:space:]])mvn([[:space:]]|$)/ /'
 }
 
-contains() {
-  printf '%s\n' "$command_head" | grep -Eq "$1"
-}
+has() { printf '%s\n' "$1" | grep -Eq "$2"; }
 
-if invokes mvn; then
-  if contains '(^|[[:space:]])deploy([[:space:]]|$)' && ! contains 'altDeploymentRepository'; then
-    deny "Blocked: a Maven deploy without -DaltDeploymentRepository uploads to the remote repository. Publishing is a maintainer action (RELEASING.md section 4). For a local signed staging run, use: mvn -B -Prelease deploy -DaltDeploymentRepository=staging::file:///<absolute-path>"
+while IFS= read -r args; do
+  [ -z "$args" ] && continue
+
+  if has "$args" '(^|[[:space:]])(deploy|deploy:deploy|deploy:deploy-file)([[:space:]]|$)'; then
+    if ! has "$args" 'skipPublishing[[:space:]]*=[[:space:]]*true'; then
+      deny "Blocked: this deploy would upload to Maven Central. -DaltDeploymentRepository does NOT prevent it - central-publishing-maven-plugin runs as an extension and ignores it, which is how a portal deployment was created by accident on 2026-08-18. A local staging run needs BOTH flags: mvn -B -Prelease deploy -DskipPublishing=true -DaltDeploymentRepository=staging::file:///<absolute-path>. Publishing is a maintainer action (RELEASING.md section 4)."
+    fi
+    if ! has "$args" 'altDeploymentRepository'; then
+      deny "Blocked: a deploy without -DaltDeploymentRepository has no local target and would install to the shared local repository or a remote one. Use: mvn -B -Prelease deploy -DskipPublishing=true -DaltDeploymentRepository=staging::file:///<absolute-path>"
+    fi
   fi
 
-  if contains 'sonatype\.central|central-publishing|nexus-staging:'; then
-    deny "Blocked: promoting or publishing to Maven Central is a maintainer action performed in the Central portal, not from Claude Code. See RELEASING.md section 4."
+  if has "$args" 'sonatype\.central|central-publishing|nexus-staging:'; then
+    deny "Blocked: invoking the Central publishing plugin directly is a maintainer action performed in the Central portal, not from Claude Code. See RELEASING.md section 4."
   fi
-fi
+done < <(mvn_invocations)
 
-if invokes docker && contains '(^|[[:space:]])push([[:space:]]|$)'; then
+if printf '%s\n' "$command_head" | grep -Eq "(^|[;&|(]|&&|\|\|)[[:space:]]*docker([[:space:]]|$)" \
+   && printf '%s\n' "$command_head" | grep -Eq '(^|[[:space:]])push([[:space:]]|$)'; then
   deny "Blocked: pushing a container image publishes it. Image publication is a maintainer action. See RELEASING.md section 4."
 fi
 

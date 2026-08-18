@@ -19,7 +19,15 @@
 
     <properties>
         <!-- A development convenience bundling all three servers. It is not part of the
-             released artifact set, so it is neither deployed nor signed. -->
+             released artifact set, so it is neither deployed nor signed.
+
+             These two properties are necessary but NOT sufficient. Neither reaches
+             central-publishing-maven-plugin, which runs as an extension in the release
+             profile and bundles this module regardless - unsigned, because of gpg.skip
+             below, which is why Central rejected the whole 4.0.0 deployment on
+             2026-08-18. The exclusion that actually works is excludeArtifacts in the
+             root POM's release profile. Keep both in step: this module has to be absent
+             from the bundle, not merely unsigned within it. -->
         <maven.deploy.skip>true</maven.deploy.skip>
         <gpg.skip>true</gpg.skip>
     </properties>

@@ -344,6 +344,16 @@
                                  published release is immutable. -->
                             <autoPublish>false</autoPublish>
                             <waitUntil>validated</waitUntil>
+                            <!-- repofyr-dev-server is a development convenience and is not
+                                 released. maven.deploy.skip in that module does NOT reach this
+                                 plugin - it governs maven-deploy-plugin only - so the module was
+                                 bundled regardless, and because it also sets gpg.skip it went in
+                                 unsigned and Central rejected the whole deployment. This is the
+                                 mechanism that actually keeps it out; excludeArtifacts matches on
+                                 artifactId. -->
+                            <excludeArtifacts>
+                                <excludeArtifact>repofyr-dev-server_${scala.binary.version}</excludeArtifact>
+                            </excludeArtifacts>
                         </configuration>
                     </plugin>
                 </plugins>

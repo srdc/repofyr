@@ -6,8 +6,10 @@ the end of section 3.
 
 The reactor version is the `revision` property in the root `pom.xml`
 (flatten-maven-plugin `oss` mode resolves it into published POMs). All
-eight published coordinates - the `repofyr-parent` POM plus the seven
-`repofyr-*_2.13` server artifacts - release together at that one version.
+nine published coordinates - the `repofyr-parent` POM, the seven
+`repofyr-*_2.13` server artifacts, and `repofyr-embedded-mongo_2.13` -
+release together at that one version. `repofyr-dev-server` is excluded
+deliberately; see the `excludeArtifacts` note in the release profile.
 
 The server version line is independent of `onfhir.libs.version`, the
 `io.onfhir` reusable-library line released from `srdc/onfhir-libs`. Both
@@ -82,11 +84,31 @@ library API surface, so the migration guide is the contract that
 2. Deploy the full reactor to a file-based staging repository:
 
    ```shell
-   mvn -B -Prelease deploy -DaltDeploymentRepository=staging::file:///<absolute-staging-path>
+   mvn -B -Prelease deploy -DskipPublishing=true -DaltDeploymentRepository=staging::file:///<absolute-staging-path>
    ```
 
-   The target is a LOCAL directory (for example under `C:\tmp`); this is
-   not a publish. The `release` profile also attaches the sources and
+   **Both flags are required, and `-DskipPublishing=true` is the one that keeps
+   this local.** Through 4.0.0 this step was documented with
+   `-DaltDeploymentRepository` alone and described as "not a publish". It was:
+   the `release` profile runs `central-publishing-maven-plugin` with
+   `<extensions>true</extensions>`, which injects its own `publish` goal into
+   the deploy lifecycle, and that goal contacts the Central portal and ignores
+   `altDeploymentRepository` entirely. Running the old command on 2026-08-18
+   created real portal deployment `31bedb80-2625-4031-babd-2bcc7c198ce5`.
+   Nothing became public - `autoPublish=false` and `waitUntil=validated` stop at
+   validation - but the staging directory stayed empty, because nothing was ever
+   routed to it.
+
+   `skipPublishing` is a parameter of the plugin's `publish` goal: boolean,
+   default `false`, exposed as `${skipPublishing}`. Verified against the 0.8.0
+   plugin descriptor rather than inferred from documentation.
+
+   `.claude/hooks/block-remote-publish.sh` enforces this, denying any Maven
+   deploy that lacks either flag, so the command that caused the accident
+   cannot be run from Claude Code again.
+
+   The target is a LOCAL directory (for example under `C:\tmp`).
+   The `release` profile also attaches the sources and
    javadoc JARs that Maven Central requires.
 
 3. Verify the staging repository:
@@ -96,7 +118,7 @@ library API surface, so the migration guide is the contract that
    ```
 
    `-RepositoryPath` is mandatory; `-Version` defaults to `4.0.0`. The
-   script walks the eight coordinates and asserts, for each: the POM
+script walks the nine coordinates and asserts, for each: the POM
    exists, declares the GNU General Public License, does NOT declare an
    Apache License, and carries no unresolved `${revision}` (which would
    mean flatten did not run); the binary, `-sources` and `-javadoc` JARs

@@ -8,11 +8,13 @@ single monorepo in this release; from the next release onwards the two
 version lines move separately. The library version the server builds
 against is the `onfhir.libs.version` property, never `revision`.
 
-All seven server artifacts release together at one version, set by the
-`revision` property in the root POM. Patches are fixes only, minors are
-additive, and a breaking change to a server API, a configuration key, or a
-packaging convention occurs only in a major release - where it additionally
-gets an entry in the
+The seven server artifacts release together at one version, set by the
+`revision` property in the root POM, as does `repofyr-embedded-mongo`:
+nine published coordinates in all, counting the parent POM.
+`repofyr-dev-server` is a development launcher and is not published.
+Patches are fixes only, minors are additive, and a breaking change to a
+server API, a configuration key, or a packaging convention occurs only in
+a major release - where it additionally gets an entry in the
 [migration guide](docs/migration/onfhir-3.x-to-repofyr-4.0.md).
 
 ## 4.0.0 - 2026-08-17
