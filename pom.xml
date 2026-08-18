@@ -262,6 +262,13 @@
                     <!-- So that the child modules keep all metadata coming from parent pom.
                     Sonatype maven central requires it. -->
                     <flattenMode>oss</flattenMode>
+                    <!-- Substitute the flattened POM for THIS module too. The plugin does that
+                         by default only for packaging other than pom, and this reactor's parent
+                         is a pom - so without it the parent was generated flattened and then
+                         deployed raw, carrying an unresolved ${revision} that no consumer can
+                         resolve. check-staged-release.ps1 caught it on 2026-08-18. The jar
+                         modules were always fine, which is why only repofyr-parent failed. -->
+                    <updatePomFile>true</updatePomFile>
                 </configuration>
                 <executions>
                     <execution>
