@@ -116,7 +116,7 @@
         <mongo.embedded.version>4.18.1</mongo.embedded.version>
         <json4s.version>3.7.0-M11</json4s.version>
         <scala.xml.version>2.2.0</scala.xml.version>
-        <logback.version>1.4.14</logback.version>
+        <logback.version>1.6.3</logback.version>
         <kafka.version>3.6.1</kafka.version>
         <slf4j.version>2.0.18</slf4j.version>
         <config.version>1.4.3</config.version>
