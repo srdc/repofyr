@@ -140,6 +140,28 @@ library API surface, so the migration guide is the contract that
 
    Expect: `check-staged-release: PASS - 9 <version> artifacts verified.`
 
+4. Resolve the staged artifacts the way a consumer will. The gate above checks
+   what each POM says; this checks what Maven does with it:
+
+   ```shell
+   mvn -B -Dmaven.repo.local=<throwaway> dependency:resolve
+   ```
+
+   from a one-dependency throwaway project naming a `repofyr-server-*`
+   artifact, with `target/central-staging` added as a `file:///` repository.
+   Expect the whole server stack - on the order of 100 artifacts, including
+   `repofyr-core` and the `io.onfhir` libraries. A handful means the POM is
+   not declaring its dependencies.
+
+   **This is not optional, and it belongs here rather than after publishing.**
+   4.0.0 shipped with all three server POMs dependency-reduced by shade,
+   declaring no compile dependencies at all: the coordinate resolved to one
+   jar instead of a hundred and failed at runtime. Section 5 listed this check
+   as a post-publish item, which is too late - a published release is
+   immutable, and 4.0.0 could only be superseded by 4.0.1. The gate now
+   asserts the POM contents too, but run this as well: the gate encodes what
+   went wrong last time, and resolution is what actually matters.
+
 The license assertion runs in both directions on purpose. Repofyr is
 GPL-3.0 and the `io.onfhir` libraries are Apache-2.0, so an accidental
 flip either way is a release-blocking defect that no test would catch.
@@ -232,7 +254,8 @@ authorized per release.
 - Bump `revision` in the root `pom.xml` to the next development version.
 - Verify the README Maven Central badge renders. It reports "not found"
   until the first publish, so this check only becomes meaningful now.
-- Confirm the published POMs resolve: fetch one server artifact into a
-  clean local repository and check that its `io.onfhir` dependencies
-  resolve from Central without any local install.
+- Re-confirm resolution against Central once propagation completes, repeating
+  the section 2 step 4 check without the staging repository. This is a
+  confirmation, not the gate: the gate is step 4 itself, run before promotion,
+  because after promotion a defect can only be superseded by a new version.
 - Announce as appropriate (release notes, downstream consumers).
