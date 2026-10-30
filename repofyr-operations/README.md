@@ -23,6 +23,7 @@ All handlers live in `io.repofyr.operation` and take a single
 | `DocumentOperationHandler` | `$document` | Builds a document Bundle from a Composition and the resources it references (`_include=*`); the `persist` parameter decides whether the Bundle is stored |
 | `LastNObservationOperationHandler` | `$lastn` | Returns the last N Observations per code for a subject, as a searchset Bundle |
 | `PatientEverythingOperationHandler` | `$everything` | Returns the resources in a Patient compartment, restricted to the compartment relations the server supports and excluding `AuditEvent`, `Group`, and `Provenance` |
+| `PatientPurgeOperationHandler` | `$purge` | Permanently removes all current and historical versions of a Patient and of the resources in its Patient compartment, excluding `AuditEvent` and `Group`, and returns an OperationOutcome |
 | `BulkOperationHandler` | `$import` | Validates the import request, starts an asynchronous `BulkImportJobHandler` actor, and replies `202 Accepted` |
 
 Two handlers impose constraints beyond the base specification, and both fail
@@ -41,6 +42,23 @@ only, requires an `inputSource` and a `storageDetail` of type `file`, and runs
 the job through `io.repofyr.async.BulkImportJobHandler` in `repofyr-core`.
 There is no status or cancel operation; the job reports its progress to the
 server log at debug level.
+
+`$purge` comes from the FHIR 6.0.0-ballot3 build
+(`http://hl7.org/fhir/OperationDefinition/Patient-purge`) and is provided for
+R4 and R5. Neither base definition set contains it, so the module carries its
+OperationDefinition as the `patient-purge.json` resource. A deployment enables
+it by copying that file into its `operations-path` folder and declaring the
+operation on the Patient resource of its CapabilityStatement, which must also
+declare the Patient compartment under `rest.compartment` (the default R5
+CapabilityStatement does not; without it the call answers `405`). The
+compartment's search parameters must be declared for every resource type
+purged; the call checks this before deleting anything and answers `501` naming
+the missing ones. It is a hard
+delete meant for erasure requests: unlike a FHIR delete nothing is kept in
+history, no resource event is published, and it cannot be undone. The Patient
+is matched by id only, so other Patient records reached through
+`Patient.link` stay, and the purge is synchronous. If a run fails partway,
+the Patient is removed last, so the same call can simply be repeated.
 
 ## How a handler reaches the server
 

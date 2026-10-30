@@ -26,7 +26,7 @@ single `repofyr-server-*` module and receive the rest transitively.
 | Module | Purpose |
 |---|---|
 | [`repofyr-core`](repofyr-core/README.md) | Core server runtime: FHIR API endpoints, request and response handling, MongoDB persistence, authorization, and audit. |
-| [`repofyr-operations`](repofyr-operations/README.md) | The FHIR operations provided out of the box: `$validate`, `$everything`, `$document`, `$expand`, `$meta`, `$lastn`, and bulk `$import`. |
+| [`repofyr-operations`](repofyr-operations/README.md) | The FHIR operations provided out of the box: `$validate`, `$everything`, `$document`, `$expand`, `$meta`, `$lastn`, Patient `$purge`, and bulk `$import`. |
 | [`repofyr-event`](repofyr-event/README.md) | Server event contracts and JSON marshalling; the event bus SPI resource changes are published through. |
 | [`repofyr-kafka`](repofyr-kafka/README.md) | Publishes server events and FHIR Subscription notifications to Kafka topics. |
 | [`repofyr-server-r4`](repofyr-server-r4/README.md) | Runnable server for FHIR R4. |

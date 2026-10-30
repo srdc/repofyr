@@ -16,6 +16,7 @@ object DefaultOperationHandlers {
       "http://hl7.org/fhir/OperationDefinition/Composition-document" -> "io.repofyr.operation.DocumentOperationHandler",
       "http://hl7.org/fhir/OperationDefinition/Observation-lastn" -> "io.repofyr.operation.LastNObservationOperationHandler",
       "http://onfhir.io/fhir/OperationDefinition/import" -> "io.repofyr.operation.BulkOperationHandler",
-      "http://hl7.org/fhir/OperationDefinition/Patient-everything" -> "io.repofyr.operation.PatientEverythingOperationHandler"
+      "http://hl7.org/fhir/OperationDefinition/Patient-everything" -> "io.repofyr.operation.PatientEverythingOperationHandler",
+      "http://hl7.org/fhir/OperationDefinition/Patient-purge" -> "io.repofyr.operation.PatientPurgeOperationHandler"
     )
 }

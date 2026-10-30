@@ -722,6 +722,11 @@
               "definition" : "http://hl7.org/fhir/SearchParameter/individual-email",
               "type" : "token",
               "documentation" : "A value in an email contact"
+            }],
+          "operation" : [
+            {
+              "name" : "purge",
+              "definition" : "http://hl7.org/fhir/OperationDefinition/Patient-purge"
             }]
         },
         {

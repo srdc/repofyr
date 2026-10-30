@@ -36,6 +36,7 @@ class DefaultOperationHandlersTest extends Specification {
         "http://hl7.org/fhir/OperationDefinition/Composition-document",
         "http://hl7.org/fhir/OperationDefinition/Observation-lastn",
         "http://hl7.org/fhir/OperationDefinition/Patient-everything",
+        "http://hl7.org/fhir/OperationDefinition/Patient-purge",
         "http://onfhir.io/fhir/OperationDefinition/import"))
     }
 
