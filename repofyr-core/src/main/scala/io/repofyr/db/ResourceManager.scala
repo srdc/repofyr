@@ -16,6 +16,7 @@ import org.mongodb.scala.bson.conversions.Bson
 import io.repofyr.db.OnFhirBsonTransformer._
 import io.repofyr.event.{IFhirEventBus, ResourceCreated, ResourceDeleted, ResourceUpdated}
 import io.onfhir.exception.UnsupportedParameterException
+import io.repofyr.exception.InternalServerException
 import io.onfhir.util.DateTimeUtil
 import org.json4s.JsonAST.JValue
 import org.mongodb.scala.bson.{BsonBoolean, BsonString}
@@ -1827,6 +1828,28 @@ class ResourceManager(fhirConfig: FhirServerConfig, fhirEventBus: IFhirEventBus 
       .map(_ =>
         (newVersion, DateTimeUtil.instantToDateTime(lastModified))
       )
+  }
+
+  /**
+   * Permanently remove all current and historical versions of the resources matching the given parameters.
+   * No history is kept and no event is published, as the purpose is erasure (e.g. Patient $purge).
+   * Only parameters resolving to a plain Mongo query (normal, compartment, _id) are supported.
+   *
+   * @param rtype       Resource type
+   * @param queryParams Parsed FHIR query parameters selecting the resources
+   * @return Number of removed documents (current and history versions)
+   */
+  def purgeResources(rtype: String, queryParams: List[Parameter]): Future[Long] = {
+    constructQueryNew(rtype, queryParams) match {
+      case (Some(query), Nil) =>
+        for {
+          current <- DocumentManager.removeDocuments(rtype, query)
+          history <- DocumentManager.removeDocuments(rtype, query, history = true)
+        } yield current + history
+      //Refuse rather than widen: a missing query would match the whole collection
+      case _ =>
+        Future.failed(new InternalServerException(s"Purge on $rtype requires parameters that resolve to a single Mongo query!"))
+    }
   }
 
   /**

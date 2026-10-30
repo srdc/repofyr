@@ -17,6 +17,38 @@ server API, a configuration key, or a packaging convention occurs only in
 a major release - where it additionally gets an entry in the
 [migration guide](docs/migration/onfhir-3.x-to-repofyr-4.0.md).
 
+## 4.1.0 - Unreleased
+
+### Added
+
+- **Patient `$purge` operation** (`POST [base]/Patient/[id]/$purge`), for
+  GDPR-style erasure. It implements
+  `http://hl7.org/fhir/OperationDefinition/Patient-purge`, defined in the FHIR
+  6.0.0-ballot3 build, for **R4 and R5**; STU3 is not supported. Unlike a FHIR
+  delete, which moves the content to history, `$purge` permanently removes every
+  current and historical version of the Patient and of the resources in its
+  Patient compartment, and publishes no resource events. `AuditEvent` and
+  `Group` are excluded, the first to keep the audit trail and the second because
+  a Group is shared by its members; the Patient itself is matched by id only,
+  not through `Patient.link`. The call answers `200` with an OperationOutcome
+  listing the removed versions per resource type, and `404` for an unknown or
+  already purged patient. It is synchronous; the asynchronous pattern is not
+  supported.
+
+  The operation is opt-in: neither the R4 nor the R5 base definitions contain
+  it, so a deployment enables it by putting the `patient-purge.json`
+  OperationDefinition shipped in `repofyr-operations` into its
+  `fhir.initialization.operations-path` folder and declaring the operation on
+  the Patient resource of its CapabilityStatement. The CapabilityStatement must
+  also declare the Patient compartment
+  (`http://hl7.org/fhir/CompartmentDefinition/patient` under
+  `rest.compartment`), otherwise the call answers `405`. The default R5
+  CapabilityStatement does not declare it. Every search parameter through which
+  a purged resource type joins the compartment (for example `Condition.asserter`)
+  must be declared too: before deleting anything the call checks this, and
+  answers `501` naming the missing parameters rather than purging only part of
+  the patient's data.
+
 ## 4.0.1 - 2026-08-18
 
 ### Fixed

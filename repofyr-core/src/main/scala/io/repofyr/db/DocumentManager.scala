@@ -1376,18 +1376,36 @@ object DocumentManager {
   }*/
 
   /**
-    * Remove the resources from the persistence (actual delete)
-    * IMPORTANT !!! Never use this for FHIR, this is only used for test setups to clean data for patient accounts without deleting patient
-    * @param rtype FHIR Resource type
-    * @param query Mongo Query
+    * Remove the resources from the persistence (actual delete). Unlike a FHIR delete, nothing is moved to history.
+    * IMPORTANT !!! Not for the FHIR delete interaction; only for erasure such as Patient $purge (GDPR) and test cleanups
+    * @param rtype    FHIR Resource type
+    * @param query    Mongo Query
+    * @param history  If true remove from the history collection, otherwise from the current collection
+    * @return Number of removed documents
+    */
+  def removeDocuments(rtype:String, query:Bson, history:Boolean = false):Future[Long] = {
+    //Last gate before deleteMany; a query that matches every document would wipe out the collection
+    if(matchesAllDocuments(query.toBsonDocument(classOf[BsonDocument], MongoClientSettings.getDefaultCodecRegistry)))
+      Future.failed(new InternalServerException(s"Refusing to remove documents from $rtype with a query matching the whole collection!"))
+    else
+      MongoDB
+        .getCollection(rtype, history)
+        .deleteMany(query)
+        .toFuture()
+        .map(dr => dr.getDeletedCount)
+  }
+
+  /**
+    * Check if a query trivially matches every document i.e. {}, {$and:[]}, {$or:[{}, ...]} or a nesting of them
+    * @param query Rendered Mongo query
     * @return
     */
-  def removeDocuments(rtype:String, query:Bson):Future[Long] = {
-    MongoDB
-      .getCollection(rtype)
-      .deleteMany(query)
-      .toFuture()
-      .map(dr => dr.getDeletedCount)
+  def matchesAllDocuments(query:BsonDocument):Boolean = {
+    query.entrySet().asScala.forall(e => (e.getKey, e.getValue) match {
+      case ("$and", arr:BsonArray) => arr.getValues.asScala.forall(v => v.isDocument && matchesAllDocuments(v.asDocument()))
+      case ("$or", arr:BsonArray) => arr.getValues.asScala.exists(v => v.isDocument && matchesAllDocuments(v.asDocument()))
+      case _ => false
+    })
   }
 
 

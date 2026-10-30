@@ -8,6 +8,7 @@ import io.onfhir.api.parsers.FHIRSearchParameterValueParser
 import io.repofyr.config.{FhirConfigurationManager, OnfhirConfig}
 import io.onfhir.config.{FSConfigReader, FhirSearchHandling}
 import io.repofyr.r4.config.FhirR4Configurator
+import io.repofyr.operation.DefaultOperationHandlers
 import org.junit.runner.RunWith
 import org.specs2.mutable.Specification
 import io.onfhir.authz.AuthzResult
@@ -22,13 +23,15 @@ import io.onfhir.authz.AuthzContext
 @RunWith(classOf[JUnitRunner])
 class SmartAuthorizerTest extends Specification {
   sequential
-  val fsConfigReader = new FSConfigReader(fhirVersion = "R4")
+  // The operations path and the default operation table, as FhirConfigurationManager.initialize passes them:
+  // the suite's CapabilityStatement declares Patient $purge, whose OperationDefinition is not in the base definitions.
+  val fsConfigReader = new FSConfigReader(fhirVersion = "R4", operationDefinitionsPath = OnfhirConfig.fhirInitializationSettings.operationsPath)
   var r4Configurator = new FhirR4Configurator()
 
   val serverConfig = r4Configurator
     .initializeServerPlatform(
       configReader = fsConfigReader,
-      Set.empty
+      DefaultOperationHandlers.DEFAULT_IMPLEMENTED_FHIR_OPERATIONS.keySet
     )
   FhirConfigurationManager.fhirConfig = serverConfig
   val fhirSearchParameterValueParser = new FHIRSearchParameterValueParser(serverConfig, FhirSearchHandling.Strict)

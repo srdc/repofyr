@@ -1,0 +1,31 @@
+{
+  "resourceType": "OperationDefinition",
+  "id": "Patient-purge",
+  "url": "http://hl7.org/fhir/OperationDefinition/Patient-purge",
+  "version": "6.0.0-ballot3",
+  "name": "Purge",
+  "title": "Purge Patient Record",
+  "status": "draft",
+  "kind": "operation",
+  "date": "2026-10-27",
+  "publisher": "HL7 (FHIR Project)",
+  "description": "This operation is used to request the removal of all current and historical versions for all resources in a patient compartment. Defined in FHIR 6.0.0-ballot3 and provided by Repofyr for R4 and R5. Repofyr permanently removes the resources of the Patient compartment (except AuditEvent and Group) and the Patient itself, including their history.",
+  "affectsState": true,
+  "code": "purge",
+  "resource": [
+    "Patient"
+  ],
+  "system": false,
+  "type": false,
+  "instance": true,
+  "parameter": [
+    {
+      "name": "return",
+      "use": "out",
+      "min": 0,
+      "max": "1",
+      "documentation": "Status and/or results of the purge request",
+      "type": "OperationOutcome"
+    }
+  ]
+}
