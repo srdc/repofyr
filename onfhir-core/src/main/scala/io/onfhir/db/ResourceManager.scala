@@ -90,6 +90,11 @@ object ResourceManager {
               } yield (totalAndMatchedResources._1, totalAndMatchedResources._2, includedResources ++ revIncludedResources)
           }
         )
+        //_include/_revinclude resources are read without projection, so clear onFHIR extra fields (_id, __method, __scode) here too
+        .map {
+          case (total, matchedResources, includedResources) =>
+            (total, matchedResources, if (excludeExtraParams) includedResources.map(FHIRUtil.clearExtraFields) else includedResources)
+        }
     }
   }
 
@@ -351,6 +356,14 @@ object ResourceManager {
             } yield (matchedResources, includedResources ++ revIncludedResources)
         }
        )
+       //Aggregation results and _include/_revinclude resources are read without projection, so clear onFHIR extra fields here
+       .map {
+         case (matchedResources, includedResources) =>
+           if (excludeExtraFields)
+             matchedResources.map(m => m._1 -> m._2.map(FHIRUtil.clearExtraFields)) -> includedResources.map(FHIRUtil.clearExtraFields)
+           else
+             matchedResources -> includedResources
+       }
     }
   }
 

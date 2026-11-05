@@ -1,6 +1,6 @@
 package io.onfhir.api.endpoint
 
-import akka.http.scaladsl.model.{HttpResponse, StatusCodes}
+import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpResponse, StatusCodes}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.nimbusds.jose.jwk.JWKSet
@@ -12,7 +12,10 @@ trait SecurityEndpoint {
     */
   val securityRoute:Route =
     get {
-      //Returning our JWKSet
+      //Returning our JWKSet (public keys only); .well-known/jwks.json is where SMART Health Card verifiers look for the issuer keys
+      path(".well-known" / "jwks.json") {
+        jwks
+      } ~
       path(".well-known" / "jwks") {
         jwks
       } ~
@@ -26,9 +29,12 @@ trait SecurityEndpoint {
 
   private def jwks = {
     complete {
-      HttpResponse
-        .apply(StatusCodes.OK)
-        .withEntity(OnfhirConfig.authzConfig.protectedResourceJWKSet.toPublicJWKSet.toString)
+      Option(OnfhirConfig.authzConfig).flatMap(config => Option(config.protectedResourceJWKSet)) match {
+        case Some(jwkSet) =>
+          HttpResponse(StatusCodes.OK, entity = HttpEntity(ContentTypes.`application/json`, jwkSet.toPublicJWKSet.toString))
+        case None =>
+          HttpResponse(StatusCodes.NotFound)
+      }
     }
   }
 
