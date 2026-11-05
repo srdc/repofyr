@@ -4,7 +4,7 @@ User-visible changes to the Repofyr FHIR server.
 
 Repofyr is versioned independently of the `io.onfhir` reusable libraries it
 consumes. Both families started at 4.0.0, having been split out of a single
-monorepo in that release, and have since diverged: the server is at 4.0.1
+monorepo in that release, and have since diverged: the server is at 4.1.0
 against libraries at 4.0.0. The library version the server builds
 against is the `onfhir.libs.version` property, never `revision`.
 
@@ -17,7 +17,7 @@ server API, a configuration key, or a packaging convention occurs only in
 a major release - where it additionally gets an entry in the
 [migration guide](docs/migration/onfhir-3.x-to-repofyr-4.0.md).
 
-## 4.1.0 - Unreleased
+## 4.1.0 - 2026-11-05
 
 ### Added
 
@@ -48,6 +48,14 @@ a major release - where it additionally gets an entry in the
   must be declared too: before deleting anything the call checks this, and
   answers `501` naming the missing parameters rather than purging only part of
   the patient's data.
+
+### Changed
+
+- Runtime dependency updates: Logback 1.4.14 to 1.6.3 and Apache Commons Lang
+  3.17.0 to 3.20.0. Logback is bundled in the standalone JAR and the container
+  images, so a deployment that supplies its own `logback.xml` should confirm it
+  still loads; no configuration key or logger name changed. The test-only
+  specs2 dependency moved from 4.20.4 to 4.23.0.
 
 ## 4.0.1 - 2026-08-18
 
